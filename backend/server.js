@@ -172,7 +172,16 @@ app.post('/login', (req, res) => {
   }
   res.send('❌ Usuario o contraseña incorrecta. <a href="/login.html">Volver</a>');
 });
-
+// Eliminar ticket por ID
+app.delete('/admin/ticket/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await Ticket.findByIdAndDelete(id);
+    res.status(200).json({ success: true, message: 'Ticket eliminado' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Error eliminando el ticket' });
+  }
+});
 // Middleware de errores
 app.use((err, req, res, next) => {
   console.error('Error interno del servidor:', err);

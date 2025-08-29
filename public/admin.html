@@ -1,114 +1,81 @@
 <!DOCTYPE html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Panel de Administración - Tickets</title>
-    <link
-      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
-      rel="stylesheet" />
-    <script defer src="https://unpkg.com/lucide@latest"></script>
-  </head>
-  <body class="bg-gray-100 text-gray-900">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tickets Registrados</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>🎟️ Tickets Registrados</h1>
+    <button class="logout-btn">🔒 Cerrar sesión</button>
 
-    <div class="max-w-6xl mx-auto py-10 px-4">
-      <!-- Encabezado con botón -->
-      <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold text-center flex-1">🎟️ Tickets Registrados</h1>
-        <button id="btn-cerrar-sesion" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded shadow font-semibold transition duration-200">
-          🔒 Cerrar sesión
-        </button>
-      </div>
+    <input type="text" id="search" placeholder="🔍 Buscar por nombre o correo...">
 
-      <input
-        type="text"
-        id="buscador"
-        placeholder="🔍 Buscar por nombre o correo..."
-        class="w-full mb-4 px-4 py-2 border rounded shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+    <table>
+      <thead>
+        <tr>
+          <th>NOMBRE</th>
+          <th>CORREO</th>
+          <th>TELÉFONO</th>
+          <th>NÚMEROS</th>
+          <th>FECHA</th>
+          <th>PAGO</th>
+          <th>ACCIONES</th>
+        </tr>
+      </thead>
+      <tbody id="tickets-table">
+        <!-- Aquí se cargarán los registros dinámicamente -->
+      </tbody>
+    </table>
+  </div>
 
-      <div class="overflow-x-auto rounded-lg shadow">
-        <table class="w-full text-sm text-left text-gray-700 bg-white rounded">
-          <thead
-            class="bg-blue-600 text-white uppercase text-xs tracking-wider">
-            <tr>
-              <th class="px-4 py-3">Nombre</th>
-              <th class="px-4 py-3">Correo</th>
-              <th class="px-4 py-3">Teléfono</th>
-              <th class="px-4 py-3">Números</th>
-              <th class="px-4 py-3">Fecha</th>
-              <th class="px-4 py-3">Pago</th>
-              <td><button class="delete-btn" data-id="${ticket._id}">🗑 Eliminar</button></td>
-            </tr>
-          </thead>
-          <tbody id="tabla-tickets" class="divide-y divide-gray-200"></tbody>
-        </table>
-      </div>
-    </div>
+  <script>
+  // Función para renderizar la tabla con los datos
+  async function cargarTickets() {
+    const res = await fetch("/api/tickets");
+    const tickets = await res.json();
 
-    <script>
-      document.addEventListener("DOMContentLoaded", () => {
-        // Función para cerrar sesión
-        document.getElementById("btn-cerrar-sesion").addEventListener("click", () => {
-          localStorage.clear();
-          sessionStorage.clear();
-          window.location.href = "/login.html";
+    const tableBody = document.getElementById("tickets-table");
+    tableBody.innerHTML = "";
+
+    tickets.forEach(ticket => {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${ticket.nombre}</td>
+        <td>${ticket.correo}</td>
+        <td>${ticket.telefono}</td>
+        <td>${ticket.numeros.join(", ")}</td>
+        <td>${new Date(ticket.fecha).toLocaleString()}</td>
+        <td>${ticket.pagado ? "✅ Pagado" : "❌ No pagado"}</td>
+        <td><button class="delete-btn" data-id="${ticket._id}">🗑️ Eliminar</button></td>
+      `;
+      tableBody.appendChild(row);
+    });
+  }
+
+  // Lógica para eliminar un ticket
+  document.addEventListener("click", async (e) => {
+    if (e.target.classList.contains("delete-btn")) {
+      const id = e.target.getAttribute("data-id");
+      if (confirm("¿Seguro que deseas eliminar este registro?")) {
+        const res = await fetch(`/api/tickets/${id}`, {
+          method: "DELETE"
         });
-    
-        // Cargar tickets
-        async function cargarTickets() {
-          try {
-            const res = await fetch("/api/tickets");
-            const data = await res.json();
-    
-            const tabla = document.getElementById("tabla-tickets");
-            tabla.innerHTML = "";
-    
-            data.tickets.forEach(ticket => {
-  const fechaObj = new Date(ticket.fecha);
-  const fechaTexto = isNaN(fechaObj.getTime())
-    ? 'Fecha inválida'
-    : fechaObj.toLocaleString('es-CO', {
-        year:   'numeric',
-        month:  '2-digit',
-        day:    '2-digit',
-        hour:   '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false     // formato 24 h; pon true si prefieres 12 h
-      });
-
-  const fila = document.createElement("tr");
-  fila.innerHTML = `
-    <td class="px-4 py-2 font-semibold">${ticket.nombre}</td>
-    <td class="px-4 py-2">${ticket.correo}</td>
-    <td class="px-4 py-2">${ticket.telefono || 'N/A'}</td>
-    <td class="px-4 py-2">${ticket.numeros.join(", ")}</td>
-    <td class="px-4 py-2 text-gray-600">${fechaTexto}</td>
-    <td class="px-4 py-2 font-semibold ${ticket.estadoPago === 'aprobado' ? 'text-green-600' : 'text-red-600'}">
-      ${ticket.estadoPago === 'aprobado' ? '✅ Pagado' : '❌ No pagado'}
-    </td>
-  `;
-  tabla.appendChild(fila);
-});
-
-    
-            // Buscador
-            document.getElementById("buscador").addEventListener("input", e => {
-              const filtro = e.target.value.toLowerCase();
-              const filas = tabla.getElementsByTagName("tr");
-              for (let fila of filas) {
-                const texto = fila.textContent.toLowerCase();
-                fila.style.display = texto.includes(filtro) ? "" : "none";
-              }
-            });
-    
-          } catch (err) {
-            alert("❌ Error al cargar los tickets.");
-            console.error(err);
-          }
+        const data = await res.json();
+        if (data.success) {
+          alert("✅ Registro eliminado");
+          cargarTickets(); // refresca la tabla sin recargar toda la página
+        } else {
+          alert("❌ Error eliminando");
         }
-    
-        cargarTickets();
-      });
-    </script>
-    
+      }
+    }
+  });
+
+  // Cargar tickets al inicio
+  cargarTickets();
+  </script>
+</body>
+</html>

@@ -91,4 +91,18 @@ router.post('/', async (req, res) => {
   }
 });
 
+// ─── DELETE /api/tickets/:id → Eliminar ticket ───────────────────────────────
+router.delete('/:id', async (req, res) => {
+  try {
+    const eliminado = await Ticket.findByIdAndDelete(req.params.id);
+    if (!eliminado) {
+      return res.status(404).json({ exito: false, mensaje: 'Ticket no encontrado' });
+    }
+    res.json({ exito: true, mensaje: '🗑️ Ticket eliminado correctamente' });
+  } catch (error) {
+    console.error('❌ Error al eliminar ticket:', error);
+    res.status(500).json({ exito: false, mensaje: 'Error interno al eliminar ticket' });
+  }
+});
+
 export default router;

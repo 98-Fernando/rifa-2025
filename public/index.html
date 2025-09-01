@@ -77,9 +77,12 @@
     const TOTAL_NUMEROS = 999;
     let seleccionados = [];
 
+    // ⚡️ IMPORTANTE: URL del backend en Render
+    const API_URL = "https://rifa-2025.onrender.com/"; // 👈 reemplaza con la URL real de tu backend
+
     async function cargarNumerosDisponibles() {
       try {
-        const res = await fetch("/api/tickets/numeros");
+        const res = await fetch(`${API_URL}/api/tickets/numeros`);
         const data = await res.json();
         if (!data.exito) return;
 
@@ -142,7 +145,7 @@
         box.classList.add("hidden");
 
         try {
-          let res = await fetch("/api/tickets", {
+          let res = await fetch(`${API_URL}/api/tickets`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ nombre, correo, telefono: tel, numeros: seleccionados })
@@ -157,7 +160,8 @@
 
           cargarNumerosDisponibles();
 
-          res = await fetch("/api/crear-preferencia", {
+          // 🚨 Aquí está aún MercadoPago (luego lo cambiamos a Wompi)
+          res = await fetch(`${API_URL}/api/crear-preferencia`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ cantidad: seleccionados.length })
@@ -180,7 +184,7 @@
 
     async function actualizarProgreso() {
       try {
-        const res = await fetch("/api/tickets/consulta");
+        const res = await fetch(`${API_URL}/api/tickets/consulta`);
         const data = await res.json();
         if (data.exito) {
           const barra = document.getElementById("progreso");

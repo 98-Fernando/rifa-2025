@@ -34,25 +34,33 @@
   <script>
   // Función para renderizar la tabla con los datos
   async function cargarTickets() {
-    const res = await fetch("/api/tickets");
-    const tickets = await res.json();
+    try {
+      const res = await fetch("/api/tickets");
+      const data = await res.json();
 
-    const tableBody = document.getElementById("tickets-table");
-    tableBody.innerHTML = "";
+      const tableBody = document.getElementById("tickets-table");
+      tableBody.innerHTML = "";
 
-    tickets.forEach(ticket => {
-      const row = document.createElement("tr");
-      row.innerHTML = `
-        <td>${ticket.nombre}</td>
-        <td>${ticket.correo}</td>
-        <td>${ticket.telefono}</td>
-        <td>${ticket.numeros.join(", ")}</td>
-        <td>${new Date(ticket.fecha).toLocaleString()}</td>
-        <td>${ticket.pagado ? "✅ Pagado" : "❌ No pagado"}</td>
-        <td><button class="delete-btn" data-id="${ticket._id}">🗑️ Eliminar</button></td>
-      `;
-      tableBody.appendChild(row);
-    });
+      if (data.exito && Array.isArray(data.tickets)) {
+        data.tickets.forEach(ticket => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${ticket.nombre || "-"}</td>
+            <td>${ticket.correo || "-"}</td>
+            <td>${ticket.telefono || "-"}</td>
+            <td>${Array.isArray(ticket.numeros) ? ticket.numeros.join(", ") : "-"}</td>
+            <td>${ticket.createdAt ? new Date(ticket.createdAt).toLocaleString() : "-"}</td>
+            <td>${ticket.pagado ? "✅ Pagado" : "❌ No pagado"}</td>
+            <td><button class="delete-btn" data-id="${ticket._id}">🗑️ Eliminar</button></td>
+          `;
+          tableBody.appendChild(row);
+        });
+      } else {
+        tableBody.innerHTML = `<tr><td colspan="7">⚠️ No hay tickets registrados</td></tr>`;
+      }
+    } catch (error) {
+      console.error("❌ Error cargando tickets:", error);
+    }
   }
 
   // Lógica para eliminar un ticket
@@ -60,15 +68,19 @@
     if (e.target.classList.contains("delete-btn")) {
       const id = e.target.getAttribute("data-id");
       if (confirm("¿Seguro que deseas eliminar este registro?")) {
-        const res = await fetch(`/api/tickets/${id}`, {
-          method: "DELETE"
-        });
-        const data = await res.json();
-        if (data.success) {
-          alert("✅ Registro eliminado");
-          cargarTickets(); // refresca la tabla sin recargar toda la página
-        } else {
-          alert("❌ Error eliminando");
+        try {
+          const res = await fetch(`/api/tickets/${id}`, { method: "DELETE" });
+          const data = await res.json();
+
+          if (data.exito) {
+            alert("✅ Registro eliminado");
+            cargarTickets(); // refresca la tabla sin recargar toda la página
+          } else {
+            alert("❌ Error eliminando");
+          }
+        } catch (err) {
+          console.error("❌ Error en la eliminación:", err);
+          alert("❌ Error en la eliminación");
         }
       }
     }

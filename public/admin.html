@@ -5,14 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tickets Registrados</title>
   <link rel="stylesheet" href="styles.css">
-  <style>
-    .loader {
-      text-align: center;
-      margin: 20px;
-      font-size: 1.2em;
-      color: #555;
-    }
-  </style>
 </head>
 <body>
   <div class="container">
@@ -34,32 +26,22 @@
         </tr>
       </thead>
       <tbody id="tickets-table">
-        <tr><td colspan="7" class="loader">⏳ Cargando tickets...</td></tr>
+        <!-- Aquí se cargarán los registros dinámicamente -->
       </tbody>
     </table>
   </div>
 
   <script>
-  // ⚠️ Cambia esta URL por la de tu backend en Render
-  const API_URL = "https://rifa-2025.onrender.com/api/tickets";
-
   // Función para renderizar la tabla con los datos
   async function cargarTickets() {
-    const tableBody = document.getElementById("tickets-table");
-    tableBody.innerHTML = `<tr><td colspan="7" class="loader">⏳ Cargando tickets...</td></tr>`;
-
     try {
-      const res = await fetch(API_URL);
+      const res = await fetch("/api/tickets");
       const data = await res.json();
 
+      const tableBody = document.getElementById("tickets-table");
       tableBody.innerHTML = "";
 
       if (data.exito && Array.isArray(data.tickets)) {
-        if (data.tickets.length === 0) {
-          tableBody.innerHTML = `<tr><td colspan="7">⚠️ No hay tickets registrados</td></tr>`;
-          return;
-        }
-
         data.tickets.forEach(ticket => {
           const row = document.createElement("tr");
           row.innerHTML = `
@@ -74,11 +56,10 @@
           tableBody.appendChild(row);
         });
       } else {
-        tableBody.innerHTML = `<tr><td colspan="7">⚠️ No se pudo obtener la lista de tickets</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="7">⚠️ No hay tickets registrados</td></tr>`;
       }
     } catch (error) {
       console.error("❌ Error cargando tickets:", error);
-      tableBody.innerHTML = `<tr><td colspan="7">❌ Error cargando tickets</td></tr>`;
     }
   }
 
@@ -88,7 +69,7 @@
       const id = e.target.getAttribute("data-id");
       if (confirm("¿Seguro que deseas eliminar este registro?")) {
         try {
-          const res = await fetch(`${API_URL}/${id}`, { method: "DELETE" });
+          const res = await fetch(`/api/tickets/${id}`, { method: "DELETE" });
           const data = await res.json();
 
           if (data.exito) {

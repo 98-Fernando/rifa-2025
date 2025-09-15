@@ -22,27 +22,33 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Conexión a MongoDB (con manejo de errores y promesas)
+// Función para conectar a MongoDB con reconexión automática
 const connectToMongoDB = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    console.log('✅ Conectado a MongoDB');
+    console.log('✅ MongoDB conectado correctamente');
   } catch (err) {
-    console.error('❌ Error al conectar a MongoDB:', err);
-    process.exit(1); // Terminar el proceso si la conexión falla
+    console.error('❌ Error al conectar a MongoDB:', err.message);
+    console.log('🔁 Reintentando conexión en 5 segundos...');
+    setTimeout(connectToMongoDB, 5000); // reintenta en 5 segundos
   }
 };
 
 // Manejo de desconexión
 mongoose.connection.on('disconnected', () => {
-  console.log('❌ Desconectado de MongoDB');
-  process.exit(1); // Terminar el proceso si la conexión se pierde
+  console.warn('⚠️ Conexión a MongoDB perdida. Intentando reconectar...');
+  connectToMongoDB(); // reconectar automáticamente
 });
 
-// Conectar a la base de datos
+// Manejo de errores de conexión
+mongoose.connection.on('error', (err) => {
+  console.error('❌ Error en la conexión de MongoDB:', err.message);
+});
+
+// Iniciar conexión a la base de datos
 connectToMongoDB();
 
 // Importar rutas
@@ -51,5 +57,5 @@ app.use('/api/tickets', ticketsRouter);
 
 // Iniciar servidor
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+  console.log(`🚀 Servidor corriendo en: http://localhost:${PORT}`);
 });

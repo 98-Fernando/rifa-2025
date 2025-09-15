@@ -106,7 +106,7 @@ a:hover { text-decoration: underline; }
   font-weight: bold;
 }
 .imagen-rifa {
-  width: 100%;     
+  width: 90%;     
   height: auto;      
   max-width: 100%;  
   display: block;   
@@ -254,14 +254,7 @@ a:hover { text-decoration: underline; }
   font-weight: bold;
   text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
 }
-.premio-rojo-animado {
-  color: #ff0000;
-  font-size: 3em;
-  font-weight: bold;
-  text-shadow: 0 0 10px #ff0000, 0 0 20px #ff4d4d, 0 0 30px #ff8080;
-  animation: latido 1.5s infinite, brillar 2s infinite alternate, rebotar 2.5s infinite ease-in-out;
-  display: inline-block;
-}
+
 @keyframes latido {
   0%, 100% { transform: scale(1); }
   20% { transform: scale(1.15); }

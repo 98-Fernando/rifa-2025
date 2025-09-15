@@ -105,6 +105,12 @@ a:hover { text-decoration: underline; }
   margin: 5px 0;
   font-weight: bold;
 }
+.imagen-rifa {
+  display: block;
+  margin: 15px auto;
+  max-width: 300px; /* ajusta el tamaño */
+  border-radius: 10px; /* opcional */
+}
 .btn-opcion {
   background-color: #ff0303;
   color: white;

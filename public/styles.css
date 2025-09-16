@@ -224,7 +224,7 @@ a:hover { text-decoration: underline; }
   width: 100%;
   box-sizing: border-box;
 }
-.numero-disponible { background-color: #4caf50; color: white; }
+.numero-disponible { background-color: #2E7D32; color: white; }
 .numero-ocupado { background-color: #f44336; color: white; cursor: not-allowed; opacity: 0.7; }
 .numero-seleccionado { background-color: #2196f3; color: white; cursor: not-allowed; }
 .numero-btn:hover:not(.ocupado) { background-color: #45a049; }

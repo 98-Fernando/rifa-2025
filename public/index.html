@@ -1,115 +1,101 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Rifa 2025</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css">
   <style>
-    /* ========================
-       ESTILOS GENERALES
-    ======================== */
     * { box-sizing: border-box; }
-    h1, h2, h3, p, input, button { max-width: 100%; word-wrap: break-word; overflow-wrap: break-word; }
-    form input, form button { width: 70%; }
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f8f9fa; color: #111; }
+    h1, h2, h3, p { margin: 0.5rem 0; }
+    .container { max-width: 900px; margin: 0 auto; padding: 1rem; }
+    img { max-width: 100%; height: auto; border-radius: 6px; }
 
-    .grid-opciones { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-    .btn-opcion { flex: 1 1 45%; min-width: 130px; }
+    /* Barra de progreso */
+    .progreso-container { margin: 1rem 0; }
+    .barra { width: 100%; background: #eee; border-radius: 6px; overflow: hidden; }
+    .relleno { width: 0; background: #3b82f6; color: white; padding: 6px 8px; text-align: center; }
 
-    @media (max-width: 600px) {
-      h1 { font-size: 1.2rem; }
-      .valor, .nota-sorteo, .relleno { font-size: 0.9rem; }
-      input, button { font-size: 1rem; padding: 0.6rem; }
-    }
+    /* Formulario */
+    form { display: flex; flex-direction: column; gap: 0.8rem; margin-top: 1rem; }
+    input, button { padding: 0.8rem; font-size: 1rem; border-radius: 6px; border: 1px solid #ccc; }
+    button { background: #3b82f6; color: #fff; font-weight: bold; cursor: pointer; border: none; transition: 0.2s; }
+    button:hover { background: #2563eb; }
 
-    .redes-sociales img { width: 32px; height: 32px; }
-    .numero-btn { padding: 0.25rem 0.5rem; font-size: 0.75rem; margin: 2px; border: 1px solid #ccc; border-radius: 4px; }
-    .numero-btn.disponible { background-color: #02f823c0; cursor: pointer; }
-    .numero-btn.seleccionado { background-color: #3b82f6; color: white; font-weight: bold; }
-    .numero-btn.ocupado { background-color: #ff0000; color: #ffffff; cursor: not-allowed; }
+    /* Selección de números */
+    #lista-numeros { display: grid; grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 5px; max-height: 250px; overflow-y: auto; margin-top: 0.5rem; }
+    .numero-btn { padding: 0.5rem; border-radius: 4px; border: 1px solid #ccc; text-align: center; cursor: pointer; transition: 0.2s; }
+    .numero-btn.disponible { background: #02f823c0; }
+    .numero-btn.seleccionado { background: #3b82f6; color: #fff; font-weight: bold; }
+    .numero-btn.ocupado { background: #ff4d4f; color: #fff; cursor: not-allowed; }
 
     .hidden { display: none; }
-    .mensaje { margin-top: 1rem; color: #111; }
-    .ticket-box { margin-top: 1rem; padding: .8rem; border: 1px solid #ddd; border-radius: 6px; background: #fafafa; }
+    .mensaje { margin-top: 0.8rem; color: #e11d48; font-weight: bold; }
+    .ticket-box { margin-top: 1rem; padding: 1rem; border-radius: 6px; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
 
-    .footer-fixed { text-align: center; padding: 10px; font-size: 14px; color: #555; margin-top: 20px; }
+    /* Redes y footer */
+    .redes-sociales { margin-top: 1.5rem; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
+    .redes-sociales img { width: 36px; height: 36px; }
+    .footer-fixed { text-align: center; padding: 0.8rem; font-size: 14px; color: #555; margin-top: 2rem; background: #f1f1f1; border-top: 1px solid #ddd; }
+
+    @media(max-width:600px) {
+      input, button { font-size: 0.95rem; }
+      .numero-btn { font-size: 0.8rem; padding: 0.4rem; }
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <!-- TÍTULO E IMAGEN -->
-    <h1>PARTICIPA EN LA GRAN RIFA</h1>
-    <img src="img.jpg" alt="Imagen de la rifa" class="imagen-rifa" style="max-width:100%;height:auto;">
+    <h1>🎉 PARTICIPA EN LA GRAN RIFA 🎉</h1>
+    <img src="img.jpg" alt="Imagen de la rifa">
     <h2>Un iPhone 16 Pro Max o un Samsung S24 Ultra</h2>
 
-    <!-- PROGRESO DE VENTAS -->
     <div class="progreso-container">
-      <div class="barra" style="width:100%;background:#eee;border-radius:6px;overflow:hidden;">
-        <div id="progreso" class="relleno" style="width:0%;background:#3b82f6;color:white;padding:6px 8px;">0%</div>
+      <div class="barra">
+        <div id="progreso" class="relleno">0%</div>
       </div>
       <p id="porcentaje-texto">0% completado</p>
-      <p id="alerta80" style="display: none; color: red; font-weight: bold;">🔥 ¡Ya hemos alcanzado el 80%! El sorteo está cerca 🎉</p>
-      <p class="nota-sorteo">Nota: El sorteo se realiza cuando se haya vendido el 80% de los boletos disponibles.</p>
-      <h3 class="valor">VALOR: $ 5.000</h3>
+      <p id="alerta80" class="hidden" style="color: #e11d48; font-weight:bold;">🔥 ¡Ya hemos alcanzado el 80%! El sorteo está cerca 🎉</p>
+      <h3>VALOR: $ 5.000</h3>
     </div>
 
-    <!-- FORMULARIO -->
     <form id="formulario">
-      <input type="text" id="nombre" placeholder="Tu nombre" required />
-      <input type="email" id="correo" placeholder="Tu correo" required />
-      <input type="tel" id="telefono" placeholder="Tu número de celular" required pattern="[0-9]{10}" title="Debe tener 10 dígitos" />
+      <input type="text" id="nombre" placeholder="Tu nombre" required>
+      <input type="email" id="correo" placeholder="Tu correo" required>
+      <input type="tel" id="telefono" placeholder="Tu número de celular" required pattern="[0-9]{10}" title="Debe tener 10 dígitos">
 
-      <!-- SELECCIÓN DE NÚMEROS -->
-      <div id="seleccion-numeros" class="mt-4">
+      <div id="seleccion-numeros">
         <p><strong>Selecciona tus números:</strong></p>
-        <div id="lista-numeros" class="grid grid-cols-10 gap-2 max-h-60 overflow-y-auto border rounded p-2 bg-white"></div>
-        <p id="limite-error" class="text-red-500 text-sm mt-1 hidden">⚠️ Este número ya fue tomado.</p>
+        <div id="lista-numeros"></div>
+        <p id="limite-error" class="mensaje hidden">⚠️ Este número ya fue tomado.</p>
       </div>
 
-      <button type="submit">🎉 Participar y pagar</button>
+      <button type="submit">🎟 Participar y pagar</button>
       <div id="spinner" class="hidden">⏳ Enviando...</div>
     </form>
 
-    <!-- MENSAJES Y TICKET -->
-    <p id="mensaje" class="mensaje"></p>
+    <div id="mensaje" class="mensaje hidden"></div>
     <div id="ticket-box" class="ticket-box hidden"></div>
 
-    <!-- REDES SOCIALES -->
     <div class="redes-sociales">
       <h3>Síguenos en redes sociales</h3>
-      <div class="iconos">
-        <a href="https://wa.me/573216220062" target="_blank" title="WhatsApp">
-          <img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" alt="WhatsApp">
-        </a>
-        <a href="https://facebook.com/tuusuario" target="_blank" title="Facebook">
-          <img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="Facebook">
-        </a>
-      </div>
+      <a href="https://wa.me/573216220062" target="_blank"><img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" alt="WhatsApp"></a>
+      <a href="https://facebook.com/tuusuario" target="_blank"><img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="Facebook"></a>
     </div>
 
-    <!-- CONTACTO -->
-    <footer>
-      <a href="https://wa.me/573216220062" target="_blank">📱 ¿Tienes dudas? Escríbenos por WhatsApp</a>
-      <p style="margin-top: 10px;">Responsable de la rifa: <strong>BRAYAN GÓMEZ</strong></p>
+    <footer class="footer-fixed">
+      &copy; 2025 Elaborado por Ing. Fernando Gómez - Popayán Cauca. Todos los derechos reservados.
     </footer>
   </div>
 
-  <!-- COPYRIGHT -->
-  <footer class="footer-fixed">
-    &copy; 2025 Elaborado por Ing. Fernando Gómez - Popayán Cauca. Todos los derechos reservados.
-  </footer>
-
-  <!-- LIBRERÍA EMAILJS -->
+  <!-- EMAILJS -->
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <script>emailjs.init('XPQs4d1K2sHKtcIDl');</script>
 
-  <!-- SCRIPT PRINCIPAL -->
   <script>
     let seleccionados = [];
 
-    // ========================
-    // CARGAR NÚMEROS DISPONIBLES
-    // ========================
     async function cargarNumerosDisponibles() {
       try {
         const res = await fetch("/api/tickets/numeros");
@@ -151,9 +137,6 @@
       }
     }
 
-    // ========================
-    // FORMULARIO
-    // ========================
     document.addEventListener("DOMContentLoaded", () => {
       const form = document.getElementById("formulario");
       const spinner = document.getElementById("spinner");
@@ -171,15 +154,15 @@
 
         if (seleccionados.length === 0) {
           msg.textContent = "❌ Selecciona al menos un número.";
+          msg.classList.remove("hidden");
           return;
         }
 
         spinner.classList.remove("hidden");
-        msg.textContent = "";
+        msg.classList.add("hidden");
         box.classList.add("hidden");
 
         try {
-          // 1) Crear ticket en backend
           const res = await fetch("/api/tickets", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -188,13 +171,11 @@
           const data = await res.json();
           if (!data.exito) throw new Error(data.mensaje || "Error generando referencia");
 
-          // 2) Mostrar datos en pantalla
           const transactionRef = data.transaction_reference || `ticket_${Date.now()}`;
           box.classList.remove("hidden");
           box.innerHTML = `<p><strong>Tus números reservados:</strong> ${seleccionados.join(", ")}</p>
                            <p><strong>Referencia transacción:</strong> ${transactionRef}</p>`;
 
-          // 3) Generar firma en backend
           const respFirma = await fetch("/api/generar-firma", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -203,22 +184,19 @@
           const datosFirma = await respFirma.json();
           if (!datosFirma.reference) throw new Error("Error generando firma en backend");
 
-          // 4) Redirigir al checkout de Wompi (sin endpoints obsoletos)
           const checkoutUrl = `https://checkout.wompi.co/p/?public-key=${datosFirma.publicKey}&currency=${datosFirma.currency}&amount-in-cents=${datosFirma.amountInCents}&reference=${datosFirma.reference}`;
-          setTimeout(() => { window.location.href = checkoutUrl; }, 1000);
+          setTimeout(() => { window.location.href = checkoutUrl; }, 800);
 
         } catch (err) {
           console.error(err);
           msg.textContent = "❌ " + (err.message || "Error inesperado");
+          msg.classList.remove("hidden");
         } finally {
           spinner.classList.add("hidden");
         }
       });
     });
 
-    // ========================
-    // ACTUALIZAR PROGRESO
-    // ========================
     async function actualizarProgreso() {
       try {
         const res = await fetch("/api/tickets/consulta");
@@ -231,7 +209,7 @@
           barra.style.width = `${data.porcentaje}%`;
           barra.textContent = `${data.porcentaje}%`;
           texto.textContent = `${data.porcentaje}% completado`;
-          alerta.style.display = data.porcentaje >= 80 ? "block" : "none";
+          alerta.classList.toggle("hidden", data.porcentaje < 80);
         }
       } catch (err) {
         console.error("Error al obtener progreso:", err);

@@ -118,7 +118,7 @@ import Ticket from "./models/Ticket.js";
 app.use("/api/tickets", ticketRoutes);
 
 // ======================
-// WOMPI
+// WOMPI CONFIG
 // ======================
 const WOMPI_ENV = process.env.WOMPI_ENV || "sandbox";
 const WOMPI_BASE_URL =
@@ -128,19 +128,22 @@ const WOMPI_BASE_URL =
 
 console.log(`🔹 Usando entorno Wompi: ${WOMPI_ENV}`);
 
-// Firma de integridad
+// Generador de firma de integridad
 function generarFirma(reference, amountInCents, currency, privateKey) {
   const cadena = `${reference}${amountInCents}${currency}${privateKey}`;
   return crypto.createHash("sha256").update(cadena).digest("hex");
 }
 
-// Endpoint para generar la firma
+// ======================
+// ENDPOINT: GENERAR FIRMA
+// ======================
 app.post("/api/generar-firma", (req, res) => {
   try {
     const { cantidad } = req.body;
     const unitPrice = Number(process.env.PRECIO_BOLETO) || 5000; // en pesos
-    const amountInPesos = cantidad * unitPrice;
-    const amountInCents = amountInPesos * 100; // Wompi espera CENTAVOS
+    const amountInPesos = cantidad * unitPrice; // valor real en pesos
+    const amountInCents = amountInPesos * 100; // Wompi espera en centavos
+
     const reference = `ORDER_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
 
     const integritySignature = generarFirma(
@@ -152,8 +155,8 @@ app.post("/api/generar-firma", (req, res) => {
 
     res.json({
       reference,
-      amountInPesos, // para mostrar en frontend
-      amountInCents, // para enviar a Wompi
+      amountInPesos, // informativo para frontend
+      amountInCents, // se envía a Wompi
       currency: "COP",
       publicKey: process.env.WOMPI_PUBLIC_KEY,
       signature: integritySignature,
@@ -164,7 +167,9 @@ app.post("/api/generar-firma", (req, res) => {
   }
 });
 
-// Webhook
+// ======================
+// WEBHOOK WOMPI
+// ======================
 app.post("/webhook-wompi", async (req, res) => {
   try {
     console.log("📩 Evento recibido en Webhook:", JSON.stringify(req.body, null, 2));

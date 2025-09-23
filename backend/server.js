@@ -47,6 +47,7 @@ app.use(
         "https://production.wompi.co",
         "https://sandbox.wompi.co",
       ],
+      frameSrc: ["'self'", "https://checkout.wompi.co"], // necesario para Wompi
     },
   })
 );
@@ -64,6 +65,7 @@ app.use(
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors());
+app.use(express.json()); // necesario para Wompi webhook
 
 // Sesiones con almacenamiento en MongoDB
 app.use(
@@ -121,9 +123,7 @@ app.use("/api/tickets", ticketRoutes);
 // -------------------------------
 // INTEGRACIÓN WOMPI
 // -------------------------------
-
-// Selección de entorno (sandbox o producción)
-const WOMPI_ENV = process.env.WOMPI_ENV || "sandbox"; // "production" o "sandbox"
+const WOMPI_ENV = process.env.WOMPI_ENV || "sandbox";
 const WOMPI_BASE_URL =
   WOMPI_ENV === "production"
     ? "https://production.wompi.co/v1"
@@ -131,18 +131,16 @@ const WOMPI_BASE_URL =
 
 console.log(`🔹 Usando entorno Wompi: ${WOMPI_ENV}`);
 
-// Función para generar firma de integridad
 function generarFirma(reference, amountInCents, currency, privateKey) {
   const cadena = `${reference}${amountInCents}${currency}${privateKey}`;
   return crypto.createHash("sha256").update(cadena).digest("hex");
 }
 
-// Endpoint: generar referencia y firma
 app.post("/api/generar-firma", (req, res) => {
   try {
     const { cantidad } = req.body;
-    const unitPrice = Number(process.env.PRECIO_BOLETO) || 4500;
-    const amountInCents = cantidad * unitPrice * 100; // en centavos
+    const unitPrice = Number(process.env.PRECIO_BOLETO) || 5000;
+    const amountInCents = cantidad * unitPrice * 100;
     const reference = `ORDER_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
 
     const integritySignature = generarFirma(
@@ -165,17 +163,18 @@ app.post("/api/generar-firma", (req, res) => {
   }
 });
 
-// Webhook de Wompi
+// Webhook Wompi
 app.post("/webhook-wompi", async (req, res) => {
   try {
-    console.log("📩 Evento recibido en Webhook:", req.body);
+    console.log("📩 Evento recibido en Webhook:", JSON.stringify(req.body, null, 2));
 
     const evento = req.body.event;
     if (evento === "transaction.updated") {
       const transaccion = req.body.data.transaction;
-
       const referencia = transaccion.reference;
       const estado = transaccion.status; // APPROVED, DECLINED, PENDING
+
+      console.log(`🔔 Transacción ${referencia} actualizada: ${estado}`);
 
       if (estado === "APPROVED") {
         await Ticket.create({
@@ -185,21 +184,7 @@ app.post("/webhook-wompi", async (req, res) => {
           pagado: true,
           referencia,
         });
-
-        await fetch("https://api.emailjs.com/api/v1.0/email/send", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            service_id: process.env.EMAILJS_SERVICE,
-            template_id: process.env.EMAILJS_TEMPLATE,
-            user_id: process.env.EMAILJS_USER,
-            template_params: {
-              to_email: transaccion.customer_email,
-              nombre: transaccion.customer_name || "Cliente",
-              numeros: "Asignados pronto",
-            },
-          }),
-        });
+        console.log("✅ Ticket creado en DB");
       }
     }
 
@@ -209,6 +194,11 @@ app.post("/webhook-wompi", async (req, res) => {
     res.sendStatus(500);
   }
 });
+
+// Rutas post pago
+app.get("/success", (req, res) => res.send("✅ Pago aprobado, gracias por participar."));
+app.get("/failure", (req, res) => res.send("❌ Pago rechazado, intenta de nuevo."));
+app.get("/pending", (req, res) => res.send("⌛ Pago en proceso, espera confirmación."));
 
 // -------------------------------
 

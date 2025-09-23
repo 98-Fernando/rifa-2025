@@ -23,22 +23,25 @@
     .numero-btn.disponible { background-color: #02f823c0; cursor: pointer; }
     .numero-btn.seleccionado { background-color: #3b82f6; color: white; font-weight: bold; }
     .numero-btn.ocupado { background-color: #ff0000; color: #ffffff; cursor: not-allowed; }
+    .hidden { display: none; }
+    .mensaje { margin-top: 1rem; color: #111; }
+    .ticket-box { margin-top: 1rem; padding: .8rem; border: 1px solid #ddd; border-radius: 6px; background: #fafafa; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1></h1>
     <h1>PARTICIPA EN LA GRAN RIFA</h1>
-    <img src="img.jpg" alt="Imagen de la rifa" class="imagen-rifa">
-    <h1></h1>
-    <h1>Un Iphone 16 Pro Max o Un Samsung S24 Ultra</h1>
-    
+    <img src="img.jpg" alt="Imagen de la rifa" class="imagen-rifa" style="max-width:100%;height:auto;">
+    <h2>Un Iphone 16 Pro Max o Un Samsung S24 Ultra</h2>
+
     <div class="progreso-container">
-      <div class="barra"><div id="progreso" class="relleno">0%</div></div>
+      <div class="barra" style="width:100%;background:#eee;border-radius:6px;overflow:hidden;">
+        <div id="progreso" class="relleno" style="width:0%;background:#3b82f6;color:white;padding:6px 8px;">0%</div>
+      </div>
       <p id="porcentaje-texto">0% completado</p>
       <p id="alerta80" style="display: none; color: red; font-weight: bold;">🔥 ¡Ya hemos alcanzado el 80%! El sorteo está cerca 🎉</p>
-      <h1 class="nota-sorteo">Nota: Se realiza el sorteo cuando se haya vendido el 80% de los boletos disponibles</h1>
-      <h1><span class="valor">VALOR: $ 5.000</span></h1>
+      <p class="nota-sorteo">Nota: Se realiza el sorteo cuando se haya vendido el 80% de los boletos disponibles</p>
+      <h3 class="valor">VALOR: $ 5.000</h3>
     </div>
 
     <form id="formulario">
@@ -52,8 +55,8 @@
         <p id="limite-error" class="text-red-500 text-sm mt-1 hidden">⚠️ Este número ya fue tomado.</p>
       </div>
 
-      <button type="submit">🎉 Participar</button>
-      <div id="spinner" class="hidden spinner">⏳ Enviando...</div>
+      <button type="submit">🎉 Participar y pagar</button>
+      <div id="spinner" class="hidden">⏳ Enviando...</div>
     </form>
 
     <p id="mensaje" class="mensaje"></p>
@@ -79,7 +82,12 @@
   <script>emailjs.init('XPQs4d1K2sHKtcIDl');</script>
 
   <script>
+    // ---------- CONFIG ----------
+    const WOMPI_PUBLIC_KEY = 'pub_test_GLb9rOhET4NH5NKy7UPz6vGGhGBxkFqU'; // TU LLAVE PUBLICA SANDBOX (proporcionada)
+    const UNIT_PRICE = 5000; // valor por boleto en pesos
     const TOTAL_NUMEROS = 999;
+    // ----------------------------
+
     let seleccionados = [];
 
     async function cargarNumerosDisponibles() {
@@ -103,6 +111,7 @@
             btn.addEventListener("click", () => {
               if (btn.classList.contains("seleccionado")) {
                 btn.classList.remove("seleccionado");
+                btn.classList.add("disponible");
                 seleccionados = seleccionados.filter(n => n !== numero);
               } else {
                 btn.classList.remove("disponible");
@@ -147,37 +156,44 @@
         box.classList.add("hidden");
 
         try {
-          let res = await fetch("/api/tickets", {
+          // 1) Pedimos al backend que genere la referencia (no guarda aún)
+          const res = await fetch("/api/tickets", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ nombre, correo, telefono: tel, numeros: seleccionados })
           });
-          let data = await res.json();
+          const data = await res.json();
+          if (!data.exito) throw new Error(data.mensaje || "Error generando referencia");
 
-          if (!data.exito) throw new Error(data.mensaje);
-
-          msg.textContent = "✅ " + data.mensaje;
+          // Mostrar resumen y referencia (admite ambos nombres: transaction_reference o referencia)
+          const transactionRef = data.transaction_reference || data.referencia || data.reference || data.transactionReference;
           box.classList.remove("hidden");
-          box.innerHTML = `<p><strong>Tus números:</strong> ${data.numeros.join(", ")}</p>`;
+          box.innerHTML = `<p><strong>Tus números (reservados temporalmente):</strong> ${seleccionados.join(", ")}</p>
+                           <p><strong>Referencia transacción:</strong> ${transactionRef || '—'}</p>`;
 
-          cargarNumerosDisponibles();
-
-          // 🔹 Redirección a Wompi Checkout
-          const referencia = data.referencia; // el backend debe enviar la referencia única
+          // 2) Calcular monto y redirigir a Wompi Checkout (sandbox)
           const cantidad = seleccionados.length;
-          const amountInCents = 5000 * cantidad * 100;
+          const amountInCents = UNIT_PRICE * cantidad * 100; // en centavos
+          const publicKey = encodeURIComponent(WOMPI_PUBLIC_KEY);
+          const reference = encodeURIComponent(transactionRef || `ticket_${Date.now()}`);
 
-          window.location.href = `https://checkout.wompi.co/p/?public-key=pub_prod_uIz0rC40lHnDxYn6aBPYD7iKDoX5vRAx&currency=COP&amount-in-cents=${amountInCents}&reference=${referencia}`;
+          const checkoutUrl = `https://checkout.wompi.co/p/?public-key=${publicKey}&currency=COP&amount-in-cents=${amountInCents}&reference=${reference}`;
+
+          // pequeña espera visual para que el usuario vea la referencia antes de redirigir
+          setTimeout(() => {
+            window.location.href = checkoutUrl;
+          }, 700);
 
         } catch (err) {
           console.error(err);
-          msg.textContent = "❌ " + err.message;
+          msg.textContent = "❌ " + (err.message || "Error inesperado");
         } finally {
           spinner.classList.add("hidden");
         }
       });
     });
 
+    // Progreso
     async function actualizarProgreso() {
       try {
         const res = await fetch("/api/tickets/consulta");

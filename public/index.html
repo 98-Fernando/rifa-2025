@@ -52,7 +52,7 @@
     </div>
     <p id="porcentaje-texto">0% completado</p>
     <p id="alerta80" class="hidden" style="color:#e11d48;font-weight:bold;">🔥 ¡Ya hemos alcanzado el 80%! El sorteo está cerca 🎉</p>
-    <h3>VALOR: $ 5.000</h3>
+    <h3 id="valor-boleto">VALOR: $ 0</h3>
   </div>
 
   <form id="formulario">
@@ -96,10 +96,21 @@
 
 <script>
 let seleccionados = [];
-const PRECIO_BOLETO = 5000;
-const PUBLIC_KEY = "pub_test_GLb9rOhET4NH5NKy7UPz6vGGhGBxkFqU";
+let PRECIO_BOLETO = 0;
+let PUBLIC_KEY = "";
 
-// Cargar números desde tu API
+async function cargarConfig() {
+  try {
+    const res = await fetch("/api/config");
+    const data = await res.json();
+    if(data.exito){
+      PRECIO_BOLETO = data.precio;
+      PUBLIC_KEY = data.publicKey;
+      document.getElementById("valor-boleto").textContent = `VALOR: $ ${PRECIO_BOLETO}`;
+    }
+  } catch(err){ console.error(err); }
+}
+
 async function cargarNumerosDisponibles() {
   try {
     const res = await fetch("/api/tickets/numeros");
@@ -159,14 +170,14 @@ function actualizarProgreso(){
     }).catch(err=>console.error(err));
 }
 
-// Checkout redirigido simple
 function iniciarPago(totalBoletos, reference){
   const amountInCents = totalBoletos * PRECIO_BOLETO * 100;
   const checkoutUrl = `https://checkout.wompi.co/p/?public-key=${PUBLIC_KEY}&currency=COP&amount-in-cents=${amountInCents}&reference=${reference}`;
   window.location.href = checkoutUrl;
 }
 
-document.addEventListener("DOMContentLoaded", ()=>{
+document.addEventListener("DOMContentLoaded", async ()=>{
+  await cargarConfig();
   const form = document.getElementById("formulario");
   const spinner = document.getElementById("spinner");
   const msg = document.getElementById("mensaje");

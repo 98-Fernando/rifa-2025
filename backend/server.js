@@ -8,6 +8,7 @@ import bodyParser from "body-parser";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import fetch from "node-fetch";
+import crypto from "crypto";
 import { config } from "dotenv";
 import { fileURLToPath } from "url";
 
@@ -130,57 +131,37 @@ const WOMPI_BASE_URL =
 
 console.log(`🔹 Usando entorno Wompi: ${WOMPI_ENV}`);
 
-// Crear transacción en Wompi
-app.post("/api/crear-transaccion", async (req, res) => {
+// Función para generar firma de integridad
+function generarFirma(reference, amountInCents, currency, privateKey) {
+  const cadena = `${reference}${amountInCents}${currency}${privateKey}`;
+  return crypto.createHash("sha256").update(cadena).digest("hex");
+}
+
+// Endpoint: generar referencia y firma
+app.post("/api/generar-firma", (req, res) => {
   try {
-    const { cantidad, correo, nombre, token } = req.body;
+    const { cantidad } = req.body;
     const unitPrice = Number(process.env.PRECIO_BOLETO) || 4500;
-    const amountInCents = cantidad * unitPrice * 100; // Wompi usa centavos
+    const amountInCents = cantidad * unitPrice * 100; // en centavos
+    const reference = `ORDER_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
 
-    const referencia = `ORDER_${Date.now()}_${Math.floor(
-      Math.random() * 10000
-    )}`;
-
-    console.log("📩 Creando transacción en Wompi...");
-    console.log("➡ Datos enviados:", {
+    const integritySignature = generarFirma(
+      reference,
       amountInCents,
-      correo,
-      nombre,
-      referencia,
-    });
+      "COP",
+      process.env.WOMPI_PRIVATE_KEY
+    );
 
-    const response = await fetch(`${WOMPI_BASE_URL}/transactions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.WOMPI_PRIVATE_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        amount_in_cents: amountInCents,
-        currency: "COP",
-        customer_email: correo,
-        payment_method: {
-          type: "CARD", // puede ser PSE, NEQUI, etc.
-          token,
-        },
-        reference: referencia,
-      }),
-    });
-
-    const data = await response.json();
-
-    console.log("📤 Respuesta Wompi:", data);
-
-    res.status(200).json({
-      success: true,
-      referencia,
-      transaction: data,
+    res.json({
+      reference,
+      amountInCents,
+      currency: "COP",
+      publicKey: process.env.WOMPI_PUBLIC_KEY,
+      signature: integritySignature,
     });
   } catch (error) {
-    console.error("❌ Error creando transacción Wompi:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Error creando transacción" });
+    console.error("❌ Error generando firma:", error);
+    res.status(500).json({ error: "Error generando firma" });
   }
 });
 

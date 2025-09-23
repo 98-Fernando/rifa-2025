@@ -162,17 +162,12 @@
 
           cargarNumerosDisponibles();
 
-          res = await fetch("/api/crear-preferencia", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ cantidad: seleccionados.length })
-          });
-          const pago = await res.json();
-          if (pago.success && pago.init_point) {
-            window.location.href = pago.init_point;
-          } else {
-            alert("❌ No se pudo generar la preferencia de pago.");
-          }
+          // 🔹 Redirección a Wompi Checkout
+          const referencia = data.referencia; // el backend debe enviar la referencia única
+          const cantidad = seleccionados.length;
+          const amountInCents = 5000 * cantidad * 100;
+
+          window.location.href = `https://checkout.wompi.co/p/?public-key=pub_prod_uIz0rC40lHnDxYn6aBPYD7iKDoX5vRAx&currency=COP&amount-in-cents=${amountInCents}&reference=${referencia}`;
 
         } catch (err) {
           console.error(err);

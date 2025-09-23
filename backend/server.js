@@ -68,6 +68,10 @@ app.use(
       mongoUrl: process.env.MONGO_URI,
       collectionName: "sessions",
       ttl: 60 * 60 * 24,
+      mongoOptions: {
+        useUnifiedTopology: true,
+        writeConcern: { w: 1, j: true, wtimeout: 1000 }, // ⚡ configuraciones modernas
+      },
     }),
     cookie: {
       secure: process.env.NODE_ENV === "production",
@@ -92,7 +96,11 @@ app.get("/admin.html", (req, res, next) =>
 // DB
 // ======================
 mongoose
-  .connect(process.env.MONGO_URI)
+  .connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true, // ⚡ nuevo motor de monitoreo
+    writeConcern: { w: 1, j: true, wtimeout: 1000 }, // ⚡ reemplaza w, j, wtimeout
+  })
   .then(() => console.log("✅ Conexión exitosa a MongoDB"))
   .catch((err) => console.error("❌ Error al conectar a MongoDB", err));
 
@@ -122,13 +130,12 @@ function generarFirma(reference, amountInCents, currency, integrityKey) {
   return crypto.createHash("sha256").update(cadena).digest("hex");
 }
 
-// Endpoint para generar firma e info de pago
 app.post("/api/generar-firma", (req, res) => {
   try {
     const { cantidad } = req.body;
-    const unitPrice = Number(process.env.PRECIO_BOLETO) || 5000; // en pesos
+    const unitPrice = Number(process.env.PRECIO_BOLETO) || 5000;
     const amountInPesos = cantidad * unitPrice;
-    const amountInCents = amountInPesos * 100; // Wompi espera CENTAVOS
+    const amountInCents = amountInPesos * 100;
 
     const reference = `ORDER_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
 
@@ -141,8 +148,8 @@ app.post("/api/generar-firma", (req, res) => {
 
     res.json({
       reference,
-      amountInPesos, // útil para mostrar al usuario
-      amountInCents, // se envía a Wompi
+      amountInPesos,
+      amountInCents,
       currency: "COP",
       publicKey: process.env.WOMPI_PUBLIC_KEY,
       signature: integritySignature,

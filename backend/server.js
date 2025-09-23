@@ -7,21 +7,23 @@ import MongoStore from "connect-mongo";
 import bodyParser from "body-parser";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
-import fetch from "node-fetch";
 import crypto from "crypto";
 import { config } from "dotenv";
 import { fileURLToPath } from "url";
 
-// Cargar variables de entorno
+// ======================
+// CONFIGURACIONES BASE
+// ======================
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 config({ path: path.join(__dirname, "..", ".env") });
 
-// Crear la app de Express
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Seguridad HTTP headers + CSP
+// ======================
+// SEGURIDAD
+// ======================
 app.use(
   helmet.contentSecurityPolicy({
     directives: {
@@ -47,12 +49,11 @@ app.use(
         "https://production.wompi.co",
         "https://sandbox.wompi.co",
       ],
-      frameSrc: ["'self'", "https://checkout.wompi.co"], // necesario para Wompi
+      frameSrc: ["'self'", "https://checkout.wompi.co"],
     },
   })
 );
 
-// Límite global de solicitudes
 app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -61,13 +62,14 @@ app.use(
   })
 );
 
-// Parsers y CORS
+// ======================
+// MIDDLEWARES
+// ======================
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors());
-app.use(express.json()); // necesario para Wompi webhook
+app.use(express.json());
 
-// Sesiones con almacenamiento en MongoDB
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "admin1",
@@ -85,28 +87,21 @@ app.use(
   })
 );
 
-// Archivos estáticos
+// ======================
+// ARCHIVOS ESTÁTICOS
+// ======================
 app.use(express.static(path.join(__dirname, "..", "public")));
 app.get("/", (req, res) =>
   res.sendFile(path.join(__dirname, "..", "public", "index.html"))
 );
 
-// Protección ruta admin
 app.get("/admin.html", (req, res, next) =>
   req.session.loggedIn ? next() : res.redirect("/login.html")
 );
 
-// Limite para rutas de API
-app.use(
-  "/api/",
-  rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: process.env.NODE_ENV === "production" ? 100 : 500,
-    message: "Demasiadas solicitudes a la API, intenta más tarde.",
-  })
-);
-
-// Conexión a MongoDB
+// ======================
+// DB
+// ======================
 mongoose
   .connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
@@ -115,14 +110,16 @@ mongoose
   .then(() => console.log("✅ Conexión exitosa a MongoDB"))
   .catch((err) => console.error("❌ Error al conectar a MongoDB", err));
 
-// Rutas
+// ======================
+// RUTAS
+// ======================
 import ticketRoutes from "./routes/tickets.js";
 import Ticket from "./models/Ticket.js";
 app.use("/api/tickets", ticketRoutes);
 
-// -------------------------------
-// INTEGRACIÓN WOMPI
-// -------------------------------
+// ======================
+// WOMPI
+// ======================
 const WOMPI_ENV = process.env.WOMPI_ENV || "sandbox";
 const WOMPI_BASE_URL =
   WOMPI_ENV === "production"
@@ -131,16 +128,19 @@ const WOMPI_BASE_URL =
 
 console.log(`🔹 Usando entorno Wompi: ${WOMPI_ENV}`);
 
+// Firma de integridad
 function generarFirma(reference, amountInCents, currency, privateKey) {
   const cadena = `${reference}${amountInCents}${currency}${privateKey}`;
   return crypto.createHash("sha256").update(cadena).digest("hex");
 }
 
+// Endpoint para generar la firma
 app.post("/api/generar-firma", (req, res) => {
   try {
     const { cantidad } = req.body;
-    const unitPrice = Number(process.env.PRECIO_BOLETO) || 5000;
-    const amountInCents = cantidad * unitPrice * 100;
+    const unitPrice = Number(process.env.PRECIO_BOLETO) || 5000; // en pesos
+    const amountInPesos = cantidad * unitPrice;
+    const amountInCents = amountInPesos * 100; // Wompi espera CENTAVOS
     const reference = `ORDER_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
 
     const integritySignature = generarFirma(
@@ -152,7 +152,8 @@ app.post("/api/generar-firma", (req, res) => {
 
     res.json({
       reference,
-      amountInCents,
+      amountInPesos, // para mostrar en frontend
+      amountInCents, // para enviar a Wompi
       currency: "COP",
       publicKey: process.env.WOMPI_PUBLIC_KEY,
       signature: integritySignature,
@@ -163,7 +164,7 @@ app.post("/api/generar-firma", (req, res) => {
   }
 });
 
-// Webhook Wompi
+// Webhook
 app.post("/webhook-wompi", async (req, res) => {
   try {
     console.log("📩 Evento recibido en Webhook:", JSON.stringify(req.body, null, 2));
@@ -172,7 +173,7 @@ app.post("/webhook-wompi", async (req, res) => {
     if (evento === "transaction.updated") {
       const transaccion = req.body.data.transaction;
       const referencia = transaccion.reference;
-      const estado = transaccion.status; // APPROVED, DECLINED, PENDING
+      const estado = transaccion.status;
 
       console.log(`🔔 Transacción ${referencia} actualizada: ${estado}`);
 
@@ -195,14 +196,9 @@ app.post("/webhook-wompi", async (req, res) => {
   }
 });
 
-// Rutas post pago
-app.get("/success", (req, res) => res.send("✅ Pago aprobado, gracias por participar."));
-app.get("/failure", (req, res) => res.send("❌ Pago rechazado, intenta de nuevo."));
-app.get("/pending", (req, res) => res.send("⌛ Pago en proceso, espera confirmación."));
-
-// -------------------------------
-
-// Login administrador
+// ======================
+// LOGIN ADMIN
+// ======================
 app.post("/login", (req, res) => {
   const { username, password } = req.body;
   if (username === process.env.ADMIN_USER && password === process.env.ADMIN_PASS) {
@@ -214,7 +210,9 @@ app.post("/login", (req, res) => {
   );
 });
 
-// Eliminar ticket por ID
+// ======================
+// ADMIN
+// ======================
 app.delete("/admin/ticket/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -225,13 +223,17 @@ app.delete("/admin/ticket/:id", async (req, res) => {
   }
 });
 
-// Middleware de errores
+// ======================
+// ERRORES
+// ======================
 app.use((err, req, res, next) => {
   console.error("Error interno del servidor:", err);
   res.status(500).json({ error: "Error interno del servidor" });
 });
 
-// Levantar servidor
+// ======================
+// SERVIDOR
+// ======================
 app.listen(PORT, () =>
   console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`)
 );

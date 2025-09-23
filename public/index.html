@@ -6,211 +6,275 @@
   <title>Rifa 2025</title>
   <link rel="stylesheet" href="styles.css">
   <style>
-    /* ... tu CSS existente ... */
+    * { box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f8f9fa; color: #111; }
+    h1, h2, h3, p { margin: 0.5rem 0; }
+    .container { max-width: 900px; margin: 0 auto; padding: 1rem; }
+    img { max-width: 100%; height: auto; border-radius: 6px; }
+
+    /* Barra de progreso mejorada */
+    .progreso-container { margin: 1rem 0; }
+    .barra { width: 100%; background: #eee; border-radius: 12px; overflow: hidden; height: 28px; position: relative; }
+    .relleno { width: 0; height: 100%; display: flex; justify-content: center; align-items: center; font-weight: bold; color: white; border-radius: 12px; transition: width 0.5s, background 0.5s; position: relative; overflow: hidden; }
+    .relleno::before {
+      content: '';
+      position: absolute;
+      top:0; left:0; width:100%; height:100%;
+      background: rgba(255,255,255,0.2);
+      animation: onda 2s linear infinite;
+    }
+    @keyframes onda {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+    .relleno.verde { background: #10b981; }
+    .relleno.amarillo { background: #facc15; color: #111; }
+    .relleno.rojo { background: #ef4444; }
+
+    /* Formulario */
+    form { display: flex; flex-direction: column; gap: 0.8rem; margin-top: 1rem; }
+    input, button { padding: 0.8rem; font-size: 1rem; border-radius: 6px; border: 1px solid #ccc; }
+    button { background: #3b82f6; color: #fff; font-weight: bold; cursor: pointer; border: none; transition: 0.2s; }
+    button:hover { background: #2563eb; }
+
+    /* Selección de números */
+    #lista-numeros { display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr)); gap: 6px; max-height: 250px; overflow-y: auto; margin-top: 0.5rem; }
+    .numero-btn { padding: 0.6rem; border-radius: 6px; border: 1px solid #ccc; text-align: center; cursor: pointer; transition: 0.3s; font-weight: bold; }
+    .numero-btn.disponible { background: #02f823c0; }
+    .numero-btn.seleccionado { background: #3b82f6; color: #fff; }
+    .numero-btn.ocupado { background: #ff4d4f; color: #fff; cursor: not-allowed; }
+
+    .hidden { display: none; }
+    .mensaje { margin-top: 0.8rem; color: #e11d48; font-weight: bold; }
+    .ticket-box { margin-top: 1rem; padding: 1rem; border-radius: 6px; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.1); word-wrap: break-word; }
+
+    /* Modal */
+    .modal { display: none; position: fixed; top: 0; left:0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
+    .modal-content { background: #fff; padding: 1.5rem; border-radius: 8px; max-width: 400px; width: 90%; text-align: center; }
+    .modal-buttons { margin-top: 1rem; display: flex; justify-content: space-around; gap: 1rem; }
+    .modal button { width: 120px; }
+
+    /* Redes y footer */
+    .redes-sociales { margin-top: 1.5rem; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
+    .redes-sociales img { width: 36px; height: 36px; }
+    .footer-fixed { text-align: center; padding: 0.8rem; font-size: 14px; color: #555; margin-top: 2rem; background: #f1f1f1; border-top: 1px solid #ddd; }
+
+    @media(max-width:600px) {
+      input, button { font-size: 0.95rem; }
+      .numero-btn { font-size: 0.9rem; padding: 0.5rem; }
+      .modal-content { padding: 1rem; }
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>🎉 PARTICIPA EN LA GRAN RIFA 🎉</h1>
-    <img src="img.jpg" alt="Imagen de la rifa">
-    <h2>Un iPhone 16 Pro Max o un Samsung S24 Ultra</h2>
+<div class="container">
+  <h1>🎉 PARTICIPA EN LA GRAN RIFA 🎉</h1>
+  <img src="img.jpg" alt="Imagen de la rifa">
+  <h2>Un iPhone 16 Pro Max o un Samsung S24 Ultra</h2>
 
-    <div class="progreso-container">
-      <div class="barra">
-        <div id="progreso" class="relleno">0%</div>
-      </div>
-      <p id="porcentaje-texto">0% completado</p>
-      <p id="alerta80" class="hidden" style="color: #e11d48; font-weight:bold;">🔥 ¡Ya hemos alcanzado el 80%! El sorteo está cerca 🎉</p>
-      <h3>VALOR: $ 5.000</h3>
+  <div class="progreso-container">
+    <div class="barra">
+      <div id="progreso" class="relleno rojo">0%</div>
     </div>
-
-    <form id="formulario">
-      <input type="text" id="nombre" placeholder="Tu nombre" required>
-      <input type="email" id="correo" placeholder="Tu correo" required>
-      <input type="tel" id="telefono" placeholder="Tu número de celular" required pattern="[0-9]{10}" title="Debe tener 10 dígitos">
-
-      <div id="seleccion-numeros">
-        <p><strong>Selecciona tus números:</strong></p>
-        <div id="lista-numeros"></div>
-        <p id="limite-error" class="mensaje hidden">⚠️ Este número ya fue tomado.</p>
-      </div>
-
-      <button type="submit">🎟 Participar y pagar</button>
-      <div id="spinner" class="hidden">⏳ Enviando...</div>
-    </form>
-
-    <div id="mensaje" class="mensaje hidden"></div>
-    <div id="ticket-box" class="ticket-box hidden"></div>
-
-    <div class="redes-sociales">
-      <h3>Síguenos en redes sociales</h3>
-      <a href="https://wa.me/573216220062" target="_blank"><img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" alt="WhatsApp"></a>
-      <a href="https://facebook.com/tuusuario" target="_blank"><img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="Facebook"></a>
-    </div>
-
-    <footer class="footer-fixed">
-      &copy; 2025 Elaborado por Ing. Fernando Gómez - Popayán Cauca. Todos los derechos reservados.
-    </footer>
+    <p id="porcentaje-texto">0% completado</p>
+    <p id="alerta80" class="hidden" style="color: #e11d48; font-weight:bold;">🔥 ¡Ya hemos alcanzado el 80%! El sorteo está cerca 🎉</p>
+    <h3>VALOR: $ 5.000</h3>
   </div>
 
-  <!-- MODAL CONFIRMACIÓN -->
-  <div id="modal-confirm" class="modal">
-    <div class="modal-content">
-      <h3>Confirma tu participación</h3>
-      <p id="modal-numeros"></p>
-      <p id="modal-monto"></p>
-      <div class="modal-buttons">
-        <button id="confirmar-btn">Confirmar ✅</button>
-        <button id="cancelar-btn">Cancelar ❌</button>
-      </div>
+  <form id="formulario">
+    <input type="text" id="nombre" placeholder="Tu nombre" required>
+    <input type="email" id="correo" placeholder="Tu correo" required>
+    <input type="tel" id="telefono" placeholder="Tu número de celular" required pattern="[0-9]{10}" title="Debe tener 10 dígitos">
+
+    <p><strong>Números seleccionados:</strong> <span id="numeros-seleccionados">Ninguno</span></p>
+
+    <div id="seleccion-numeros">
+      <p><strong>Selecciona tus números:</strong></p>
+      <div id="lista-numeros"></div>
+      <p id="limite-error" class="mensaje hidden">⚠️ Este número ya fue tomado.</p>
     </div>
+
+    <button type="submit">🎟 Participar y pagar</button>
+    <div id="spinner" class="hidden">⏳ Enviando...</div>
+  </form>
+
+  <div id="mensaje" class="mensaje hidden"></div>
+  <div id="ticket-box" class="ticket-box hidden"></div>
+
+  <div class="redes-sociales">
+    <h3>Síguenos en redes sociales</h3>
+    <a href="https://wa.me/573216220062" target="_blank"><img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" alt="WhatsApp"></a>
+    <a href="https://facebook.com/tuusuario" target="_blank"><img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="Facebook"></a>
   </div>
 
-  <!-- EMAILJS -->
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-  <script>emailjs.init('XPQs4d1K2sHKtcIDl');</script>
+  <footer class="footer-fixed">
+    &copy; 2025 Elaborado por Ing. Fernando Gómez - Popayán Cauca. Todos los derechos reservados.
+  </footer>
+</div>
 
-  <script>
-    let seleccionados = [];
-    const PRECIO_BOLETO = 5000;
+<div id="modal-confirm" class="modal">
+  <div class="modal-content">
+    <h3>Confirma tu participación</h3>
+    <p id="modal-numeros"></p>
+    <p id="modal-monto"></p>
+    <div class="modal-buttons">
+      <button id="confirmar-btn">Confirmar ✅</button>
+      <button id="cancelar-btn">Cancelar ❌</button>
+    </div>
+  </div>
+</div>
 
-    async function cargarNumerosDisponibles() {
-      try {
-        const res = await fetch("/api/tickets/numeros");
-        const data = await res.json();
-        if (!data.exito) return;
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>emailjs.init('XPQs4d1K2sHKtcIDl');</script>
 
-        const cont = document.getElementById("lista-numeros");
-        cont.innerHTML = "";
-        seleccionados = [];
+<script>
+let seleccionados = [];
+const PRECIO_BOLETO = 5000;
 
-        data.numeros.forEach(({ numero, disponible }) => {
-          const btn = document.createElement("button");
-          btn.type = "button";
-          btn.textContent = numero;
-          btn.className = "numero-btn";
+async function cargarNumerosDisponibles() {
+  try {
+    const res = await fetch("/api/tickets/numeros");
+    const data = await res.json();
+    if (!data.exito) return;
 
-          if (disponible) {
+    const cont = document.getElementById("lista-numeros");
+    cont.innerHTML = "";
+
+    data.numeros.forEach(({ numero, disponible }) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = numero;
+      btn.dataset.numero = numero;
+      btn.className = "numero-btn";
+      if (disponible) {
+        btn.classList.add("disponible");
+        btn.addEventListener("click", () => {
+          if (btn.classList.contains("seleccionado")) {
+            btn.classList.remove("seleccionado");
             btn.classList.add("disponible");
-            btn.addEventListener("click", () => {
-              if (btn.classList.contains("seleccionado")) {
-                btn.classList.remove("seleccionado");
-                btn.classList.add("disponible");
-                seleccionados = seleccionados.filter(n => n !== numero);
-              } else {
-                btn.classList.remove("disponible");
-                btn.classList.add("seleccionado");
-                seleccionados.push(numero);
-              }
-            });
+            seleccionados = seleccionados.filter(n => n !== numero);
           } else {
-            btn.disabled = true;
-            btn.classList.add("ocupado");
+            btn.classList.remove("disponible");
+            btn.classList.add("seleccionado");
+            seleccionados.push(numero);
           }
-
-          cont.appendChild(btn);
+          actualizarResumen();
         });
-      } catch (err) {
-        console.error("Error al cargar números:", err);
+      } else {
+        btn.disabled = true;
+        btn.classList.add("ocupado");
+        seleccionados = seleccionados.filter(n => n !== numero);
       }
-    }
-
-    document.addEventListener("DOMContentLoaded", () => {
-      const form = document.getElementById("formulario");
-      const spinner = document.getElementById("spinner");
-      const msg = document.getElementById("mensaje");
-      const box = document.getElementById("ticket-box");
-      const modal = document.getElementById("modal-confirm");
-      const modalNumeros = document.getElementById("modal-numeros");
-      const modalMonto = document.getElementById("modal-monto");
-      const confirmarBtn = document.getElementById("confirmar-btn");
-      const cancelarBtn = document.getElementById("cancelar-btn");
-
-      cargarNumerosDisponibles();
-
-      form.addEventListener("submit", e => {
-        e.preventDefault();
-        if (seleccionados.length === 0) {
-          msg.textContent = "❌ Selecciona al menos un número.";
-          msg.classList.remove("hidden");
-          return;
-        }
-
-        modalNumeros.textContent = `Números seleccionados: ${seleccionados.join(", ")}`;
-        modalMonto.textContent = `Monto total: $${seleccionados.length * PRECIO_BOLETO}`;
-        modal.style.display = "flex";
-      });
-
-      cancelarBtn.addEventListener("click", () => modal.style.display = "none");
-
-      confirmarBtn.addEventListener("click", async () => {
-        modal.style.display = "none";
-        spinner.classList.remove("hidden");
-        msg.classList.add("hidden");
-
-        const nombre = document.getElementById("nombre").value.trim();
-        const correo = document.getElementById("correo").value.trim();
-        const tel = document.getElementById("telefono").value.trim();
-
-        try {
-          // Guardar selección temporal antes del pago
-          const resTicket = await fetch("/api/tickets/guardar-pendiente", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ nombre, correo, telefono: tel, numeros: seleccionados })
-          });
-
-          const ticketData = await resTicket.json();
-          if (!ticketData.exito) throw new Error(ticketData.mensaje || "Error generando referencia");
-
-          box.classList.remove("hidden");
-          box.innerHTML = `<p><strong>Tus números reservados:</strong> ${seleccionados.join(", ")}</p>
-                           <p><strong>Referencia transacción:</strong> ${ticketData.reference}</p>`;
-
-          // Generar firma Wompi
-          const respFirma = await fetch("/api/generar-firma", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ cantidad: seleccionados.length, reference: ticketData.reference })
-          });
-
-          const datosFirma = await respFirma.json();
-          if (!datosFirma.reference) throw new Error("Error generando firma en backend");
-
-          const checkoutUrl = `https://checkout.wompi.co/p/?public-key=${datosFirma.publicKey}&currency=${datosFirma.currency}&amount-in-cents=${datosFirma.amountInCents}&reference=${datosFirma.reference}`;
-          setTimeout(() => { window.location.href = checkoutUrl; }, 800);
-
-        } catch (err) {
-          console.error(err);
-          msg.textContent = "❌ " + (err.message || "Error inesperado");
-          msg.classList.remove("hidden");
-        } finally {
-          spinner.classList.add("hidden");
-        }
-      });
+      cont.appendChild(btn);
     });
+    actualizarResumen();
+  } catch (err) {
+    console.error("Error al cargar números:", err);
+  }
+}
 
-    async function actualizarProgreso() {
-      try {
-        const res = await fetch("/api/tickets/consulta");
-        const data = await res.json();
-        if (data.exito) {
-          const barra = document.getElementById("progreso");
-          const texto = document.getElementById("porcentaje-texto");
-          const alerta = document.getElementById("alerta80");
+function actualizarResumen() {
+  const span = document.getElementById("numeros-seleccionados");
+  span.textContent = seleccionados.length ? seleccionados.join(", ") : "Ninguno";
+}
 
-          barra.style.width = `${data.porcentaje}%`;
-          barra.textContent = `${data.porcentaje}%`;
-          texto.textContent = `${data.porcentaje}% completado`;
-          alerta.classList.toggle("hidden", data.porcentaje < 80);
-        }
-      } catch (err) {
-        console.error("Error al obtener progreso:", err);
+function actualizarProgreso() {
+  fetch("/api/tickets/consulta")
+    .then(res => res.json())
+    .then(data => {
+      if (data.exito) {
+        const barra = document.getElementById("progreso");
+        const texto = document.getElementById("porcentaje-texto");
+        const alerta = document.getElementById("alerta80");
+
+        barra.style.width = `${data.porcentaje}%`;
+        texto.textContent = `${data.porcentaje}% completado`;
+
+        // Cambiar color según porcentaje
+        barra.classList.remove("verde", "amarillo", "rojo");
+        if (data.porcentaje < 50) barra.classList.add("rojo");
+        else if (data.porcentaje < 80) barra.classList.add("amarillo");
+        else barra.classList.add("verde");
+
+        alerta.classList.toggle("hidden", data.porcentaje < 80);
       }
-    }
+    })
+    .catch(err => console.error("Error al obtener progreso:", err));
+}
 
-    actualizarProgreso();
-    setInterval(actualizarProgreso, 30000);
-  </script>
+document.addEventListener("DOMContentLoaded", () => {
+  const form = document.getElementById("formulario");
+  const spinner = document.getElementById("spinner");
+  const msg = document.getElementById("mensaje");
+  const box = document.getElementById("ticket-box");
+  const modal = document.getElementById("modal-confirm");
+  const modalNumeros = document.getElementById("modal-numeros");
+  const modalMonto = document.getElementById("modal-monto");
+  const confirmarBtn = document.getElementById("confirmar-btn");
+  const cancelarBtn = document.getElementById("cancelar-btn");
+
+  cargarNumerosDisponibles();
+  actualizarProgreso();
+  setInterval(() => { cargarNumerosDisponibles(); actualizarProgreso(); }, 5000);
+
+  form.addEventListener("submit", e => {
+    e.preventDefault();
+    if (seleccionados.length === 0) {
+      msg.textContent = "❌ Selecciona al menos un número.";
+      msg.classList.remove("hidden");
+      return;
+    }
+    modalNumeros.textContent = `Números seleccionados: ${seleccionados.join(", ")}`;
+    modalMonto.textContent = `Monto total: $${seleccionados.length * PRECIO_BOLETO}`;
+    modal.style.display = "flex";
+  });
+
+  cancelarBtn.addEventListener("click", () => modal.style.display = "none");
+
+  confirmarBtn.addEventListener("click", async () => {
+    modal.style.display = "none";
+    spinner.classList.remove("hidden");
+    msg.classList.add("hidden");
+
+    const nombre = document.getElementById("nombre").value.trim();
+    const correo = document.getElementById("correo").value.trim();
+    const tel = document.getElementById("telefono").value.trim();
+
+    try {
+      const resTicket = await fetch("/api/tickets/guardar-pendiente", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre, correo, telefono: tel, numeros: seleccionados })
+      });
+
+      const ticketData = await resTicket.json();
+      if (!ticketData.exito) throw new Error(ticketData.mensaje || "Error generando referencia");
+
+      box.classList.remove("hidden");
+      box.innerHTML = `<p><strong>Tus números reservados:</strong> ${seleccionados.join(", ")}</p>
+                       <p><strong>Referencia transacción:</strong> ${ticketData.reference}</p>`;
+
+      const respFirma = await fetch("/api/generar-firma", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cantidad: seleccionados.length, reference: ticketData.reference })
+      });
+
+      const datosFirma = await respFirma.json();
+      if (!datosFirma.reference) throw new Error("Error generando firma en backend");
+
+      const checkoutUrl = `https://checkout.wompi.co/p/?public-key=${datosFirma.publicKey}&currency=${datosFirma.currency}&amount-in-cents=${datosFirma.amountInCents}&reference=${datosFirma.reference}`;
+      setTimeout(() => { window.location.href = checkoutUrl; }, 800);
+
+    } catch (err) {
+      console.error(err);
+      msg.textContent = "❌ " + (err.message || "Error inesperado");
+      msg.classList.remove("hidden");
+    } finally {
+      spinner.classList.add("hidden");
+    }
+  });
+});
+</script>
 </body>
 </html>

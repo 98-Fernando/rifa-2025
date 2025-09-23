@@ -82,11 +82,7 @@
   <script>emailjs.init('XPQs4d1K2sHKtcIDl');</script>
 
   <script>
-    // ---------- CONFIG ----------
-    const UNIT_PRICE = 5000; // valor por boleto en pesos
     const TOTAL_NUMEROS = 999;
-    // ----------------------------
-
     let seleccionados = [];
 
     async function cargarNumerosDisponibles() {
@@ -155,7 +151,7 @@
         box.classList.add("hidden");
 
         try {
-          // 1) Reservamos números en backend
+          // 1) Reservamos números
           const res = await fetch("/api/tickets", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -170,7 +166,7 @@
           box.innerHTML = `<p><strong>Tus números (reservados temporalmente):</strong> ${seleccionados.join(", ")}</p>
                            <p><strong>Referencia transacción:</strong> ${transactionRef}</p>`;
 
-          // 2) Pedimos al backend la firma de integridad
+          // 2) Generar firma en backend
           const respFirma = await fetch("/api/generar-firma", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -182,7 +178,7 @@
             throw new Error("Error generando firma en backend");
           }
 
-          // ⚠️ Asegurar que amountInCents ya venga en CENTAVOS desde backend
+          // 3) Redirigir al checkout de Wompi (muestra COP pero usa amountInCents)
           const checkoutUrl = `https://checkout.wompi.co/p/?public-key=${datosFirma.publicKey}&currency=${datosFirma.currency}&amount-in-cents=${datosFirma.amountInCents}&reference=${datosFirma.reference}&signature=${datosFirma.signature}`;
 
           setTimeout(() => {

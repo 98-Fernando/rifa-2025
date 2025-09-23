@@ -34,6 +34,12 @@
     .mensaje { margin-top: 0.8rem; color: #e11d48; font-weight: bold; }
     .ticket-box { margin-top: 1rem; padding: 1rem; border-radius: 6px; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
 
+    /* Modal */
+    .modal { display: none; position: fixed; top: 0; left:0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
+    .modal-content { background: #fff; padding: 1.5rem; border-radius: 8px; max-width: 400px; width: 90%; text-align: center; }
+    .modal-buttons { margin-top: 1rem; display: flex; justify-content: space-around; gap: 1rem; }
+    .modal button { width: 120px; }
+
     /* Redes y footer */
     .redes-sociales { margin-top: 1.5rem; display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
     .redes-sociales img { width: 36px; height: 36px; }
@@ -42,6 +48,7 @@
     @media(max-width:600px) {
       input, button { font-size: 0.95rem; }
       .numero-btn { font-size: 0.8rem; padding: 0.4rem; }
+      .modal-content { padding: 1rem; }
     }
   </style>
 </head>
@@ -89,12 +96,26 @@
     </footer>
   </div>
 
+  <!-- MODAL CONFIRMACIÓN -->
+  <div id="modal-confirm" class="modal">
+    <div class="modal-content">
+      <h3>Confirma tu participación</h3>
+      <p id="modal-numeros"></p>
+      <p id="modal-monto"></p>
+      <div class="modal-buttons">
+        <button id="confirmar-btn">Confirmar ✅</button>
+        <button id="cancelar-btn">Cancelar ❌</button>
+      </div>
+    </div>
+  </div>
+
   <!-- EMAILJS -->
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <script>emailjs.init('XPQs4d1K2sHKtcIDl');</script>
 
   <script>
     let seleccionados = [];
+    const PRECIO_BOLETO = 5000;
 
     async function cargarNumerosDisponibles() {
       try {
@@ -143,26 +164,41 @@
       const msg = document.getElementById("mensaje");
       const box = document.getElementById("ticket-box");
 
+      const modal = document.getElementById("modal-confirm");
+      const modalNumeros = document.getElementById("modal-numeros");
+      const modalMonto = document.getElementById("modal-monto");
+      const confirmarBtn = document.getElementById("confirmar-btn");
+      const cancelarBtn = document.getElementById("cancelar-btn");
+
       cargarNumerosDisponibles();
 
-      form.addEventListener("submit", async e => {
+      form.addEventListener("submit", e => {
         e.preventDefault();
-
-        const nombre = document.getElementById("nombre").value.trim();
-        const correo = document.getElementById("correo").value.trim();
-        const tel = document.getElementById("telefono").value.trim();
-
         if (seleccionados.length === 0) {
           msg.textContent = "❌ Selecciona al menos un número.";
           msg.classList.remove("hidden");
           return;
         }
 
+        // Mostrar modal
+        modalNumeros.textContent = `Números seleccionados: ${seleccionados.join(", ")}`;
+        modalMonto.textContent = `Monto total: $${seleccionados.length * PRECIO_BOLETO}`;
+        modal.style.display = "flex";
+      });
+
+      cancelarBtn.addEventListener("click", () => modal.style.display = "none");
+
+      confirmarBtn.addEventListener("click", async () => {
+        modal.style.display = "none";
         spinner.classList.remove("hidden");
         msg.classList.add("hidden");
-        box.classList.add("hidden");
+
+        const nombre = document.getElementById("nombre").value.trim();
+        const correo = document.getElementById("correo").value.trim();
+        const tel = document.getElementById("telefono").value.trim();
 
         try {
+          // Crear ticket backend
           const res = await fetch("/api/tickets", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -176,6 +212,7 @@
           box.innerHTML = `<p><strong>Tus números reservados:</strong> ${seleccionados.join(", ")}</p>
                            <p><strong>Referencia transacción:</strong> ${transactionRef}</p>`;
 
+          // Generar firma Wompi
           const respFirma = await fetch("/api/generar-firma", {
             method: "POST",
             headers: { "Content-Type": "application/json" },

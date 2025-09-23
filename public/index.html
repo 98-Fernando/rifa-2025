@@ -118,14 +118,15 @@ async function cargarNumerosDisponibles(){
           if(btn.classList.contains("seleccionado")){
             btn.classList.remove("seleccionado"); btn.classList.add("disponible");
             seleccionados = seleccionados.filter(n=>n!==numero);
-          }else{
+          } else {
             btn.classList.remove("disponible"); btn.classList.add("seleccionado");
             seleccionados.push(numero);
           }
           actualizarResumen();
         }
-      } else{
-        btn.disabled = true; btn.classList.add("ocupado");
+      } else {
+        btn.disabled = true;
+        btn.classList.add("ocupado");
         seleccionados = seleccionados.filter(n=>n!==numero);
       }
       cont.appendChild(btn);
@@ -199,11 +200,9 @@ document.addEventListener("DOMContentLoaded", ()=>{
 
   confirmarBtn.onclick = async ()=>{
     modal.style.display="none"; spinner.classList.remove("hidden"); msg.classList.add("hidden");
-
     const nombre = document.getElementById("nombre").value.trim();
     const correo = document.getElementById("correo").value.trim();
     const tel = document.getElementById("telefono").value.trim();
-
     try{
       const resTicket = await fetch("/api/tickets/guardar-pendiente",{
         method:"POST",
@@ -211,14 +210,13 @@ document.addEventListener("DOMContentLoaded", ()=>{
         body:JSON.stringify({nombre,correo,telefono:tel,numeros:seleccionados})
       });
       const ticketData = await resTicket.json();
-      if(!ticketData.exito) throw new Error(ticketData.mensaje||"Error generando referencia");
+      if(!ticketData.exito) throw new Error(ticketData.mensaje || "Error generando referencia");
 
       box.classList.remove("hidden");
       box.innerHTML = `<p><strong>Tus números reservados:</strong> ${seleccionados.join(", ")}</p>
                        <p><strong>Referencia transacción:</strong> ${ticketData.reference}</p>`;
 
       await iniciarPago(seleccionados.length, ticketData.reference);
-
     }catch(err){
       console.error(err);
       msg.textContent = "❌ " + (err.message || "Error inesperado");

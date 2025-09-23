@@ -128,13 +128,15 @@ app.post("/api/crear-transaccion", async (req, res) => {
     const unitPrice = Number(process.env.PRECIO_BOLETO) || 4500;
     const amountInCents = cantidad * unitPrice * 100; // Wompi usa centavos
 
-    const referencia = `ORDER_${Date.now()}`; // referencia única
+    const referencia = `ORDER_${Date.now()}_${Math.floor(
+      Math.random() * 10000
+    )}`;
 
     // Crear transacción en Wompi
     const response = await fetch("https://production.wompi.co/v1/transactions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer prv_prod_1T325BplpjPts3Itl6UEtcLDlpxIYrL7`,
+        Authorization: `Bearer ${process.env.WOMPI_PRIVATE_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -151,17 +153,12 @@ app.post("/api/crear-transaccion", async (req, res) => {
 
     const data = await response.json();
 
-    // Guardar ticket en base de datos con estado pendiente
-    await Ticket.create({
-      correo,
-      nombre,
-      cantidad,
-      numeros: [], // puedes asignarlos luego
-      pagado: false,
+    // 🔹 Ya no guardamos nada en DB aquí, solo devolvemos la referencia
+    res.status(200).json({
+      success: true,
       referencia,
+      transaction: data,
     });
-
-    res.status(200).json({ success: true, transaction: data });
   } catch (error) {
     console.error("❌ Error creando transacción Wompi:", error);
     res
@@ -180,14 +177,17 @@ app.post("/webhook-wompi", async (req, res) => {
       const referencia = transaccion.reference;
       const estado = transaccion.status; // APPROVED, DECLINED, PENDING
 
-      // Actualizar en la DB según referencia
-      const ticket = await Ticket.findOneAndUpdate(
-        { referencia },
-        { pagado: estado === "APPROVED" }
-      );
+      if (estado === "APPROVED") {
+        // Guardar ticket confirmado
+        await Ticket.create({
+          correo: transaccion.customer_email,
+          nombre: transaccion.customer_name || "Cliente",
+          numeros: [], // 🔹 Aquí puedes asignar números después
+          pagado: true,
+          referencia,
+        });
 
-      if (estado === "APPROVED" && ticket) {
-        // Enviar correo con emailjs
+        // Enviar correo de confirmación
         await fetch("https://api.emailjs.com/api/v1.0/email/send", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -196,9 +196,9 @@ app.post("/webhook-wompi", async (req, res) => {
             template_id: process.env.EMAILJS_TEMPLATE,
             user_id: process.env.EMAILJS_USER,
             template_params: {
-              to_email: ticket.correo,
-              nombre: ticket.nombre,
-              numeros: ticket.numeros.join(", "),
+              to_email: transaccion.customer_email,
+              nombre: transaccion.customer_name || "Cliente",
+              numeros: "Asignados pronto",
             },
           }),
         });

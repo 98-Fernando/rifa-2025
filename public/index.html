@@ -19,7 +19,7 @@
       input, button { font-size: 1rem; padding: 0.6rem; }
     }
     .redes-sociales img { width: 32px; height: 32px; }
-    .numero-btn { padding: 0.25rem 0.5rem; font-size: 0.75rem; line-height: 1rem; margin: 2px; border: 1px solid #ccc; border-radius: 4px; }
+    .numero-btn { padding: 0.25rem 0.5rem; font-size: 0.75rem; margin: 2px; border: 1px solid #ccc; border-radius: 4px; }
     .numero-btn.disponible { background-color: #02f823c0; cursor: pointer; }
     .numero-btn.seleccionado { background-color: #3b82f6; color: white; font-weight: bold; }
     .numero-btn.ocupado { background-color: #ff0000; color: #ffffff; cursor: not-allowed; }
@@ -32,7 +32,7 @@
   <div class="container">
     <h1>PARTICIPA EN LA GRAN RIFA</h1>
     <img src="img.jpg" alt="Imagen de la rifa" class="imagen-rifa" style="max-width:100%;height:auto;">
-    <h2>Un Iphone 16 Pro Max o Un Samsung S24 Ultra</h2>
+    <h2>Un iPhone 16 Pro Max o un Samsung S24 Ultra</h2>
 
     <div class="progreso-container">
       <div class="barra" style="width:100%;background:#eee;border-radius:6px;overflow:hidden;">
@@ -182,10 +182,9 @@
             throw new Error("Error generando firma en backend");
           }
 
-          // 3) Construimos la URL de Checkout con firma
+          // ⚠️ Asegurar que amountInCents ya venga en CENTAVOS desde backend
           const checkoutUrl = `https://checkout.wompi.co/p/?public-key=${datosFirma.publicKey}&currency=${datosFirma.currency}&amount-in-cents=${datosFirma.amountInCents}&reference=${datosFirma.reference}&signature=${datosFirma.signature}`;
 
-          // pequeña espera visual
           setTimeout(() => {
             window.location.href = checkoutUrl;
           }, 1000);

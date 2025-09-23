@@ -4,6 +4,9 @@ import Ticket from '../models/Ticket.js';
 const router = Router();
 const TOTAL_NUMEROS = 1000;
 
+// Memoria temporal para clientes en espera de pago
+const pendientes = new Map(); // { transaction_reference: { nombre, correo, telefono, numeros } }
+
 // ─── Función auxiliar para obtener números ocupados ───────────────────────────
 async function obtenerNumerosOcupados() {
   const boletos = await Ticket.find({}, 'numeros -_id');
@@ -65,7 +68,7 @@ router.get('/numeros', async (req, res) => {
   }
 });
 
-// ─── POST /api/tickets → Registrar nuevos boletos ─────────────────────────────
+// ─── POST /api/tickets → Iniciar compra (no guardar todavía) ─────────────────
 router.post('/', async (req, res) => {
   const { nombre, correo, telefono, numeros } = req.body;
   if (!nombre || !correo || !telefono || !Array.isArray(numeros) || numeros.length === 0) {
@@ -82,12 +85,46 @@ router.post('/', async (req, res) => {
       });
     }
 
-    const nuevo = new Ticket({ nombre, correo, telefono, numeros });
-    await nuevo.save();
-    res.json({ exito: true, mensaje: '🎉 ¡Participación registrada!', numeros });
+    // Generamos referencia única para Wompi
+    const transaction_reference = `ticket_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+
+    // Guardamos en memoria hasta que Wompi confirme
+    pendientes.set(transaction_reference, { nombre, correo, telefono, numeros });
+
+    res.json({
+      exito: true,
+      mensaje: 'Referencia generada, procede al pago con Wompi.',
+      transaction_reference
+    });
+
   } catch (error) {
-    console.error('❌ Error al registrar ticket:', error);
-    res.status(500).json({ exito: false, mensaje: 'Error interno al registrar ticket' });
+    console.error('❌ Error al iniciar registro de ticket:', error);
+    res.status(500).json({ exito: false, mensaje: 'Error interno al iniciar ticket' });
+  }
+});
+
+// ─── POST /api/tickets/confirmar → Guardar después del pago ──────────────────
+router.post('/confirmar', async (req, res) => {
+  const { transaction_reference } = req.body;
+
+  if (!transaction_reference || !pendientes.has(transaction_reference)) {
+    return res.status(400).json({ exito: false, mensaje: 'Referencia inválida o expirada.' });
+  }
+
+  try {
+    const datos = pendientes.get(transaction_reference);
+
+    // Guardamos en la base de datos
+    const nuevo = new Ticket(datos);
+    await nuevo.save();
+
+    // Liberamos de memoria
+    pendientes.delete(transaction_reference);
+
+    res.json({ exito: true, mensaje: '🎉 ¡Ticket confirmado y registrado!', numeros: datos.numeros });
+  } catch (error) {
+    console.error('❌ Error al confirmar ticket:', error);
+    res.status(500).json({ exito: false, mensaje: 'Error interno al confirmar ticket' });
   }
 });
 

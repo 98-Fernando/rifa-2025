@@ -99,8 +99,9 @@ let seleccionados = [];
 const PRECIO_BOLETO = 5000;
 const PUBLIC_KEY = "pub_test_GLb9rOhET4NH5NKy7UPz6vGGhGBxkFqU";
 
-async function cargarNumerosDisponibles(){
-  try{
+// Cargar números desde tu API
+async function cargarNumerosDisponibles() {
+  try {
     const res = await fetch("/api/tickets/numeros");
     const data = await res.json();
     if(!data.exito) return;
@@ -132,7 +133,7 @@ async function cargarNumerosDisponibles(){
       cont.appendChild(btn);
     });
     actualizarResumen();
-  }catch(err){ console.error(err); }
+  } catch(err){ console.error(err); }
 }
 
 function actualizarResumen(){
@@ -158,15 +159,11 @@ function actualizarProgreso(){
     }).catch(err=>console.error(err));
 }
 
-async function iniciarPago(totalBoletos, reference){
-  try{
-    const amountInCents = totalBoletos * PRECIO_BOLETO * 100;
-    const checkoutUrl = `https://checkout.wompi.co/p/?public-key=${PUBLIC_KEY}&currency=COP&amount-in-cents=${amountInCents}&reference=${reference}`;
-    window.location.href = checkoutUrl;
-  }catch(err){
-    console.error(err);
-    alert("❌ No se pudo iniciar el pago. Intenta nuevamente.");
-  }
+// Checkout redirigido simple
+function iniciarPago(totalBoletos, reference){
+  const amountInCents = totalBoletos * PRECIO_BOLETO * 100;
+  const checkoutUrl = `https://checkout.wompi.co/p/?public-key=${PUBLIC_KEY}&currency=COP&amount-in-cents=${amountInCents}&reference=${reference}`;
+  window.location.href = checkoutUrl;
 }
 
 document.addEventListener("DOMContentLoaded", ()=>{
@@ -202,12 +199,13 @@ document.addEventListener("DOMContentLoaded", ()=>{
     modal.style.display="none"; spinner.classList.remove("hidden"); msg.classList.add("hidden");
     const nombre = document.getElementById("nombre").value.trim();
     const correo = document.getElementById("correo").value.trim();
-    const tel = document.getElementById("telefono").value.trim();
+    const telefono = document.getElementById("telefono").value.trim();
+
     try{
       const resTicket = await fetch("/api/tickets/guardar-pendiente",{
         method:"POST",
         headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({nombre,correo,telefono:tel,numeros:seleccionados})
+        body:JSON.stringify({nombre,correo,telefono,numeros:seleccionados})
       });
       const ticketData = await resTicket.json();
       if(!ticketData.exito) throw new Error(ticketData.mensaje || "Error generando referencia");
@@ -216,12 +214,12 @@ document.addEventListener("DOMContentLoaded", ()=>{
       box.innerHTML = `<p><strong>Tus números reservados:</strong> ${seleccionados.join(", ")}</p>
                        <p><strong>Referencia transacción:</strong> ${ticketData.reference}</p>`;
 
-      await iniciarPago(seleccionados.length, ticketData.reference);
-    }catch(err){
+      iniciarPago(seleccionados.length, ticketData.reference);
+    } catch(err){
       console.error(err);
       msg.textContent = "❌ " + (err.message || "Error inesperado");
       msg.classList.remove("hidden");
-    }finally{
+    } finally{
       spinner.classList.add("hidden");
     }
   };

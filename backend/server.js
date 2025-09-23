@@ -121,6 +121,15 @@ app.use("/api/tickets", ticketRoutes);
 // INTEGRACIÓN WOMPI
 // -------------------------------
 
+// Selección de entorno (sandbox o producción)
+const WOMPI_ENV = process.env.WOMPI_ENV || "sandbox"; // "production" o "sandbox"
+const WOMPI_BASE_URL =
+  WOMPI_ENV === "production"
+    ? "https://production.wompi.co/v1"
+    : "https://sandbox.wompi.co/v1";
+
+console.log(`🔹 Usando entorno Wompi: ${WOMPI_ENV}`);
+
 // Crear transacción en Wompi
 app.post("/api/crear-transaccion", async (req, res) => {
   try {
@@ -132,8 +141,15 @@ app.post("/api/crear-transaccion", async (req, res) => {
       Math.random() * 10000
     )}`;
 
-    // Crear transacción en Wompi
-    const response = await fetch("https://production.wompi.co/v1/transactions", {
+    console.log("📩 Creando transacción en Wompi...");
+    console.log("➡ Datos enviados:", {
+      amountInCents,
+      correo,
+      nombre,
+      referencia,
+    });
+
+    const response = await fetch(`${WOMPI_BASE_URL}/transactions`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${process.env.WOMPI_PRIVATE_KEY}`,
@@ -153,7 +169,8 @@ app.post("/api/crear-transaccion", async (req, res) => {
 
     const data = await response.json();
 
-    // 🔹 Ya no guardamos nada en DB aquí, solo devolvemos la referencia
+    console.log("📤 Respuesta Wompi:", data);
+
     res.status(200).json({
       success: true,
       referencia,
@@ -170,6 +187,8 @@ app.post("/api/crear-transaccion", async (req, res) => {
 // Webhook de Wompi
 app.post("/webhook-wompi", async (req, res) => {
   try {
+    console.log("📩 Evento recibido en Webhook:", req.body);
+
     const evento = req.body.event;
     if (evento === "transaction.updated") {
       const transaccion = req.body.data.transaction;
@@ -178,16 +197,14 @@ app.post("/webhook-wompi", async (req, res) => {
       const estado = transaccion.status; // APPROVED, DECLINED, PENDING
 
       if (estado === "APPROVED") {
-        // Guardar ticket confirmado
         await Ticket.create({
           correo: transaccion.customer_email,
           nombre: transaccion.customer_name || "Cliente",
-          numeros: [], // 🔹 Aquí puedes asignar números después
+          numeros: [],
           pagado: true,
           referencia,
         });
 
-        // Enviar correo de confirmación
         await fetch("https://api.emailjs.com/api/v1.0/email/send", {
           method: "POST",
           headers: { "Content-Type": "application/json" },

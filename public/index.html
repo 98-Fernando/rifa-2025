@@ -203,7 +203,7 @@
           const datosFirma = await respFirma.json();
           if (!datosFirma.reference) throw new Error("Error generando firma en backend");
 
-          // 4) Redirigir al checkout de Wompi
+          // 4) Redirigir al checkout de Wompi (sin endpoints obsoletos)
           const checkoutUrl = `https://checkout.wompi.co/p/?public-key=${datosFirma.publicKey}&currency=${datosFirma.currency}&amount-in-cents=${datosFirma.amountInCents}&reference=${datosFirma.reference}`;
           setTimeout(() => { window.location.href = checkoutUrl; }, 1000);
 

@@ -83,7 +83,6 @@
 
   <script>
     // ---------- CONFIG ----------
-    const WOMPI_PUBLIC_KEY = 'pub_test_GLb9rOhET4NH5NKy7UPz6vGGhGBxkFqU'; // TU LLAVE PUBLICA SANDBOX (proporcionada)
     const UNIT_PRICE = 5000; // valor por boleto en pesos
     const TOTAL_NUMEROS = 999;
     // ----------------------------
@@ -156,7 +155,7 @@
         box.classList.add("hidden");
 
         try {
-          // 1) Pedimos al backend que genere la referencia (no guarda aún)
+          // 1) Reservamos números en backend
           const res = await fetch("/api/tickets", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -165,24 +164,31 @@
           const data = await res.json();
           if (!data.exito) throw new Error(data.mensaje || "Error generando referencia");
 
-          // Mostrar resumen y referencia (admite ambos nombres: transaction_reference o referencia)
-          const transactionRef = data.transaction_reference || data.referencia || data.reference || data.transactionReference;
+          const transactionRef = data.transaction_reference || data.referencia || `ticket_${Date.now()}`;
+
           box.classList.remove("hidden");
           box.innerHTML = `<p><strong>Tus números (reservados temporalmente):</strong> ${seleccionados.join(", ")}</p>
-                           <p><strong>Referencia transacción:</strong> ${transactionRef || '—'}</p>`;
+                           <p><strong>Referencia transacción:</strong> ${transactionRef}</p>`;
 
-          // 2) Calcular monto y redirigir a Wompi Checkout (sandbox)
-          const cantidad = seleccionados.length;
-          const amountInCents = UNIT_PRICE * cantidad * 100; // en centavos
-          const publicKey = encodeURIComponent(WOMPI_PUBLIC_KEY);
-          const reference = encodeURIComponent(transactionRef || `ticket_${Date.now()}`);
+          // 2) Pedimos al backend la firma de integridad
+          const respFirma = await fetch("/api/generar-firma", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ cantidad: seleccionados.length })
+          });
+          const datosFirma = await respFirma.json();
 
-          const checkoutUrl = `https://checkout.wompi.co/p/?public-key=${publicKey}&currency=COP&amount-in-cents=${amountInCents}&reference=${reference}`;
+          if (!datosFirma.reference || !datosFirma.signature) {
+            throw new Error("Error generando firma en backend");
+          }
 
-          // pequeña espera visual para que el usuario vea la referencia antes de redirigir
+          // 3) Construimos la URL de Checkout con firma
+          const checkoutUrl = `https://checkout.wompi.co/p/?public-key=${datosFirma.publicKey}&currency=${datosFirma.currency}&amount-in-cents=${datosFirma.amountInCents}&reference=${datosFirma.reference}&signature=${datosFirma.signature}`;
+
+          // pequeña espera visual
           setTimeout(() => {
             window.location.href = checkoutUrl;
-          }, 700);
+          }, 1000);
 
         } catch (err) {
           console.error(err);

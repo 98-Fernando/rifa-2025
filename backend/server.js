@@ -12,7 +12,7 @@ import { config } from "dotenv";
 import { fileURLToPath } from "url";
 
 // ======================
-// CONFIGURACIONES BASE
+// CONFIGURACIÓN BASE
 // ======================
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -58,7 +58,6 @@ app.use(
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors());
-app.use(express.json());
 
 app.use(
   session({
@@ -93,10 +92,7 @@ app.get("/admin.html", (req, res, next) =>
 // DB
 // ======================
 mongoose
-  .connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
+  .connect(process.env.MONGO_URI)
   .then(() => console.log("✅ Conexión exitosa a MongoDB"))
   .catch((err) => console.error("❌ Error al conectar a MongoDB", err));
 
@@ -108,7 +104,7 @@ import Ticket from "./models/Ticket.js";
 app.use("/api/tickets", ticketRoutes);
 
 // ======================
-// WOMPI
+// WOMPI CONFIG
 // ======================
 const WOMPI_ENV = process.env.WOMPI_ENV || "sandbox";
 const WOMPI_BASE_URL =
@@ -126,7 +122,7 @@ function generarFirma(reference, amountInCents, currency, integrityKey) {
   return crypto.createHash("sha256").update(cadena).digest("hex");
 }
 
-// Endpoint para generar la firma de integridad
+// Endpoint para generar firma e info de pago
 app.post("/api/generar-firma", (req, res) => {
   try {
     const { cantidad } = req.body;
@@ -145,8 +141,8 @@ app.post("/api/generar-firma", (req, res) => {
 
     res.json({
       reference,
-      amountInPesos, // mostrar al frontend
-      amountInCents, // enviar a Wompi
+      amountInPesos, // útil para mostrar al usuario
+      amountInCents, // se envía a Wompi
       currency: "COP",
       publicKey: process.env.WOMPI_PUBLIC_KEY,
       signature: integritySignature,
@@ -158,7 +154,7 @@ app.post("/api/generar-firma", (req, res) => {
 });
 
 // ======================
-// WEBHOOK
+// WEBHOOK WOMPI
 // ======================
 app.post("/webhook-wompi", async (req, res) => {
   try {
@@ -166,16 +162,16 @@ app.post("/webhook-wompi", async (req, res) => {
 
     const evento = req.body.event;
     if (evento === "transaction.updated") {
-      const transaccion = req.body.data.transaction;
-      const referencia = transaccion.reference;
-      const estado = transaccion.status;
+      const tx = req.body.data.transaction;
+      const referencia = tx.reference;
+      const estado = tx.status;
 
       console.log(`🔔 Transacción ${referencia} actualizada: ${estado}`);
 
       if (estado === "APPROVED") {
         await Ticket.create({
-          correo: transaccion.customer_email,
-          nombre: transaccion.customer_name || "Cliente",
+          correo: tx.customer_email,
+          nombre: tx.customer_name || "Cliente",
           numeros: [],
           pagado: true,
           referencia,

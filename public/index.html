@@ -12,21 +12,10 @@
     .container { max-width: 900px; margin: 0 auto; padding: 1rem; }
     img { max-width: 100%; height: auto; border-radius: 6px; }
 
-    /* Barra de progreso mejorada */
+    /* Barra de progreso */
     .progreso-container { margin: 1rem 0; }
     .barra { width: 100%; background: #eee; border-radius: 12px; overflow: hidden; height: 28px; position: relative; }
-    .relleno { width: 0; height: 100%; display: flex; justify-content: center; align-items: center; font-weight: bold; color: white; border-radius: 12px; transition: width 0.5s, background 0.5s; position: relative; overflow: hidden; }
-    .relleno::before {
-      content: '';
-      position: absolute;
-      top:0; left:0; width:100%; height:100%;
-      background: rgba(255,255,255,0.2);
-      animation: onda 2s linear infinite;
-    }
-    @keyframes onda {
-      0% { transform: translateX(-100%); }
-      100% { transform: translateX(100%); }
-    }
+    .relleno { width: 0; height: 100%; display: flex; justify-content: center; align-items: center; font-weight: bold; color: white; border-radius: 12px; transition: width 0.5s, background 0.5s; }
     .relleno.verde { background: #10b981; }
     .relleno.amarillo { background: #facc15; color: #111; }
     .relleno.rojo { background: #ef4444; }
@@ -130,16 +119,15 @@
 <script>
 let seleccionados = [];
 const PRECIO_BOLETO = 5000;
+const PUBLIC_KEY = "pub_test_GLb9rOhET4NH5NKy7UPz6vGGhGBxkFqU";
 
 async function cargarNumerosDisponibles() {
   try {
     const res = await fetch("/api/tickets/numeros");
     const data = await res.json();
     if (!data.exito) return;
-
     const cont = document.getElementById("lista-numeros");
     cont.innerHTML = "";
-
     data.numeros.forEach(({ numero, disponible }) => {
       const btn = document.createElement("button");
       btn.type = "button";
@@ -168,14 +156,11 @@ async function cargarNumerosDisponibles() {
       cont.appendChild(btn);
     });
     actualizarResumen();
-  } catch (err) {
-    console.error("Error al cargar números:", err);
-  }
+  } catch (err) { console.error(err); }
 }
 
 function actualizarResumen() {
-  const span = document.getElementById("numeros-seleccionados");
-  span.textContent = seleccionados.length ? seleccionados.join(", ") : "Ninguno";
+  document.getElementById("numeros-seleccionados").textContent = seleccionados.length ? seleccionados.join(", ") : "Ninguno";
 }
 
 function actualizarProgreso() {
@@ -186,23 +171,40 @@ function actualizarProgreso() {
         const barra = document.getElementById("progreso");
         const texto = document.getElementById("porcentaje-texto");
         const alerta = document.getElementById("alerta80");
-
         barra.style.width = `${data.porcentaje}%`;
         texto.textContent = `${data.porcentaje}% completado`;
-
-        // Cambiar color según porcentaje
-        barra.classList.remove("verde", "amarillo", "rojo");
-        if (data.porcentaje < 50) barra.classList.add("rojo");
-        else if (data.porcentaje < 80) barra.classList.add("amarillo");
+        barra.classList.remove("verde","amarillo","rojo");
+        if(data.porcentaje<50) barra.classList.add("rojo");
+        else if(data.porcentaje<80) barra.classList.add("amarillo");
         else barra.classList.add("verde");
-
-        alerta.classList.toggle("hidden", data.porcentaje < 80);
+        alerta.classList.toggle("hidden", data.porcentaje<80);
       }
     })
-    .catch(err => console.error("Error al obtener progreso:", err));
+    .catch(err=>console.error(err));
 }
 
-document.addEventListener("DOMContentLoaded", () => {
+// Función para iniciar pago Wompi
+async function iniciarPago(cantidad, reference) {
+  try {
+    const respFirma = await fetch("/api/generar-firma", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ cantidad, reference })
+    });
+    const datosFirma = await respFirma.json();
+    if(!datosFirma.reference) throw new Error("Error generando firma backend");
+
+    const amountInCents = parseInt(datosFirma.amountInCents);
+    const checkoutUrl = `https://checkout.wompi.co/p/?public-key=${PUBLIC_KEY}&currency=${datosFirma.currency}&amount-in-cents=${amountInCents}&reference=${datosFirma.reference}`;
+    window.location.href = checkoutUrl;
+
+  } catch(err){
+    console.error("Error pago Wompi:", err);
+    alert("❌ No se pudo iniciar el pago, intenta nuevamente");
+  }
+}
+
+document.addEventListener("DOMContentLoaded", ()=>{
   const form = document.getElementById("formulario");
   const spinner = document.getElementById("spinner");
   const msg = document.getElementById("mensaje");
@@ -215,24 +217,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
   cargarNumerosDisponibles();
   actualizarProgreso();
-  setInterval(() => { cargarNumerosDisponibles(); actualizarProgreso(); }, 5000);
+  setInterval(()=>{cargarNumerosDisponibles(); actualizarProgreso();},5000);
 
-  form.addEventListener("submit", e => {
+  form.addEventListener("submit", e=>{
     e.preventDefault();
-    if (seleccionados.length === 0) {
-      msg.textContent = "❌ Selecciona al menos un número.";
+    if(seleccionados.length===0){
+      msg.textContent="❌ Selecciona al menos un número.";
       msg.classList.remove("hidden");
       return;
     }
     modalNumeros.textContent = `Números seleccionados: ${seleccionados.join(", ")}`;
-    modalMonto.textContent = `Monto total: $${seleccionados.length * PRECIO_BOLETO}`;
-    modal.style.display = "flex";
+    modalMonto.textContent = `Monto total: $${seleccionados.length*PRECIO_BOLETO}`;
+    modal.style.display="flex";
   });
 
-  cancelarBtn.addEventListener("click", () => modal.style.display = "none");
+  cancelarBtn.addEventListener("click", ()=> modal.style.display="none");
 
-  confirmarBtn.addEventListener("click", async () => {
-    modal.style.display = "none";
+  confirmarBtn.addEventListener("click", async ()=>{
+    modal.style.display="none";
     spinner.classList.remove("hidden");
     msg.classList.add("hidden");
 
@@ -240,37 +242,27 @@ document.addEventListener("DOMContentLoaded", () => {
     const correo = document.getElementById("correo").value.trim();
     const tel = document.getElementById("telefono").value.trim();
 
-    try {
+    try{
       const resTicket = await fetch("/api/tickets/guardar-pendiente", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre, correo, telefono: tel, numeros: seleccionados })
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ nombre, correo, telefono:tel, numeros:seleccionados })
       });
-
       const ticketData = await resTicket.json();
-      if (!ticketData.exito) throw new Error(ticketData.mensaje || "Error generando referencia");
+      if(!ticketData.exito) throw new Error(ticketData.mensaje || "Error generando referencia");
 
       box.classList.remove("hidden");
       box.innerHTML = `<p><strong>Tus números reservados:</strong> ${seleccionados.join(", ")}</p>
                        <p><strong>Referencia transacción:</strong> ${ticketData.reference}</p>`;
 
-      const respFirma = await fetch("/api/generar-firma", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cantidad: seleccionados.length, reference: ticketData.reference })
-      });
+      // Llamamos Wompi
+      await iniciarPago(seleccionados.length, ticketData.reference);
 
-      const datosFirma = await respFirma.json();
-      if (!datosFirma.reference) throw new Error("Error generando firma en backend");
-
-      const checkoutUrl = `https://checkout.wompi.co/p/?public-key=${datosFirma.publicKey}&currency=${datosFirma.currency}&amount-in-cents=${datosFirma.amountInCents}&reference=${datosFirma.reference}`;
-      setTimeout(() => { window.location.href = checkoutUrl; }, 800);
-
-    } catch (err) {
+    }catch(err){
       console.error(err);
-      msg.textContent = "❌ " + (err.message || "Error inesperado");
+      msg.textContent = "❌ "+(err.message || "Error inesperado");
       msg.classList.remove("hidden");
-    } finally {
+    }finally{
       spinner.classList.add("hidden");
     }
   });

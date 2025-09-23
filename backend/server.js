@@ -121,4 +121,4 @@ app.delete("/admin/ticket/:id", async(req,res)=>{
 app.use((err,req,res,next)=>{ console.error(err); res.status(500).json({ error:"Error interno del servidor" }); });
 
 // Servidor
-app.listen(PORT,()=>console.log(`🚀 Servidor corriendo en http://localhost:${
+app.listen(PORT,()=>console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`));

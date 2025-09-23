@@ -1,229 +1,77 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rifa 2025</title>
-<style>
-  * { box-sizing: border-box; margin:0; padding:0; }
-  body { font-family: Arial, sans-serif; background: #f8f9fa; color: #111; line-height:1.4; }
-  .container { max-width: 480px; margin: auto; padding: 1rem; }
-  img { width: 100%; border-radius: 8px; margin-bottom:1rem; }
-  h1,h2,h3,p { margin:0.5rem 0; text-align:center; }
-  .progreso-container { margin: 1rem 0; }
-  .barra { width: 100%; background: #eee; border-radius: 12px; overflow: hidden; height: 28px; position: relative; }
-  .relleno { width:0; height:100%; display:flex; justify-content:center; align-items:center; font-weight:bold; color:white; border-radius:12px; transition: width 0.7s ease, background 0.5s; }
-  .verde { background:#10b981; }
-  .amarillo { background:#facc15; color:#111; }
-  .rojo { background:#ef4444; }
-  form { display:flex; flex-direction:column; gap:0.6rem; margin-top:1rem; }
-  input, button { padding:0.8rem; font-size:1rem; border-radius:6px; border:1px solid #ccc; }
-  button { background:#3b82f6; color:white; font-weight:bold; cursor:pointer; border:none; transition:0.2s; }
-  button:hover { background:#2563eb; }
-  #lista-numeros { display:grid; grid-template-columns: repeat(auto-fill, minmax(48px,1fr)); gap:4px; max-height:200px; overflow-y:auto; margin-top:0.5rem; }
-  .numero-btn { padding:0.5rem; border-radius:6px; border:1px solid #ccc; text-align:center; cursor:pointer; font-weight:bold; transition:0.3s; }
-  .disponible { background:#02f823c0; }
-  .seleccionado { background:#3b82f6; color:white; }
-  .ocupado { background:#ff4d4f; color:white; cursor:not-allowed; }
-  .hidden { display:none; }
-  .mensaje { margin-top:0.6rem; color:#e11d48; font-weight:bold; text-align:center; }
-  .ticket-box { margin-top:1rem; padding:1rem; border-radius:6px; background:white; box-shadow:0 2px 6px rgba(0,0,0,0.1); word-wrap:break-word; }
-  .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index:1000; }
-  .modal-content { background:white; padding:1rem; border-radius:8px; max-width:320px; width:90%; text-align:center; }
-  .modal-buttons { margin-top:1rem; display:flex; justify-content:space-around; gap:0.5rem; }
-  .modal button { flex:1; }
-  .redes-sociales { margin-top:1rem; display:flex; justify-content:center; gap:1rem; }
-  .redes-sociales img { width:32px; height:32px; }
-  .footer-fixed { text-align:center; padding:0.6rem; font-size:13px; color:#555; margin-top:1.5rem; background:#f1f1f1; border-top:1px solid #ddd; }
-  #lista-numeros::-webkit-scrollbar { width:6px; }
-  #lista-numeros::-webkit-scrollbar-thumb { background:#ccc; border-radius:3px; }
-</style>
-</head>
-<body>
+// ==============================
+// Importaciones
+// ==============================
+import express from 'express';
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
-<div class="container">
-  <h1>🎉 PARTICIPA EN LA GRAN RIFA 🎉</h1>
-  <img src="img.jpg" alt="Imagen de la rifa">
-  <h2>Un iPhone 16 Pro Max o un Samsung S24 Ultra</h2>
+// ==============================
+// Configuración de entorno
+// ==============================
+dotenv.config();
 
-  <div class="progreso-container">
-    <div class="barra">
-      <div id="progreso" class="relleno rojo">0%</div>
-    </div>
-    <p id="porcentaje-texto">0% completado</p>
-    <p id="alerta80" class="hidden" style="color:#e11d48;font-weight:bold;">🔥 ¡Ya hemos alcanzado el 80%! El sorteo está cerca 🎉</p>
-    <h3>VALOR: $ 5.000</h3>
-  </div>
+// Adaptar __dirname para ES Modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-  <form id="formulario">
-    <input type="text" id="nombre" placeholder="Tu nombre" required>
-    <input type="email" id="correo" placeholder="Tu correo" required>
-    <input type="tel" id="telefono" placeholder="Tu número de celular" required pattern="[0-9]{10}" title="Debe tener 10 dígitos">
-    <p><strong>Números seleccionados:</strong> <span id="numeros-seleccionados">Ninguno</span></p>
-    <div id="seleccion-numeros">
-      <p><strong>Selecciona tus números:</strong></p>
-      <div id="lista-numeros"></div>
-      <p id="limite-error" class="mensaje hidden">⚠️ Este número ya fue tomado.</p>
-    </div>
-    <button type="submit">🎟 Participar y pagar</button>
-    <div id="spinner" class="hidden">⏳ Enviando...</div>
-  </form>
+// ==============================
+// Inicializar Express
+// ==============================
+const app = express();
+const PORT = process.env.PORT || 5000;
 
-  <div id="mensaje" class="mensaje hidden"></div>
-  <div id="ticket-box" class="ticket-box hidden"></div>
+// ==============================
+// Middleware
+// ==============================
+app.use(express.static(path.join(__dirname, 'public')));
 
-  <div class="redes-sociales">
-    <a href="https://wa.me/573216220062" target="_blank"><img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" alt="WhatsApp"></a>
-    <a href="https://facebook.com/tuusuario" target="_blank"><img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="Facebook"></a>
-  </div>
-
-  <footer class="footer-fixed">
-    &copy; 2025 Elaborado por Ing. Fernando Gómez - Popayán Cauca. Todos los derechos reservados.
-  </footer>
-</div>
-
-<div id="modal-confirm" class="modal">
-  <div class="modal-content">
-    <h3>Confirma tu participación</h3>
-    <p id="modal-numeros"></p>
-    <p id="modal-monto"></p>
-    <div class="modal-buttons">
-      <button id="confirmar-btn">Confirmar ✅</button>
-      <button id="cancelar-btn">Cancelar ❌</button>
-    </div>
-  </div>
-</div>
-
-<script>
-let seleccionados = [];
-const PRECIO_BOLETO = 5000;
-const PUBLIC_KEY = "pub_test_GLb9rOhET4NH5NKy7UPz6vGGhGBxkFqU";
-
-// Cargar números desde tu API
-async function cargarNumerosDisponibles() {
-  try {
-    const res = await fetch("/api/tickets/numeros");
-    const data = await res.json();
-    if(!data.exito) return;
-    const cont = document.getElementById("lista-numeros");
-    cont.innerHTML = "";
-    data.numeros.forEach(({numero,disponible})=>{
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.textContent = numero;
-      btn.dataset.numero = numero;
-      btn.className = "numero-btn";
-      if(disponible){
-        btn.classList.add("disponible");
-        btn.onclick = ()=>{
-          if(btn.classList.contains("seleccionado")){
-            btn.classList.remove("seleccionado"); btn.classList.add("disponible");
-            seleccionados = seleccionados.filter(n=>n!==numero);
-          } else {
-            btn.classList.remove("disponible"); btn.classList.add("seleccionado");
-            seleccionados.push(numero);
-          }
-          actualizarResumen();
-        }
-      } else {
-        btn.disabled = true;
-        btn.classList.add("ocupado");
-        seleccionados = seleccionados.filter(n=>n!==numero);
-      }
-      cont.appendChild(btn);
-    });
-    actualizarResumen();
-  } catch(err){ console.error(err); }
-}
-
-function actualizarResumen(){
-  document.getElementById("numeros-seleccionados").textContent = seleccionados.length ? seleccionados.join(", ") : "Ninguno";
-}
-
-function actualizarProgreso(){
-  fetch("/api/tickets/consulta")
-    .then(res=>res.json())
-    .then(data=>{
-      if(data.exito){
-        const barra = document.getElementById("progreso");
-        const texto = document.getElementById("porcentaje-texto");
-        const alerta = document.getElementById("alerta80");
-        barra.style.width = data.porcentaje+"%";
-        texto.textContent = data.porcentaje+"% completado";
-        barra.classList.remove("verde","amarillo","rojo");
-        if(data.porcentaje<50) barra.classList.add("rojo");
-        else if(data.porcentaje<80) barra.classList.add("amarillo");
-        else barra.classList.add("verde");
-        alerta.classList.toggle("hidden", data.porcentaje<80);
-      }
-    }).catch(err=>console.error(err));
-}
-
-// Checkout redirigido simple
-function iniciarPago(totalBoletos, reference){
-  const amountInCents = totalBoletos * PRECIO_BOLETO * 100;
-  const checkoutUrl = `https://checkout.wompi.co/p/?public-key=${PUBLIC_KEY}&currency=COP&amount-in-cents=${amountInCents}&reference=${reference}`;
-  window.location.href = checkoutUrl;
-}
-
-document.addEventListener("DOMContentLoaded", ()=>{
-  const form = document.getElementById("formulario");
-  const spinner = document.getElementById("spinner");
-  const msg = document.getElementById("mensaje");
-  const box = document.getElementById("ticket-box");
-  const modal = document.getElementById("modal-confirm");
-  const modalNumeros = document.getElementById("modal-numeros");
-  const modalMonto = document.getElementById("modal-monto");
-  const confirmarBtn = document.getElementById("confirmar-btn");
-  const cancelarBtn = document.getElementById("cancelar-btn");
-
-  cargarNumerosDisponibles();
-  actualizarProgreso();
-  setInterval(()=>{ cargarNumerosDisponibles(); actualizarProgreso(); },5000);
-
-  form.onsubmit = e=>{
-    e.preventDefault();
-    if(seleccionados.length===0){
-      msg.textContent = "❌ Selecciona al menos un número.";
-      msg.classList.remove("hidden");
-      return;
-    }
-    modalNumeros.textContent = `Números seleccionados: ${seleccionados.join(", ")}`;
-    modalMonto.textContent = `Monto total: $${seleccionados.length*PRECIO_BOLETO}`;
-    modal.style.display = "flex";
-  };
-
-  cancelarBtn.onclick = ()=> modal.style.display="none";
-
-  confirmarBtn.onclick = async ()=>{
-    modal.style.display="none"; spinner.classList.remove("hidden"); msg.classList.add("hidden");
-    const nombre = document.getElementById("nombre").value.trim();
-    const correo = document.getElementById("correo").value.trim();
-    const telefono = document.getElementById("telefono").value.trim();
-
-    try{
-      const resTicket = await fetch("/api/tickets/guardar-pendiente",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({nombre,correo,telefono,numeros:seleccionados})
-      });
-      const ticketData = await resTicket.json();
-      if(!ticketData.exito) throw new Error(ticketData.mensaje || "Error generando referencia");
-
-      box.classList.remove("hidden");
-      box.innerHTML = `<p><strong>Tus números reservados:</strong> ${seleccionados.join(", ")}</p>
-                       <p><strong>Referencia transacción:</strong> ${ticketData.reference}</p>`;
-
-      iniciarPago(seleccionados.length, ticketData.reference);
-    } catch(err){
-      console.error(err);
-      msg.textContent = "❌ " + (err.message || "Error inesperado");
-      msg.classList.remove("hidden");
-    } finally{
-      spinner.classList.add("hidden");
-    }
-  };
+// ==============================
+// Rutas
+// ==============================
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
-</script>
-</body>
-</html>
+
+// Importar rutas de la API
+import ticketsRouter from './backend/routes/tickets.js';
+app.use('/api/tickets', ticketsRouter);
+
+// ==============================
+// Conexión a MongoDB
+// ==============================
+const connectToMongoDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    console.log('✅ MongoDB conectado correctamente');
+  } catch (err) {
+    console.error('❌ Error al conectar a MongoDB:', err.message);
+    console.log('🔁 Reintentando conexión en 5 segundos...');
+    setTimeout(connectToMongoDB, 5000);
+  }
+};
+
+// Manejo de desconexión
+mongoose.connection.on('disconnected', () => {
+  console.warn('⚠️ Conexión a MongoDB perdida. Intentando reconectar...');
+  connectToMongoDB();
+});
+
+// Manejo de errores
+mongoose.connection.on('error', (err) => {
+  console.error('❌ Error en la conexión de MongoDB:', err.message);
+});
+
+// Iniciar conexión
+connectToMongoDB();
+
+// ==============================
+// Iniciar servidor
+// ==============================
+app.listen(PORT, () => {
+  console.log(`🚀 Servidor corriendo en: http://localhost:${PORT}`);
+});

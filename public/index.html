@@ -151,7 +151,6 @@
         box.classList.add("hidden");
 
         try {
-          // 1) Reservamos números
           const res = await fetch("/api/tickets", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -160,7 +159,7 @@
           const data = await res.json();
           if (!data.exito) throw new Error(data.mensaje || "Error generando referencia");
 
-          const transactionRef = data.transaction_reference || data.referencia || `ticket_${Date.now()}`;
+          const transactionRef = data.transaction_reference || `ticket_${Date.now()}`;
 
           box.classList.remove("hidden");
           box.innerHTML = `<p><strong>Tus números (reservados temporalmente):</strong> ${seleccionados.join(", ")}</p>
@@ -174,12 +173,12 @@
           });
           const datosFirma = await respFirma.json();
 
-          if (!datosFirma.reference || !datosFirma.signature) {
+          if (!datosFirma.reference) {
             throw new Error("Error generando firma en backend");
           }
 
-          // 3) Redirigir al checkout de Wompi (muestra COP pero usa amountInCents)
-          const checkoutUrl = `https://checkout.wompi.co/p/?public-key=${datosFirma.publicKey}&currency=${datosFirma.currency}&amount-in-cents=${datosFirma.amountInCents}&reference=${datosFirma.reference}&signature=${datosFirma.signature}`;
+          // 3) Redirigir al checkout de Wompi
+          const checkoutUrl = `https://checkout.wompi.co/p/?public-key=${datosFirma.publicKey}&currency=${datosFirma.currency}&amount-in-cents=${datosFirma.amountInCents}&reference=${datosFirma.reference}`;
 
           setTimeout(() => {
             window.location.href = checkoutUrl;
@@ -194,7 +193,6 @@
       });
     });
 
-    // Progreso
     async function actualizarProgreso() {
       try {
         const res = await fetch("/api/tickets/consulta");

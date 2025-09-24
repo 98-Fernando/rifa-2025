@@ -99,6 +99,7 @@ let seleccionados = [];
 let PRECIO_BOLETO = 0;
 let PUBLIC_KEY = "";
 
+// ✅ Cargar configuración desde backend
 async function cargarConfig() {
   try {
     const res = await fetch("/api/config");
@@ -171,6 +172,7 @@ function actualizarProgreso(){
 }
 
 function iniciarPago(totalBoletos, reference){
+  if(!PUBLIC_KEY) { alert("Error: Clave pública de Wompi no disponible."); return; }
   const amountInCents = totalBoletos * PRECIO_BOLETO * 100;
   const checkoutUrl = `https://checkout.wompi.co/p/?public-key=${PUBLIC_KEY}&currency=COP&amount-in-cents=${amountInCents}&reference=${reference}`;
   window.location.href = checkoutUrl;
@@ -225,7 +227,6 @@ document.addEventListener("DOMContentLoaded", async ()=>{
       box.innerHTML = `<p><strong>Tus números reservados:</strong> ${seleccionados.join(", ")}</p>
                        <p><strong>Referencia transacción:</strong> ${ticketData.reference}</p>`;
 
-      // Redirigir a Wompi Checkout
       iniciarPago(seleccionados.length, ticketData.reference);
     } catch(err){
       console.error(err);

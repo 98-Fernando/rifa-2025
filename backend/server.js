@@ -21,6 +21,13 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // ======================
+// VALIDAR VARIABLES ENTORNO
+// ======================
+if (!process.env.MONGO_URI) throw new Error("❌ MONGO_URI no definida en .env");
+if (!process.env.WOMPI_PUBLIC_KEY) throw new Error("❌ WOMPI_PUBLIC_KEY no definida en .env");
+if (!process.env.WOMPI_INTEGRITY_KEY) throw new Error("❌ WOMPI_INTEGRITY_KEY no definida en .env");
+
+// ======================
 // MIDDLEWARES
 // ======================
 app.use(
@@ -28,18 +35,8 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: [
-          "'self'",
-          "'unsafe-inline'",
-          "https://cdn.jsdelivr.net",
-          "https://unpkg.com",
-        ],
-        styleSrc: [
-          "'self'",
-          "'unsafe-inline'",
-          "https://fonts.googleapis.com",
-          "https://cdn.jsdelivr.net",
-        ],
+        scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://unpkg.com"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdn.jsdelivr.net"],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
         imgSrc: ["'self'", "data:", "https://cdn-icons-png.flaticon.com"],
         connectSrc: [
@@ -118,13 +115,18 @@ mongoose
 app.get("/api/config", (req, res) => {
   const publicKey =
     process.env.NODE_ENV === "production"
-      ? process.env.WOMPI_PUBLIC_KEY_LIVE
+      ? process.env.WOMPI_PUBLIC_KEY_LIVE || process.env.WOMPI_PUBLIC_KEY
       : process.env.WOMPI_PUBLIC_KEY;
+
+  if (!publicKey) {
+    console.error("❌ Clave pública de Wompi no disponible");
+    return res.status(500).json({ exito: false, mensaje: "Clave pública de Wompi no disponible" });
+  }
 
   res.json({
     exito: true,
     precio: Number(process.env.PRECIO_BOLETO) || 5000,
-    publicKey: publicKey || "",
+    publicKey,
   });
 });
 
@@ -176,10 +178,7 @@ app.post("/api/tickets/guardar-pendiente", async (req, res) => {
 // WEBHOOK WOMPI
 // ======================
 const generarFirma = (reference, amountInCents, currency, integrityKey) =>
-  crypto
-    .createHash("sha256")
-    .update(`${reference}${amountInCents}${currency}${integrityKey}`)
-    .digest("hex");
+  crypto.createHash("sha256").update(`${reference}${amountInCents}${currency}${integrityKey}`).digest("hex");
 
 app.post("/webhook-wompi", async (req, res) => {
   try {
@@ -192,6 +191,7 @@ app.post("/webhook-wompi", async (req, res) => {
       tx.currency,
       process.env.WOMPI_INTEGRITY_KEY
     );
+
     if (req.headers["content-signature"] && req.headers["content-signature"] !== localSignature)
       return res.sendStatus(403);
 
@@ -206,6 +206,7 @@ app.post("/webhook-wompi", async (req, res) => {
         estadoPago: "pagado",
         referencia: tx.reference,
       });
+
       await pendiente.deleteOne();
       console.log(`✅ Ticket confirmado: ${tx.reference}`);
     }

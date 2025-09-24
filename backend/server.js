@@ -44,7 +44,6 @@ app.use(
           "https://api.emailjs.com",
           "https://otlp.nr-data.net",
           "https://production.wompi.co",
-          "https://sandbox.wompi.co",
         ],
         frameSrc: ["'self'", "https://checkout.wompi.co"],
       },
@@ -110,13 +109,10 @@ mongoose
   .catch((err) => console.error("❌ Error al conectar a MongoDB", err));
 
 // ======================
-// RUTAS CONFIG
+// RUTA CONFIG
 // ======================
 app.get("/api/config", (req, res) => {
-  const publicKey =
-    process.env.NODE_ENV === "production"
-      ? process.env.WOMPI_PUBLIC_KEY_LIVE || process.env.WOMPI_PUBLIC_KEY
-      : process.env.WOMPI_PUBLIC_KEY;
+  const publicKey = process.env.WOMPI_PUBLIC_KEY;
 
   if (!publicKey) {
     console.error("❌ Clave pública de Wompi no disponible");
@@ -175,7 +171,7 @@ app.post("/api/tickets/guardar-pendiente", async (req, res) => {
 });
 
 // ======================
-// WEBHOOK WOMPI
+// WEBHOOK WOMPI PRODUCCIÓN
 // ======================
 const generarFirma = (reference, amountInCents, currency, integrityKey) =>
   crypto.createHash("sha256").update(`${reference}${amountInCents}${currency}${integrityKey}`).digest("hex");
@@ -192,8 +188,10 @@ app.post("/webhook-wompi", async (req, res) => {
       process.env.WOMPI_INTEGRITY_KEY
     );
 
-    if (req.headers["content-signature"] && req.headers["content-signature"] !== localSignature)
+    if (req.headers["content-signature"] && req.headers["content-signature"] !== localSignature) {
+      console.warn("❌ Firma inválida en webhook");
       return res.sendStatus(403);
+    }
 
     if (event === "transaction.updated" && tx.status === "APPROVED") {
       const pendiente = await Pendiente.findOne({ reference: tx.reference });

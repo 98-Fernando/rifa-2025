@@ -28,8 +28,18 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://unpkg.com"],
-        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdn.jsdelivr.net"],
+        scriptSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          "https://cdn.jsdelivr.net",
+          "https://unpkg.com",
+        ],
+        styleSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          "https://fonts.googleapis.com",
+          "https://cdn.jsdelivr.net",
+        ],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
         imgSrc: ["'self'", "data:", "https://cdn-icons-png.flaticon.com"],
         connectSrc: [
@@ -106,10 +116,15 @@ mongoose
 // RUTAS CONFIG
 // ======================
 app.get("/api/config", (req, res) => {
+  const publicKey =
+    process.env.NODE_ENV === "production"
+      ? process.env.WOMPI_PUBLIC_KEY_LIVE
+      : process.env.WOMPI_PUBLIC_KEY;
+
   res.json({
     exito: true,
     precio: Number(process.env.PRECIO_BOLETO) || 5000,
-    publicKey: process.env.WOMPI_PUBLIC_KEY || "", // clave pública sandbox/prod
+    publicKey: publicKey || "",
   });
 });
 
@@ -119,8 +134,8 @@ app.get("/api/config", (req, res) => {
 app.get("/api/tickets/numeros", async (req, res) => {
   try {
     const tickets = await Ticket.find({}, { numeros: 1, _id: 0 });
-    const ocupados = tickets.flatMap(t => t.numeros);
-    const numeros = Array.from({ length: 100 }, (_, i) => i + 1).map(n => ({
+    const ocupados = tickets.flatMap((t) => t.numeros);
+    const numeros = Array.from({ length: 100 }, (_, i) => i + 1).map((n) => ({
       numero: n,
       disponible: !ocupados.includes(n),
     }));
@@ -161,14 +176,22 @@ app.post("/api/tickets/guardar-pendiente", async (req, res) => {
 // WEBHOOK WOMPI
 // ======================
 const generarFirma = (reference, amountInCents, currency, integrityKey) =>
-  crypto.createHash("sha256").update(`${reference}${amountInCents}${currency}${integrityKey}`).digest("hex");
+  crypto
+    .createHash("sha256")
+    .update(`${reference}${amountInCents}${currency}${integrityKey}`)
+    .digest("hex");
 
 app.post("/webhook-wompi", async (req, res) => {
   try {
     const { event, data } = req.body;
     const tx = data.transaction;
 
-    const localSignature = generarFirma(tx.reference, tx.amount_in_cents, tx.currency, process.env.WOMPI_INTEGRITY_KEY);
+    const localSignature = generarFirma(
+      tx.reference,
+      tx.amount_in_cents,
+      tx.currency,
+      process.env.WOMPI_INTEGRITY_KEY
+    );
     if (req.headers["content-signature"] && req.headers["content-signature"] !== localSignature)
       return res.sendStatus(403);
 

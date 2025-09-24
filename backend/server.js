@@ -35,16 +35,11 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net", "https://unpkg.com"],
-        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdn.jsdelivr.net"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "https://checkout.wompi.co"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
         imgSrc: ["'self'", "data:", "https://cdn-icons-png.flaticon.com"],
-        connectSrc: [
-          "'self'",
-          "https://api.emailjs.com",
-          "https://otlp.nr-data.net",
-          "https://production.wompi.co",
-        ],
+        connectSrc: ["'self'", "https://production.wompi.co", "https://api.emailjs.com"],
         frameSrc: ["'self'", "https://checkout.wompi.co"],
       },
     },
@@ -112,17 +107,10 @@ mongoose
 // RUTA CONFIG
 // ======================
 app.get("/api/config", (req, res) => {
-  const publicKey = process.env.WOMPI_PUBLIC_KEY;
-
-  if (!publicKey) {
-    console.error("❌ Clave pública de Wompi no disponible");
-    return res.status(500).json({ exito: false, mensaje: "Clave pública de Wompi no disponible" });
-  }
-
   res.json({
     exito: true,
     precio: Number(process.env.PRECIO_BOLETO) || 5000,
-    publicKey,
+    publicKey: process.env.WOMPI_PUBLIC_KEY,
   });
 });
 
@@ -181,6 +169,7 @@ app.post("/webhook-wompi", async (req, res) => {
     const { event, data } = req.body;
     const tx = data.transaction;
 
+    // Firma local
     const localSignature = generarFirma(
       tx.reference,
       tx.amount_in_cents,
@@ -188,11 +177,14 @@ app.post("/webhook-wompi", async (req, res) => {
       process.env.WOMPI_INTEGRITY_KEY
     );
 
-    if (req.headers["content-signature"] && req.headers["content-signature"] !== localSignature) {
+    // Wompi envía en cabecera: integrity-signature
+    const headerSignature = req.headers["integrity-signature"];
+    if (headerSignature && headerSignature !== localSignature) {
       console.warn("❌ Firma inválida en webhook");
       return res.sendStatus(403);
     }
 
+    // Confirmar transacción aprobada
     if (event === "transaction.updated" && tx.status === "APPROVED") {
       const pendiente = await Pendiente.findOne({ reference: tx.reference });
       if (!pendiente) return res.sendStatus(404);
@@ -234,8 +226,7 @@ app.post("/login", (req, res) => {
 app.delete("/admin/ticket/:id", async (req, res) => {
   if (!req.session.loggedIn) return res.status(401).json({ error: "No autorizado" });
   try {
-    const { id } = req.params;
-    await Ticket.findByIdAndDelete(id);
+    await Ticket.findByIdAndDelete(req.params.id);
     res.status(200).json({ success: true, message: "Ticket eliminado" });
   } catch (err) {
     res.status(500).json({ success: false, error: "Error eliminando el ticket" });
@@ -253,4 +244,4 @@ app.use((err, req, res, next) => {
 // ======================
 // SERVIDOR
 // ======================
-app.listen(PORT, () => console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Servidor corriendo en puerto ${PORT}`));

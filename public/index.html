@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Rifa 2025</title>
 <style>
   * { box-sizing: border-box; margin:0; padding:0; }
@@ -21,10 +21,10 @@
   button { background:#3b82f6; color:white; font-weight:bold; cursor:pointer; border:none; transition:0.2s; }
   button:hover { background:#2563eb; }
   #lista-numeros { display:grid; grid-template-columns: repeat(auto-fill, minmax(48px,1fr)); gap:4px; max-height:200px; overflow-y:auto; margin-top:0.5rem; }
-  .numero-btn { padding:0.5rem; border-radius:6px; border:1px solid #ccc; text-align:center; cursor:pointer; font-weight:bold; transition:0.3s; }
-  .disponible { background:#02f823c0; }
-  .seleccionado { background:#3b82f6; color:white; }
-  .ocupado { background:#ff4d4f; color:white; cursor:not-allowed; }
+  .numero-btn { padding:0.5rem; border-radius:6px; border:1px solid #ccc; text-align:center; cursor:pointer; font-weight:bold; transition:0.3s; background:white; }
+  .disponible { background:#dff7e0; }
+  .seleccionado { background:#2563eb; color:white; }
+  .ocupado { background:#ffb3b3; color:#8b0000; cursor:not-allowed; }
   .hidden { display:none; }
   .mensaje { margin-top:0.6rem; color:#e11d48; font-weight:bold; text-align:center; }
   .ticket-box { margin-top:1rem; padding:1rem; border-radius:6px; background:white; box-shadow:0 2px 6px rgba(0,0,0,0.1); word-wrap:break-word; }
@@ -32,11 +32,7 @@
   .modal-content { background:white; padding:1rem; border-radius:8px; max-width:320px; width:90%; text-align:center; }
   .modal-buttons { margin-top:1rem; display:flex; justify-content:space-around; gap:0.5rem; }
   .modal button { flex:1; }
-  .redes-sociales { margin-top:1rem; display:flex; justify-content:center; gap:1rem; }
-  .redes-sociales img { width:32px; height:32px; }
   .footer-fixed { text-align:center; padding:0.6rem; font-size:13px; color:#555; margin-top:1.5rem; background:#f1f1f1; border-top:1px solid #ddd; }
-  #lista-numeros::-webkit-scrollbar { width:6px; }
-  #lista-numeros::-webkit-scrollbar-thumb { background:#ccc; border-radius:3px; }
 </style>
 </head>
 <body>
@@ -55,34 +51,32 @@
     <h3 id="valor-boleto">VALOR: $ 0</h3>
   </div>
 
-  <form id="formulario">
-    <input type="text" id="nombre" placeholder="Tu nombre" required>
-    <input type="email" id="correo" placeholder="Tu correo" required>
-    <input type="tel" id="telefono" placeholder="Tu número de celular" required pattern="[0-9]{10}" title="Debe tener 10 dígitos">
+  <form id="formulario" autocomplete="off">
+    <input type="text" id="nombre" placeholder="Tu nombre" required />
+    <input type="email" id="correo" placeholder="Tu correo" required />
+    <input type="tel" id="telefono" placeholder="Tu número de celular (10 dígitos)" required pattern="[0-9]{10}" title="Debe tener 10 dígitos" />
     <p><strong>Números seleccionados:</strong> <span id="numeros-seleccionados">Ninguno</span></p>
+
     <div id="seleccion-numeros">
       <p><strong>Selecciona tus números:</strong></p>
-      <div id="lista-numeros"></div>
+      <div id="lista-numeros" aria-live="polite"></div>
       <p id="limite-error" class="mensaje hidden">⚠️ Este número ya fue tomado.</p>
     </div>
-    <button type="submit">🎟 Participar y pagar</button>
+
+    <button id="enviar-btn" type="submit">🎟 Participar y pagar</button>
     <div id="spinner" class="hidden">⏳ Enviando...</div>
   </form>
 
   <div id="mensaje" class="mensaje hidden"></div>
   <div id="ticket-box" class="ticket-box hidden"></div>
 
-  <div class="redes-sociales">
-    <a href="https://wa.me/573216220062" target="_blank"><img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" alt="WhatsApp"></a>
-    <a href="https://facebook.com/tuusuario" target="_blank"><img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="Facebook"></a>
-  </div>
-
   <footer class="footer-fixed">
-    &copy; 2025 Elaborado por Ing. Fernando Gómez - Popayán Cauca. Todos los derechos reservados.
+    &copy; 2025 Elaborado por Ing. Fernando Gómez - Popayán Cauca.
   </footer>
 </div>
 
-<div id="modal-confirm" class="modal">
+<!-- Modal de confirmación -->
+<div id="modal-confirm" class="modal" role="dialog" aria-modal="true">
   <div class="modal-content">
     <h3>Confirma tu participación</h3>
     <p id="modal-numeros"></p>
@@ -95,95 +89,149 @@
 </div>
 
 <script>
+/*
+  Frontend preparado para:
+  - pedir /api/config => devuelve precio + publicKey
+  - pedir /api/tickets/numeros => lista de números y disponibilidad
+  - post /api/tickets/guardar-pendiente => guarda pendiente y devuelve reference
+  - redirige a https://checkout.wompi.co/p/?public-key=...&currency=COP&amount-in-cents=...&reference=...
+*/
+
 let seleccionados = [];
 let PRECIO_BOLETO = 0;
 let PUBLIC_KEY = "";
 
-// ✅ Cargar configuración desde backend
-async function cargarConfig() {
-  try {
-    const res = await fetch("/api/config");
-    const data = await res.json();
-    if(data.exito){
-      PRECIO_BOLETO = data.precio;
-      PUBLIC_KEY = data.publicKey;
-      document.getElementById("valor-boleto").textContent = `VALOR: $ ${PRECIO_BOLETO}`;
-    }
-  } catch(err){ console.error(err); }
+// Mostrar mensaje de error centralizado
+function showMessage(text) {
+  const m = document.getElementById("mensaje");
+  m.textContent = text;
+  m.classList.remove("hidden");
 }
 
+// Ocultar mensaje
+function hideMessage() {
+  const m = document.getElementById("mensaje");
+  m.classList.add("hidden");
+  m.textContent = "";
+}
+
+// Cargar configuración desde backend
+async function cargarConfig() {
+  try {
+    const res = await fetch("/api/config", { cache: "no-store" });
+    if (!res.ok) {
+      throw new Error("No se pudo obtener configuración del servidor.");
+    }
+    const data = await res.json();
+    if (!data.exito) throw new Error("Configuración inválida.");
+    PRECIO_BOLETO = Number(data.precio) || 5000;
+    PUBLIC_KEY = data.publicKey || "";
+    document.getElementById("valor-boleto").textContent = `VALOR: $ ${PRECIO_BOLETO}`;
+    if (!PUBLIC_KEY) {
+      showMessage("Error: Clave pública de Wompi no disponible en el servidor.");
+    }
+  } catch (err) {
+    console.error("cargarConfig:", err);
+    showMessage("No se pudo cargar la configuración. Revisa el servidor.");
+  }
+}
+
+// Cargar números disponibles
 async function cargarNumerosDisponibles() {
   try {
     const res = await fetch("/api/tickets/numeros");
+    if (!res.ok) throw new Error("Error cargando números");
     const data = await res.json();
-    if(!data.exito) return;
+    if (!data.exito) return;
     const cont = document.getElementById("lista-numeros");
     cont.innerHTML = "";
-    data.numeros.forEach(({numero,disponible})=>{
+    // Crear botones
+    data.numeros.forEach(({ numero, disponible }) => {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.textContent = numero;
       btn.dataset.numero = numero;
       btn.className = "numero-btn";
-      if(disponible){
+      if (disponible) {
         btn.classList.add("disponible");
-        btn.onclick = ()=>{
-          if(btn.classList.contains("seleccionado")){
-            btn.classList.remove("seleccionado"); btn.classList.add("disponible");
-            seleccionados = seleccionados.filter(n=>n!==numero);
+        btn.addEventListener("click", () => {
+          // toggle
+          if (btn.classList.contains("seleccionado")) {
+            btn.classList.remove("seleccionado");
+            btn.classList.add("disponible");
+            seleccionados = seleccionados.filter(n => n !== numero);
           } else {
-            btn.classList.remove("disponible"); btn.classList.add("seleccionado");
+            btn.classList.remove("disponible");
+            btn.classList.add("seleccionado");
             seleccionados.push(numero);
           }
           actualizarResumen();
-        }
+        });
       } else {
         btn.disabled = true;
         btn.classList.add("ocupado");
-        seleccionados = seleccionados.filter(n=>n!==numero);
+        seleccionados = seleccionados.filter(n => n !== numero);
       }
       cont.appendChild(btn);
     });
     actualizarResumen();
-  } catch(err){ console.error(err); }
+  } catch (err) {
+    console.error("cargarNumerosDisponibles:", err);
+    showMessage("No se pudieron cargar los números. Intenta recargar la página.");
+  }
 }
 
-function actualizarResumen(){
+// Actualizar texto de resumen
+function actualizarResumen() {
   document.getElementById("numeros-seleccionados").textContent = seleccionados.length ? seleccionados.join(", ") : "Ninguno";
 }
 
-function actualizarProgreso(){
-  fetch("/api/tickets/consulta")
-    .then(res=>res.json())
-    .then(data=>{
-      if(data.exito){
-        const barra = document.getElementById("progreso");
-        const texto = document.getElementById("porcentaje-texto");
-        const alerta = document.getElementById("alerta80");
-        barra.style.width = data.porcentaje+"%";
-        texto.textContent = data.porcentaje+"% completado";
-        barra.classList.remove("verde","amarillo","rojo");
-        if(data.porcentaje<50) barra.classList.add("rojo");
-        else if(data.porcentaje<80) barra.classList.add("amarillo");
-        else barra.classList.add("verde");
-        alerta.classList.toggle("hidden", data.porcentaje<80);
-      }
-    }).catch(err=>console.error(err));
+// Cargar progreso
+async function actualizarProgreso() {
+  try {
+    const res = await fetch("/api/tickets/consulta");
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.exito) return;
+    const barra = document.getElementById("progreso");
+    const texto = document.getElementById("porcentaje-texto");
+    const alerta = document.getElementById("alerta80");
+    barra.style.width = data.porcentaje + "%";
+    texto.textContent = data.porcentaje + "% completado";
+    barra.classList.remove("verde", "amarillo", "rojo");
+    if (data.porcentaje < 50) barra.classList.add("rojo");
+    else if (data.porcentaje < 80) barra.classList.add("amarillo");
+    else barra.classList.add("verde");
+    alerta.classList.toggle("hidden", data.porcentaje < 80);
+  } catch (err) {
+    console.error("actualizarProgreso:", err);
+  }
 }
 
-// ✅ Checkout en producción
-function iniciarPago(totalBoletos, reference){
-  if(!PUBLIC_KEY) { alert("Error: No se encontró la clave pública de Wompi."); return; }
-  const amountInCents = totalBoletos * PRECIO_BOLETO * 100;
-  const checkoutUrl = `https://checkout.wompi.co/p/?public-key=${PUBLIC_KEY}&currency=COP&amount-in-cents=${amountInCents}&reference=${reference}`;
+// Redirigir al checkout de Wompi
+function iniciarPago(totalBoletos, reference) {
+  if (!PUBLIC_KEY) {
+    alert("Error: No se encontró la clave pública de Wompi en el servidor.");
+    return;
+  }
+  // amount in cents
+  const amountInCents = Math.round(totalBoletos * PRECIO_BOLETO * 100);
+  const checkoutUrl = `https://checkout.wompi.co/p/?public-key=${encodeURIComponent(PUBLIC_KEY)}&currency=COP&amount-in-cents=${amountInCents}&reference=${encodeURIComponent(reference)}`;
+  // Redirigir
   window.location.href = checkoutUrl;
 }
 
-document.addEventListener("DOMContentLoaded", async ()=>{
+// DOMContentLoaded
+document.addEventListener("DOMContentLoaded", async () => {
   await cargarConfig();
+  await cargarNumerosDisponibles();
+  await actualizarProgreso();
+  // refrescar cada 6s
+  setInterval(() => { cargarNumerosDisponibles(); actualizarProgreso(); }, 6000);
+
   const form = document.getElementById("formulario");
   const spinner = document.getElementById("spinner");
-  const msg = document.getElementById("mensaje");
+  const enviarBtn = document.getElementById("enviar-btn");
   const box = document.getElementById("ticket-box");
   const modal = document.getElementById("modal-confirm");
   const modalNumeros = document.getElementById("modal-numeros");
@@ -191,52 +239,71 @@ document.addEventListener("DOMContentLoaded", async ()=>{
   const confirmarBtn = document.getElementById("confirmar-btn");
   const cancelarBtn = document.getElementById("cancelar-btn");
 
-  cargarNumerosDisponibles();
-  actualizarProgreso();
-  setInterval(()=>{ cargarNumerosDisponibles(); actualizarProgreso(); },5000);
-
-  form.onsubmit = e=>{
+  // Submit form -> abrir modal de confirmación
+  form.addEventListener("submit", (e) => {
     e.preventDefault();
-    if(seleccionados.length===0){
-      msg.textContent = "❌ Selecciona al menos un número.";
-      msg.classList.remove("hidden");
+    hideMessage();
+    if (seleccionados.length === 0) {
+      showMessage("❌ Selecciona al menos un número.");
+      return;
+    }
+    // validar teléfono simple
+    const telefono = document.getElementById("telefono").value.trim();
+    if (!/^\d{10}$/.test(telefono)) {
+      showMessage("El teléfono debe tener 10 dígitos.");
       return;
     }
     modalNumeros.textContent = `Números seleccionados: ${seleccionados.join(", ")}`;
-    modalMonto.textContent = `Monto total: $${seleccionados.length*PRECIO_BOLETO}`;
+    modalMonto.textContent = `Monto total: $${(seleccionados.length * PRECIO_BOLETO).toLocaleString()}`;
     modal.style.display = "flex";
-  };
+  });
 
-  cancelarBtn.onclick = ()=> modal.style.display="none";
+  // cancelar modal
+  cancelarBtn.addEventListener("click", () => modal.style.display = "none");
 
-  confirmarBtn.onclick = async ()=>{
-    modal.style.display="none"; spinner.classList.remove("hidden"); msg.classList.add("hidden");
+  // confirmar -> guardar pendiente y redirigir al checkout
+  confirmarBtn.addEventListener("click", async () => {
+    modal.style.display = "none";
+    hideMessage();
+    spinner.classList.remove("hidden");
+    enviarBtn.disabled = true;
+
     const nombre = document.getElementById("nombre").value.trim();
     const correo = document.getElementById("correo").value.trim();
     const telefono = document.getElementById("telefono").value.trim();
 
-    try{
-      const resTicket = await fetch("/api/tickets/guardar-pendiente",{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({nombre,correo,telefono,numeros:seleccionados})
-      });
-      const ticketData = await resTicket.json();
-      if(!ticketData.exito) throw new Error(ticketData.mensaje || "Error generando referencia");
+    try {
+      // Validaciones en cliente
+      if (!nombre || !correo || !telefono) throw new Error("Completa todos los campos.");
 
+      const payload = { nombre, correo, telefono, numeros: seleccionados };
+      const res = await fetch("/api/tickets/guardar-pendiente", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const ticketData = await res.json();
+      if (!res.ok || !ticketData.exito) {
+        const msg = ticketData?.mensaje || "No se pudo generar la referencia. Intenta nuevamente.";
+        throw new Error(msg);
+      }
+
+      // Mostrar datos de reserva al usuario
       box.classList.remove("hidden");
       box.innerHTML = `<p><strong>Tus números reservados:</strong> ${seleccionados.join(", ")}</p>
                        <p><strong>Referencia transacción:</strong> ${ticketData.reference}</p>`;
 
+      // Redirigir a Wompi Checkout
       iniciarPago(seleccionados.length, ticketData.reference);
-    } catch(err){
-      console.error(err);
-      msg.textContent = "❌ " + (err.message || "Error inesperado");
-      msg.classList.remove("hidden");
-    } finally{
+
+    } catch (err) {
+      console.error("confirmarBtn:", err);
+      showMessage("❌ " + (err.message || "Error inesperado"));
+      enviarBtn.disabled = false;
+    } finally {
       spinner.classList.add("hidden");
     }
-  };
+  });
 });
 </script>
 </body>

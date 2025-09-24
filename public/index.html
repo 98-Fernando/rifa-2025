@@ -225,6 +225,7 @@ document.addEventListener("DOMContentLoaded", async ()=>{
       box.innerHTML = `<p><strong>Tus números reservados:</strong> ${seleccionados.join(", ")}</p>
                        <p><strong>Referencia transacción:</strong> ${ticketData.reference}</p>`;
 
+      // Redirigir a Wompi Checkout
       iniciarPago(seleccionados.length, ticketData.reference);
     } catch(err){
       console.error(err);

@@ -93,7 +93,7 @@ let seleccionados = [];
 let PRECIO_BOLETO = 0;
 let PUBLIC_KEY = "";
 
-// Mostrar mensaje
+// Mensajes
 function showMessage(text) {
   const m = document.getElementById("mensaje");
   m.textContent = text;
@@ -105,7 +105,7 @@ function hideMessage() {
   m.textContent = "";
 }
 
-// Cargar configuración
+// Config
 async function cargarConfig() {
   try {
     const res = await fetch("/api/config", { cache: "no-store" });
@@ -121,7 +121,7 @@ async function cargarConfig() {
   }
 }
 
-// Números disponibles
+// Números
 async function cargarNumerosDisponibles() {
   try {
     const res = await fetch("/api/tickets/numeros");
@@ -162,7 +162,7 @@ async function cargarNumerosDisponibles() {
   }
 }
 
-// Resumen seleccionados
+// Resumen
 function actualizarResumen() {
   document.getElementById("numeros-seleccionados").textContent = seleccionados.length ? seleccionados.join(", ") : "Ninguno";
 }
@@ -184,11 +184,11 @@ async function actualizarProgreso() {
   }
 }
 
-// Pago Wompi
+// Pago Wompi corregido ✅
 function iniciarPago(totalBoletos, reference) {
   if (!PUBLIC_KEY) return alert("Error: No se encontró la clave pública de Wompi.");
-  const amountInCents = Math.round(totalBoletos * PRECIO_BOLETO * 100);
-  const checkoutUrl = `https://checkout.wompi.co/p/?public-key=${encodeURIComponent(PUBLIC_KEY)}&currency=COP&amount-in-cents=${amountInCents}&reference=${encodeURIComponent(reference)}`;
+  const amountInCents = totalBoletos * PRECIO_BOLETO * 100; // 👈 siempre centavos
+  const checkoutUrl = `https://checkout.wompi.co/p/?public-key=${encodeURIComponent(PUBLIC_KEY)}&currency=COP&amount-in-cents=${amountInCents}&reference=${encodeURIComponent(reference)}&redirect-url=${encodeURIComponent(window.location.origin + "/success")}`;
   window.location.href = checkoutUrl;
 }
 

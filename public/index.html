@@ -171,8 +171,9 @@ function actualizarProgreso(){
     }).catch(err=>console.error(err));
 }
 
+// ✅ Checkout en producción
 function iniciarPago(totalBoletos, reference){
-  if(!PUBLIC_KEY) { alert("Error: Clave pública de Wompi no disponible."); return; }
+  if(!PUBLIC_KEY) { alert("Error: No se encontró la clave pública de Wompi."); return; }
   const amountInCents = totalBoletos * PRECIO_BOLETO * 100;
   const checkoutUrl = `https://checkout.wompi.co/p/?public-key=${PUBLIC_KEY}&currency=COP&amount-in-cents=${amountInCents}&reference=${reference}`;
   window.location.href = checkoutUrl;

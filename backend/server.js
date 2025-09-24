@@ -109,7 +109,7 @@ app.get("/api/config", (req, res) => {
   res.json({
     exito: true,
     precio: Number(process.env.PRECIO_BOLETO) || 5000,
-    publicKey: process.env.WOMPI_PUBLIC_KEY || "",
+    publicKey: process.env.WOMPI_PUBLIC_KEY || "", // clave pública sandbox/prod
   });
 });
 

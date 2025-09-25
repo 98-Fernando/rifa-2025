@@ -212,7 +212,7 @@ async function iniciarPago(totalBoletos, reference) {
     const { signature } = await res.json();
     if (!signature) return alert("❌ No se pudo generar la firma de integridad.");
 
-    // ✅ Usamos integrity_signature
+    // ✅ Usamos integrity_signature directo al Checkout
     const checkoutUrl = `https://checkout.wompi.co/p/?public-key=${encodeURIComponent(PUBLIC_KEY)}&currency=COP&amount-in-cents=${amountInCents}&reference=${encodeURIComponent(reference)}&redirect-url=${encodeURIComponent(URL_SUCCESS)}&integrity_signature=${signature}`;
     window.location.href = checkoutUrl;
   } catch (err) {

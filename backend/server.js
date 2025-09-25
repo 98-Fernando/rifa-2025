@@ -58,7 +58,6 @@ app.use(
 );
 
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({ origin: true }));
@@ -145,6 +144,14 @@ app.post("/api/tickets/guardar-pendiente", async (req, res) => {
     if (!nombre || !correo || !telefono || !Array.isArray(numeros) || numeros.length === 0) {
       return res.status(400).json({ exito: false, mensaje: "Datos incompletos" });
     }
+
+    // 🚀 Validación extra: evitar duplicados
+    const tickets = await Ticket.find({}, { numeros: 1, _id: 0 });
+    const ocupados = tickets.flatMap((t) => t.numeros || []);
+    if (numeros.some((n) => ocupados.includes(n))) {
+      return res.status(400).json({ exito: false, mensaje: "Algunos números ya están ocupados." });
+    }
+
     const reference = `ticket_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
     await Pendiente.create({ reference, nombre, correo, telefono, numeros });
     res.json({ exito: true, reference });
@@ -198,6 +205,7 @@ app.post("/webhook-wompi", express.raw({ type: "application/json" }), async (req
     const headerSignature = req.headers["integrity-signature"] || req.headers["content-signature"];
 
     if (headerSignature && localSignature && headerSignature !== localSignature) {
+      console.warn("❌ Firma de integridad no coincide");
       return res.sendStatus(403);
     }
 

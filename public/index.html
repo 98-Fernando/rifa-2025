@@ -113,6 +113,8 @@ async function cargarConfig() {
   try {
     const res = await fetch("/api/config", { cache: "no-store" });
     const data = await res.json();
+    console.log("Config cargada:", data);
+
     if (!data.exito) throw new Error("Configuración inválida");
 
     PRECIO_BOLETO = Number(data.precio) || 5000;
@@ -192,7 +194,7 @@ async function actualizarProgreso() {
   }
 }
 
-// Pago Wompi con firma de integridad ✅
+// Pago Wompi con firma de integridad
 async function iniciarPago(totalBoletos, reference) {
   if (!PUBLIC_KEY) return alert("Error: No se encontró la clave pública de Wompi.");
   const amountInCents = totalBoletos * PRECIO_BOLETO * 100;
@@ -210,7 +212,7 @@ async function iniciarPago(totalBoletos, reference) {
     const { signature } = await res.json();
     if (!signature) return alert("❌ No se pudo generar la firma de integridad.");
 
-    // 🚀 CORREGIDO: el parámetro correcto es integrity_signature
+    // ✅ Usamos integrity_signature
     const checkoutUrl = `https://checkout.wompi.co/p/?public-key=${encodeURIComponent(PUBLIC_KEY)}&currency=COP&amount-in-cents=${amountInCents}&reference=${encodeURIComponent(reference)}&redirect-url=${encodeURIComponent(URL_SUCCESS)}&integrity_signature=${signature}`;
     window.location.href = checkoutUrl;
   } catch (err) {

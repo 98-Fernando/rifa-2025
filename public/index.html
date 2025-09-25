@@ -92,6 +92,9 @@
 let seleccionados = [];
 let PRECIO_BOLETO = 0;
 let PUBLIC_KEY = "";
+let URL_SUCCESS = "";
+let URL_FAILURE = "";
+let URL_PENDING = "";
 
 // Mensajes
 function showMessage(text) {
@@ -111,8 +114,13 @@ async function cargarConfig() {
     const res = await fetch("/api/config", { cache: "no-store" });
     const data = await res.json();
     if (!data.exito) throw new Error("Configuración inválida");
+
     PRECIO_BOLETO = Number(data.precio) || 5000;
     PUBLIC_KEY = data.publicKey || "";
+    URL_SUCCESS = data.urlSuccess || "";
+    URL_FAILURE = data.urlFailure || "";
+    URL_PENDING = data.urlPending || "";
+
     document.getElementById("valor-boleto").textContent = `VALOR: $ ${PRECIO_BOLETO}`;
     if (!PUBLIC_KEY) showMessage("Error: Clave pública de Wompi no disponible.");
   } catch (err) {
@@ -202,8 +210,8 @@ async function iniciarPago(totalBoletos, reference) {
     const { signature } = await res.json();
     if (!signature) return alert("❌ No se pudo generar la firma de integridad.");
 
-    // 🚀 CORREGIDO: el parámetro correcto es signature_integrity
-    const checkoutUrl = `https://checkout.wompi.co/p/?public-key=${encodeURIComponent(PUBLIC_KEY)}&currency=COP&amount-in-cents=${amountInCents}&reference=${encodeURIComponent(reference)}&redirect-url=${encodeURIComponent(window.location.origin + "/success")}&signature_integrity=${signature}`;
+    // 🚀 CORREGIDO: el parámetro correcto es integrity_signature
+    const checkoutUrl = `https://checkout.wompi.co/p/?public-key=${encodeURIComponent(PUBLIC_KEY)}&currency=COP&amount-in-cents=${amountInCents}&reference=${encodeURIComponent(reference)}&redirect-url=${encodeURIComponent(URL_SUCCESS)}&integrity_signature=${signature}`;
     window.location.href = checkoutUrl;
   } catch (err) {
     console.error("Error en iniciarPago:", err);

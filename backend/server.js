@@ -108,6 +108,9 @@ app.get("/api/config", (req, res) => {
     exito: true,
     precio: Number(process.env.PRECIO_BOLETO) || 5000,
     publicKey: process.env.WOMPI_PUBLIC_KEY,
+    urlSuccess: process.env.URL_SUCCESS,
+    urlFailure: process.env.URL_FAILURE,
+    urlPending: process.env.URL_PENDING,
   });
 });
 

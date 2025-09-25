@@ -154,6 +154,34 @@ app.post("/api/tickets/guardar-pendiente", async (req, res) => {
 });
 
 // ======================
+// API - GENERAR FIRMA PARA WOMPI
+// ======================
+app.post("/api/signature", (req, res) => {
+  try {
+    const { reference, amountInCents, currency } = req.body;
+
+    if (!reference || !amountInCents || !currency) {
+      return res.status(400).json({ error: "Faltan datos para generar la firma" });
+    }
+
+    const integrityKey = process.env.WOMPI_INTEGRITY_KEY;
+    if (!integrityKey) {
+      return res.status(500).json({ error: "Falta WOMPI_INTEGRITY_KEY en el servidor" });
+    }
+
+    const signature = crypto
+      .createHash("sha256")
+      .update(`${reference}${amountInCents}${currency}${integrityKey}`)
+      .digest("hex");
+
+    res.json({ signature });
+  } catch (err) {
+    console.error("❌ Error generando firma:", err);
+    res.status(500).json({ error: "Error interno generando la firma" });
+  }
+});
+
+// ======================
 // WEBHOOK WOMPI
 // ======================
 const generarFirma = (reference, amountInCents, currency, integrityKey) =>

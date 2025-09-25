@@ -10,9 +10,6 @@ import crypto from "crypto";
 import { config } from "dotenv";
 import { fileURLToPath } from "url";
 
-// ======================
-// CONFIGURACIÓN BASE
-// ======================
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 config({ path: path.join(__dirname, "..", ".env") });
@@ -21,14 +18,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // ======================
-// VALIDAR VARIABLES ENTORNO
-// ======================
-if (!process.env.MONGO_URI) throw new Error("❌ MONGO_URI no definida en .env");
-if (!process.env.WOMPI_PUBLIC_KEY) throw new Error("❌ WOMPI_PUBLIC_KEY no definida en .env");
-if (!process.env.WOMPI_INTEGRITY_KEY) console.warn("⚠️ WOMPI_INTEGRITY_KEY no definida — el webhook no validará firmas");
-
-// ======================
-// MIDDLEWARES
+// MIDDLEWARES BASE
 // ======================
 app.use(
   helmet({
@@ -58,7 +48,7 @@ app.use(
 );
 
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
-app.use(express.json());
+app.use(express.json()); // <-- JSON por defecto
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({ origin: true }));
 
@@ -84,19 +74,21 @@ app.use(
 );
 
 // ======================
-// ARCHIVOS ESTÁTICOS
+// STATIC FILES
 // ======================
 app.use(express.static(path.join(__dirname, "..", "public")));
-app.get("/", (req, res) => res.sendFile(path.join(__dirname, "..", "public", "index.html")));
+app.get("/", (req, res) =>
+  res.sendFile(path.join(__dirname, "..", "public", "index.html"))
+);
 
 // ======================
-// DB - MODELOS
+// DB
 // ======================
 import Ticket from "./models/Ticket.js";
 import Pendiente from "./models/Pendiente.js";
 
 mongoose
-  .connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .connect(process.env.MONGO_URI)
   .then(() => console.log("✅ Conectado a MongoDB"))
   .catch((err) => console.error("❌ Error MongoDB:", err));
 
@@ -115,56 +107,7 @@ app.get("/api/config", (req, res) => {
 });
 
 // ======================
-// API TICKETS
-// ======================
-app.get("/api/tickets/numeros", async (req, res) => {
-  try {
-    const tickets = await Ticket.find({}, { numeros: 1, _id: 0 });
-    const ocupados = tickets.flatMap((t) => t.numeros || []);
-    const numeros = Array.from({ length: 100 }, (_, i) => i + 1).map((n) => ({
-      numero: n,
-      disponible: !ocupados.includes(n),
-    }));
-    res.json({ exito: true, numeros });
-  } catch (err) {
-    res.status(500).json({ exito: false, mensaje: "Error al cargar números" });
-  }
-});
-
-app.get("/api/tickets/consulta", async (req, res) => {
-  try {
-    const totalTickets = await Ticket.countDocuments();
-    const porcentaje = Math.min(100, Math.round((totalTickets / 100) * 100));
-    res.json({ exito: true, porcentaje });
-  } catch {
-    res.status(500).json({ exito: false });
-  }
-});
-
-app.post("/api/tickets/guardar-pendiente", async (req, res) => {
-  try {
-    const { nombre, correo, telefono, numeros } = req.body;
-    if (!nombre || !correo || !telefono || !Array.isArray(numeros) || numeros.length === 0) {
-      return res.status(400).json({ exito: false, mensaje: "Datos incompletos" });
-    }
-
-    // 🚀 Validación extra: evitar duplicados
-    const tickets = await Ticket.find({}, { numeros: 1, _id: 0 });
-    const ocupados = tickets.flatMap((t) => t.numeros || []);
-    if (numeros.some((n) => ocupados.includes(n))) {
-      return res.status(400).json({ exito: false, mensaje: "Algunos números ya están ocupados." });
-    }
-
-    const reference = `ticket_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
-    await Pendiente.create({ reference, nombre, correo, telefono, numeros });
-    res.json({ exito: true, reference });
-  } catch {
-    res.status(500).json({ exito: false, mensaje: "Error guardando pendiente" });
-  }
-});
-
-// ======================
-// API - GENERAR FIRMA PARA WOMPI
+// API - SIGNATURE WOMPI
 // ======================
 app.post("/api/signature", (req, res) => {
   try {
@@ -184,10 +127,10 @@ app.post("/api/signature", (req, res) => {
       .update(`${reference}${amountInCents}${currency}${integrityKey}`)
       .digest("hex");
 
-    res.json({ signature });
+    return res.json({ signature });
   } catch (err) {
     console.error("❌ Error generando firma:", err);
-    res.status(500).json({ error: "Error interno generando la firma" });
+    return res.status(500).json({ error: "Error interno generando la firma" });
   }
 });
 
@@ -195,8 +138,12 @@ app.post("/api/signature", (req, res) => {
 // WEBHOOK WOMPI
 // ======================
 const generarFirma = (reference, amountInCents, currency, integrityKey) =>
-  crypto.createHash("sha256").update(`${reference}${amountInCents}${currency}${integrityKey}`).digest("hex");
+  crypto
+    .createHash("sha256")
+    .update(`${reference}${amountInCents}${currency}${integrityKey}`)
+    .digest("hex");
 
+// ⚠️ El raw debe ir SOLO para el webhook, no globalmente
 app.post("/webhook-wompi", express.raw({ type: "application/json" }), async (req, res) => {
   try {
     const parsed = JSON.parse(req.body.toString("utf8"));
@@ -204,8 +151,14 @@ app.post("/webhook-wompi", express.raw({ type: "application/json" }), async (req
     if (!data?.transaction) return res.sendStatus(400);
 
     const tx = data.transaction;
-    const localSignature = generarFirma(tx.reference, tx.amount_in_cents, tx.currency, process.env.WOMPI_INTEGRITY_KEY || "");
-    const headerSignature = req.headers["integrity-signature"] || req.headers["content-signature"];
+    const localSignature = generarFirma(
+      tx.reference,
+      tx.amount_in_cents,
+      tx.currency,
+      process.env.WOMPI_INTEGRITY_KEY || ""
+    );
+    const headerSignature =
+      req.headers["integrity-signature"] || req.headers["content-signature"];
 
     if (headerSignature && localSignature && headerSignature !== localSignature) {
       console.warn("❌ Firma de integridad no coincide");
@@ -234,39 +187,8 @@ app.post("/webhook-wompi", express.raw({ type: "application/json" }), async (req
 });
 
 // ======================
-// LOGIN ADMIN
-// ======================
-app.post("/login", (req, res) => {
-  const { username, password } = req.body;
-  if (username === process.env.ADMIN_USER && password === process.env.ADMIN_PASS) {
-    req.session.loggedIn = true;
-    return res.redirect("/admin.html");
-  }
-  res.send('❌ Usuario o contraseña incorrecta. <a href="/login.html">Volver</a>');
-});
-
-// ======================
-// ADMIN ELIMINAR TICKET
-// ======================
-app.delete("/admin/ticket/:id", async (req, res) => {
-  if (!req.session.loggedIn) return res.status(401).json({ error: "No autorizado" });
-  try {
-    await Ticket.findByIdAndDelete(req.params.id);
-    res.status(200).json({ success: true });
-  } catch {
-    res.status(500).json({ success: false });
-  }
-});
-
-// ======================
-// ERROR HANDLER
-// ======================
-app.use((err, req, res, next) => {
-  console.error("Error interno:", err);
-  res.status(500).json({ error: "Error interno" });
-});
-
-// ======================
 // SERVIDOR
 // ======================
-app.listen(PORT, () => console.log(`🚀 Servidor corriendo en puerto ${PORT}`));
+app.listen(PORT, () =>
+  console.log(`🚀 Servidor corriendo en puerto ${PORT}`)
+);

@@ -4,7 +4,9 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Rifa 2025</title>
+<link rel="icon" href="favicon.ico" />
 <style>
+  /* === Estilos idénticos a los que ya tenías === */
   * { box-sizing: border-box; margin:0; padding:0; }
   body { font-family: Arial, sans-serif; background: #f8f9fa; color: #111; line-height:1.4; }
   .container { max-width: 480px; margin: auto; padding: 1rem; }
@@ -96,7 +98,7 @@ let URL_SUCCESS = "";
 let URL_FAILURE = "";
 let URL_PENDING = "";
 
-// Mensajes
+// Utilidades
 function showMessage(text) {
   const m = document.getElementById("mensaje");
   m.textContent = text;
@@ -108,21 +110,18 @@ function hideMessage() {
   m.textContent = "";
 }
 
-// Config
+// Configuración
 async function cargarConfig() {
   try {
     const res = await fetch("/api/config", { cache: "no-store" });
     const data = await res.json();
     console.log("Config cargada:", data);
-
     if (!data.exito) throw new Error("Configuración inválida");
-
     PRECIO_BOLETO = Number(data.precio) || 5000;
     PUBLIC_KEY = data.publicKey || "";
     URL_SUCCESS = data.urlSuccess || "";
     URL_FAILURE = data.urlFailure || "";
     URL_PENDING = data.urlPending || "";
-
     document.getElementById("valor-boleto").textContent = `VALOR: $ ${PRECIO_BOLETO}`;
     if (!PUBLIC_KEY) showMessage("Error: Clave pública de Wompi no disponible.");
   } catch (err) {
@@ -131,10 +130,11 @@ async function cargarConfig() {
   }
 }
 
-// Números
+// Numeración
 async function cargarNumerosDisponibles() {
   try {
     const res = await fetch("/api/tickets/numeros");
+    if (!res.ok) throw new Error("Ruta /api/tickets/numeros no encontrada");
     const data = await res.json();
     if (!data.exito) return;
     const cont = document.getElementById("lista-numeros");
@@ -172,7 +172,6 @@ async function cargarNumerosDisponibles() {
   }
 }
 
-// Resumen
 function actualizarResumen() {
   document.getElementById("numeros-seleccionados").textContent = seleccionados.length ? seleccionados.join(", ") : "Ninguno";
 }
@@ -181,6 +180,7 @@ function actualizarResumen() {
 async function actualizarProgreso() {
   try {
     const res = await fetch("/api/tickets/consulta");
+    if (!res.ok) throw new Error("Ruta /api/tickets/consulta no encontrada");
     const data = await res.json();
     if (!data.exito) return;
     const barra = document.getElementById("progreso");
@@ -194,25 +194,18 @@ async function actualizarProgreso() {
   }
 }
 
-// Pago Wompi con firma de integridad
+// Pago
 async function iniciarPago(totalBoletos, reference) {
   if (!PUBLIC_KEY) return alert("Error: No se encontró la clave pública de Wompi.");
   const amountInCents = totalBoletos * PRECIO_BOLETO * 100;
-
   try {
     const res = await fetch("/api/signature", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        reference,
-        amountInCents,
-        currency: "COP"
-      })
+      body: JSON.stringify({ reference, amountInCents, currency: "COP" })
     });
     const { signature } = await res.json();
     if (!signature) return alert("❌ No se pudo generar la firma de integridad.");
-
-    // ✅ Usamos integrity_signature directo al Checkout
     const checkoutUrl = `https://checkout.wompi.co/p/?public-key=${encodeURIComponent(PUBLIC_KEY)}&currency=COP&amount-in-cents=${amountInCents}&reference=${encodeURIComponent(reference)}&redirect-url=${encodeURIComponent(URL_SUCCESS)}&integrity_signature=${signature}`;
     window.location.href = checkoutUrl;
   } catch (err) {
@@ -221,7 +214,7 @@ async function iniciarPago(totalBoletos, reference) {
   }
 }
 
-// DOM listo
+// Inicialización
 document.addEventListener("DOMContentLoaded", async () => {
   await cargarConfig();
   await cargarNumerosDisponibles();
@@ -264,6 +257,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
+      if (!res.ok) throw new Error("Ruta /api/tickets/guardar-pendiente no encontrada");
       const ticketData = await res.json();
       if (!ticketData.exito) throw new Error(ticketData.mensaje || "Error al generar la referencia.");
       box.classList.remove("hidden");

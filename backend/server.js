@@ -1,4 +1,5 @@
-// server.js
+// server.js (actualizado)
+// Requisitos: Node >= 16, env vars correctamente configuradas
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
@@ -10,11 +11,11 @@ import rateLimit from "express-rate-limit";
 import crypto from "crypto";
 import { config } from "dotenv";
 import { fileURLToPath } from "url";
-import fetch from "node-fetch"; // Si usas Node >=18, puedes eliminar esto
+import fetch from "node-fetch"; // si usas Node >= 18 puedes omitir esto
 
-// ======================
+// ----------------------
 // CONFIG
-// ======================
+// ----------------------
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 config({ path: path.join(__dirname, "..", ".env") });
@@ -22,13 +23,13 @@ config({ path: path.join(__dirname, "..", ".env") });
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// ======================
-// NONCE + CSP
-// ======================
+// ----------------------
+// CSP + NONCE (por petición)
+// ----------------------
 app.use((req, res, next) => {
   res.locals.nonce = crypto.randomBytes(16).toString("base64");
-
   const nonce = `'nonce-${res.locals.nonce}'`;
+
   const csp = [
     `default-src 'self'`,
     `script-src 'self' ${nonce} https://checkout.wompi.co https://cdn.wompi.co https://cdn.jsdelivr.net https://unpkg.com`,
@@ -43,9 +44,9 @@ app.use((req, res, next) => {
   next();
 });
 
-// ======================
-// Helmet
-// ======================
+// ----------------------
+// Helmet (dejamos CSP personalizado)
+// ----------------------
 app.use(
   helmet({
     contentSecurityPolicy: false,
@@ -53,17 +54,17 @@ app.use(
   })
 );
 
-// ======================
-// RATE LIMIT, PARSERS, CORS
-// ======================
+// ----------------------
+// Rate limit, parsers y CORS
+// ----------------------
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
-app.use(express.json());
+app.use(express.json()); // parser JSON (no afecta al webhook que usará express.raw en router)
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({ origin: true }));
 
-// ======================
-// SESSIONS
-// ======================
+// ----------------------
+// Sessions
+// ----------------------
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "secret-key",
@@ -82,20 +83,28 @@ app.use(
   })
 );
 
-// ======================
-// STATIC FILES
-// ======================
+// ----------------------
+// Servir archivos estáticos
+// - Asegúrate de tener carpeta /public con index.html, styles.css, app.js (recomendado)
+// - Si mantienes frontend app.js dentro de backend, se sirve con la ruta /app.js (no recomendado)
+// ----------------------
 app.use(express.static(path.join(__dirname, "..", "public")));
+
+// Si mantienes frontend app.js dentro de backend/ puedes dejar esta ruta.
+// Recomiendo mover app.js a public/ y eliminar este endpoint.
 app.get("/app.js", (req, res) => {
   res.sendFile(path.join(__dirname, "app.js"));
 });
+
+// Root
 app.get("/", (req, res) =>
   res.sendFile(path.join(__dirname, "..", "public", "index.html"))
 );
 
-// ======================
+// ----------------------
 // DB MODELS
-// ======================
+// ----------------------
+// Asegúrate de tener ./models/Ticket.js y ./models/Pendiente.js exportando Mongoose models
 import Ticket from "./models/Ticket.js";
 import Pendiente from "./models/Pendiente.js";
 
@@ -104,11 +113,9 @@ mongoose
   .then(() => console.log("✅ Conectado a MongoDB"))
   .catch((err) => console.error("❌ Error MongoDB:", err));
 
-// ======================
-// API ROUTES
-// ======================
-
-// CONFIG
+// ----------------------
+// API - CONFIG
+// ----------------------
 app.get("/api/config", (req, res) => {
   res.json({
     exito: true,
@@ -121,13 +128,13 @@ app.get("/api/config", (req, res) => {
   });
 });
 
-// TICKETS
+// ----------------------
+// API - TICKETS
+// ----------------------
 app.get("/api/tickets/numeros", async (req, res) => {
   try {
     const tickets = await Ticket.find({}, "numeros").lean();
-    const ocupados = tickets.flatMap((t) =>
-      (t.numeros || []).map((n) => Number(n))
-    );
+    const ocupados = tickets.flatMap((t) => (t.numeros || []).map((n) => Number(n)));
     const total = 100;
     const numeros = Array.from({ length: total }, (_, i) => {
       const num = i + 1;
@@ -172,21 +179,20 @@ app.post("/api/tickets/guardar-pendiente", async (req, res) => {
   }
 });
 
-// SIGNATURE
+// ----------------------
+// API - SIGNATURE (HMAC-SHA256 con WOMPI_PRIVATE_KEY)
+// - Firma HMAC sobre: reference + amountInCents + currency
+// ----------------------
 app.post("/api/signature", (req, res) => {
   try {
     const { reference, amountInCents, currency } = req.body;
     if (!reference || !amountInCents || !currency) {
-      return res
-        .status(400)
-        .json({ exito: false, mensaje: "Faltan datos para generar la firma" });
+      return res.status(400).json({ exito: false, mensaje: "Faltan datos para generar la firma" });
     }
 
     const privateKey = process.env.WOMPI_PRIVATE_KEY;
     if (!privateKey) {
-      return res
-        .status(500)
-        .json({ exito: false, mensaje: "Falta WOMPI_PRIVATE_KEY" });
+      return res.status(500).json({ exito: false, mensaje: "Falta WOMPI_PRIVATE_KEY" });
     }
 
     const hmac = crypto.createHmac("sha256", privateKey);
@@ -200,51 +206,52 @@ app.post("/api/signature", (req, res) => {
   }
 });
 
-// CREAR TRANSACCIÓN
+// ----------------------
+// API - CREAR TRANSACCIÓN (Generar URL del Checkout seguro)
+// - No usamos POST /v1/transactions (evita exigir payment_method).
+// - Construimos URL: checkout.wompi.co/p/?public-key=...&currency=...&amount-in-cents=...&reference=...&redirect-url=...&integrity_signature=...
+// ----------------------
 app.post("/api/crear-transaccion", async (req, res) => {
   try {
-    const { reference, amountInCents, currency, signature, customer_email } =
-      req.body;
+    const { reference, amountInCents, currency, signature, customer_email } = req.body;
 
     if (!reference || !amountInCents || !currency || !signature) {
       return res.status(400).json({ exito: false, mensaje: "Faltan datos" });
     }
 
-    const resp = await fetch("https://production.wompi.co/v1/transactions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.WOMPI_PRIVATE_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        amount_in_cents: amountInCents,
-        currency,
-        customer_email: customer_email || undefined,
-        reference,
-        signature,
-        redirect_url: process.env.URL_SUCCESS,
-      }),
-    });
-
-    const data = await resp.json();
-    console.log("🔗 Respuesta Wompi crear-transaccion:", data);
-
-    if (!data?.data?.payment_link) {
-      return res
-        .status(500)
-        .json({ exito: false, mensaje: "Error creando transacción", detalle: data });
+    const publicKey = process.env.WOMPI_PUBLIC_KEY;
+    const redirectUrl = process.env.URL_SUCCESS;
+    if (!publicKey || !redirectUrl) {
+      return res.status(500).json({ exito: false, mensaje: "Falta configuración WOMPI en el servidor" });
     }
 
-    res.json({ exito: true, urlCheckout: data.data.payment_link });
+    // Construir URL de checkout (escapando componentes)
+    const params = new URLSearchParams({
+      "public-key": publicKey,
+      currency,
+      "amount-in-cents": String(amountInCents),
+      reference,
+      "redirect-url": redirectUrl,
+      // integrity_signature es la firma HMAC generada por /api/signature (usamos same name)
+      integrity_signature: signature,
+    });
+
+    // Opcional: Wompi checkout puede usar customer_email (no siempre usado)
+    if (customer_email) params.set("customer-email", customer_email);
+
+    const urlCheckout = `https://checkout.wompi.co/p/?${params.toString()}`;
+
+    console.log("🔗 URL Checkout generada:", urlCheckout);
+    return res.json({ exito: true, urlCheckout });
   } catch (err) {
-    console.error("❌ Error creando transacción:", err);
+    console.error("❌ Error generando URL de checkout:", err);
     res.status(500).json({ exito: false, mensaje: "Error interno" });
   }
 });
 
-// ======================
-// WEBHOOK WOMPI (router aislado con express.raw)
-// ======================
+// ----------------------
+// WEBHOOK - Ruta aislada con express.raw para verificar integridad
+// ----------------------
 const webhookRouter = express.Router();
 webhookRouter.post("/webhook-wompi", express.raw({ type: "application/json" }), async (req, res) => {
   try {
@@ -255,7 +262,7 @@ webhookRouter.post("/webhook-wompi", express.raw({ type: "application/json" }), 
 
     const tx = data.transaction;
 
-    // Verificar integridad
+    // Verificar integridad con WOMPI_INTEGRITY_KEY
     const integrityKey = process.env.WOMPI_INTEGRITY_KEY || "";
     const localSignature = crypto
       .createHash("sha256")
@@ -272,6 +279,7 @@ webhookRouter.post("/webhook-wompi", express.raw({ type: "application/json" }), 
       return res.sendStatus(403);
     }
 
+    // Procesar evento APPROVED
     if (event === "transaction.updated" && tx.status === "APPROVED") {
       const pendiente = await Pendiente.findOne({ reference: tx.reference });
       if (pendiente) {
@@ -285,6 +293,7 @@ webhookRouter.post("/webhook-wompi", express.raw({ type: "application/json" }), 
         });
         await pendiente.deleteOne();
         console.log(`🎟️ Ticket confirmado: ${tx.reference}`);
+        // Aquí dispara el envío de correo si lo deseas (desde backend)
       } else {
         console.log(`ℹ️ Aprobado pero no existe pendiente: ${tx.reference}`);
       }
@@ -298,9 +307,9 @@ webhookRouter.post("/webhook-wompi", express.raw({ type: "application/json" }), 
 });
 app.use(webhookRouter);
 
-// ======================
-// START SERVER
-// ======================
-app.listen(PORT, () =>
-  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`)
-);
+// ----------------------
+// START
+// ----------------------
+app.listen(PORT, () => {
+  console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+});

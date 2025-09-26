@@ -21,8 +21,8 @@
     <button type="submit">Reservar y Pagar</button>
   </form>
 
-  <!-- Script Wompi -->
-  <script src="https://checkout.wompi.co/widget.js"></script>
+  <!-- ✅ Script oficial de Wompi Widget -->
+  <script src="https://cdn.wompi.co/libs/js/v1.js"></script>
 
   <script>
     let CONFIG = {};
@@ -37,6 +37,7 @@
         console.log("⚙️ Config cargada:", CONFIG);
       } catch (err) {
         console.error("❌ Error cargando configuración:", err);
+        alert("No se pudo cargar la configuración del pago");
       }
     }
 
@@ -104,22 +105,27 @@
           return;
         }
 
-        // Guardar pendiente en backend
-        const res = await fetch("/api/tickets/guardar-pendiente", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ nombre, correo, telefono, numeros: seleccionados })
-        });
-        const data = await res.json();
+        try {
+          // Guardar pendiente en backend
+          const res = await fetch("/api/tickets/guardar-pendiente", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ nombre, correo, telefono, numeros: seleccionados })
+          });
+          const data = await res.json();
 
-        if (data.exito) {
+          if (!data.exito) {
+            alert("❌ Error guardando pendiente");
+            return;
+          }
+
           console.log("✅ Pendiente guardado:", data);
 
           const amountInCents = CONFIG.precio * 100 * seleccionados.length;
           const currency = "COP";
           const reference = data.reference;
 
-          // 1. Pedir firma al backend
+          // Pedir firma al backend
           const firmaResp = await fetch("/api/signature", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -132,7 +138,13 @@
             return;
           }
 
-          // 2. Abrir Wompi Widget
+          // ✅ Verificar que Wompi esté disponible
+          if (typeof $wompi === "undefined") {
+            alert("❌ Error: Wompi no se cargó correctamente");
+            return;
+          }
+
+          // Abrir Wompi Widget
           $wompi.open({
             currency,
             amountInCents,
@@ -141,8 +153,9 @@
             publicKey: CONFIG.publicKey,
             redirectUrl: CONFIG.urlSuccess,
           });
-        } else {
-          alert("❌ Error guardando pendiente");
+        } catch (err) {
+          console.error("❌ Error en el flujo de pago:", err);
+          alert("Error procesando el pago");
         }
       });
     });

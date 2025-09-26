@@ -9,7 +9,7 @@
 <body>
   <h1>Bienvenido a la Rifa 2025 🎉</h1>
 
-  <!-- 🔹 Aquí ya tienes tus números disponibles -->
+  <!-- 🔹 Números disponibles -->
   <div id="numeros-container"></div>
   <p id="porcentaje"></p>
 
@@ -20,6 +20,9 @@
     <input type="tel" id="telefono" placeholder="Tu teléfono" required>
     <button type="submit">Reservar y Pagar</button>
   </form>
+
+  <!-- Script Wompi -->
+  <script src="https://checkout.wompi.co/widget.js"></script>
 
   <script>
     let CONFIG = {};
@@ -35,22 +38,6 @@
       } catch (err) {
         console.error("❌ Error cargando configuración:", err);
       }
-    }
-
-    // ===============================
-    // 🔹 Insertar script Wompi dinámico
-    // ===============================
-    function cargarScriptWompi() {
-      return new Promise((resolve, reject) => {
-        const script = document.createElement("script");
-        script.src = "https://checkout.wompi.co/widget.js";
-        script.onload = () => {
-          console.log("✅ Script de Wompi cargado");
-          resolve();
-        };
-        script.onerror = () => reject("❌ Error cargando script Wompi");
-        document.head.appendChild(script);
-      });
     }
 
     // ===============================
@@ -97,33 +84,18 @@
     // 🚀 Flujo principal
     // ===============================
     document.addEventListener("DOMContentLoaded", async () => {
-      await cargarConfig();       // cargo config
-await cargarNumeros();      // cargo números
-await cargarConsulta();     // cargo porcentaje
-
-// 🔹 Cargar script de Wompi y luego inicializar
-await cargarScriptWompi();
-
-if (window.$wompi && CONFIG.publicKey) {
-  window.$wompi.initialize({
-    publicKey: CONFIG.publicKey,
-  });
-  console.log("✅ Wompi inicializado con llave:", CONFIG.publicKey);
-} else {
-  console.error("❌ $wompi sigue sin estar disponible");
-}
-
+      await cargarConfig();
+      await cargarNumeros();
+      await cargarConsulta();
 
       // Evento del formulario
       document.getElementById("formCompra").addEventListener("submit", async (e) => {
         e.preventDefault();
 
-        // Datos cliente
         const nombre = document.getElementById("nombre").value;
         const correo = document.getElementById("correo").value;
         const telefono = document.getElementById("telefono").value;
 
-        // Seleccionados
         const seleccionados = Array.from(document.querySelectorAll(".seleccionado"))
           .map(btn => btn.textContent);
 
@@ -143,11 +115,30 @@ if (window.$wompi && CONFIG.publicKey) {
         if (data.exito) {
           console.log("✅ Pendiente guardado:", data);
 
-          // Abrir Checkout de Wompi
-          window.$wompi.open({
-            currency: "COP",
-            amountInCents: CONFIG.precio * 100 * seleccionados.length,
-            reference: data.reference,
+          const amountInCents = CONFIG.precio * 100 * seleccionados.length;
+          const currency = "COP";
+          const reference = data.reference;
+
+          // 1. Pedir firma al backend
+          const firmaResp = await fetch("/api/signature", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ reference, amountInCents, currency }),
+          });
+          const firmaData = await firmaResp.json();
+
+          if (!firmaData.exito) {
+            alert("❌ Error generando firma");
+            return;
+          }
+
+          // 2. Abrir Wompi Widget
+          $wompi.open({
+            currency,
+            amountInCents,
+            reference,
+            signature: firmaData.signature,
+            publicKey: CONFIG.publicKey,
             redirectUrl: CONFIG.urlSuccess,
           });
         } else {

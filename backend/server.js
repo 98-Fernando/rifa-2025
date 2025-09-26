@@ -1,5 +1,5 @@
-// server.js (actualizado)
-// Requisitos: Node >= 16, env vars correctamente configuradas
+// server.js
+// Requisitos: Node >=16 (si usas Node >=18 puedes eliminar node-fetch import)
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
@@ -11,7 +11,7 @@ import rateLimit from "express-rate-limit";
 import crypto from "crypto";
 import { config } from "dotenv";
 import { fileURLToPath } from "url";
-import fetch from "node-fetch"; // si usas Node >= 18 puedes omitir esto
+import fetch from "node-fetch"; // opcional si Node >=18
 
 // ----------------------
 // CONFIG
@@ -24,12 +24,11 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // ----------------------
-// CSP + NONCE (por petición)
+// NONCE + CSP header (por petición)
 // ----------------------
 app.use((req, res, next) => {
   res.locals.nonce = crypto.randomBytes(16).toString("base64");
   const nonce = `'nonce-${res.locals.nonce}'`;
-
   const csp = [
     `default-src 'self'`,
     `script-src 'self' ${nonce} https://checkout.wompi.co https://cdn.wompi.co https://cdn.jsdelivr.net https://unpkg.com`,
@@ -39,13 +38,12 @@ app.use((req, res, next) => {
     `connect-src 'self' https://production.wompi.co https://sandbox.wompi.co https://checkout.wompi.co https://api.wompi.co https://api.emailjs.com`,
     `frame-src 'self' https://checkout.wompi.co https://cdn.wompi.co`,
   ].join("; ");
-
   res.setHeader("Content-Security-Policy", csp);
   next();
 });
 
 // ----------------------
-// Helmet (dejamos CSP personalizado)
+// Helmet (no CSP, lo manejamos arriba)
 // ----------------------
 app.use(
   helmet({
@@ -55,10 +53,10 @@ app.use(
 );
 
 // ----------------------
-// Rate limit, parsers y CORS
+// Parsers, rate limit, CORS
 // ----------------------
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
-app.use(express.json()); // parser JSON (no afecta al webhook que usará express.raw en router)
+app.use(express.json()); // JSON parser
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({ origin: true }));
 
@@ -84,27 +82,16 @@ app.use(
 );
 
 // ----------------------
-// Servir archivos estáticos
-// - Asegúrate de tener carpeta /public con index.html, styles.css, app.js (recomendado)
-// - Si mantienes frontend app.js dentro de backend, se sirve con la ruta /app.js (no recomendado)
+// Static files
 // ----------------------
+// RECOMENDACIÓN: mueve tu frontend app.js a /public/app.js para evitar problemas MIME.
+// express.static servirá index.html, styles, app.js, etc.
 app.use(express.static(path.join(__dirname, "..", "public")));
-
-// Si mantienes frontend app.js dentro de backend/ puedes dejar esta ruta.
-// Recomiendo mover app.js a public/ y eliminar este endpoint.
-app.get("/app.js", (req, res) => {
-  res.sendFile(path.join(__dirname, "app.js"));
-});
-
-// Root
-app.get("/", (req, res) =>
-  res.sendFile(path.join(__dirname, "..", "public", "index.html"))
-);
+app.get("/", (req, res) => res.sendFile(path.join(__dirname, "..", "public", "index.html")));
 
 // ----------------------
-// DB MODELS
+// DB MODELS (asegúrate de estos archivos)
 // ----------------------
-// Asegúrate de tener ./models/Ticket.js y ./models/Pendiente.js exportando Mongoose models
 import Ticket from "./models/Ticket.js";
 import Pendiente from "./models/Pendiente.js";
 
@@ -181,7 +168,7 @@ app.post("/api/tickets/guardar-pendiente", async (req, res) => {
 
 // ----------------------
 // API - SIGNATURE (HMAC-SHA256 con WOMPI_PRIVATE_KEY)
-// - Firma HMAC sobre: reference + amountInCents + currency
+// Firma HMAC sobre: reference + amountInCents + currency
 // ----------------------
 app.post("/api/signature", (req, res) => {
   try {
@@ -195,21 +182,21 @@ app.post("/api/signature", (req, res) => {
       return res.status(500).json({ exito: false, mensaje: "Falta WOMPI_PRIVATE_KEY" });
     }
 
+    // HMAC-SHA256 (PRIVATE KEY)
     const hmac = crypto.createHmac("sha256", privateKey);
     hmac.update(`${reference}${amountInCents}${currency}`);
     const signature = hmac.digest("hex");
 
-    res.json({ exito: true, signature });
+    return res.json({ exito: true, signature });
   } catch (err) {
     console.error("❌ Error generando firma:", err);
-    res.status(500).json({ exito: false, mensaje: "Error interno" });
+    return res.status(500).json({ exito: false, mensaje: "Error interno" });
   }
 });
 
 // ----------------------
-// API - CREAR TRANSACCIÓN (Generar URL del Checkout seguro)
-// - No usamos POST /v1/transactions (evita exigir payment_method).
-// - Construimos URL: checkout.wompi.co/p/?public-key=...&currency=...&amount-in-cents=...&reference=...&redirect-url=...&integrity_signature=...
+// API - CREAR TRANSACCIÓN (Generar URL del Checkout)
+// Construimos la URL de checkout que el frontend abrirá/redirigirá.
 // ----------------------
 app.post("/api/crear-transaccion", async (req, res) => {
   try {
@@ -225,18 +212,15 @@ app.post("/api/crear-transaccion", async (req, res) => {
       return res.status(500).json({ exito: false, mensaje: "Falta configuración WOMPI en el servidor" });
     }
 
-    // Construir URL de checkout (escapando componentes)
     const params = new URLSearchParams({
       "public-key": publicKey,
       currency,
       "amount-in-cents": String(amountInCents),
       reference,
       "redirect-url": redirectUrl,
-      // integrity_signature es la firma HMAC generada por /api/signature (usamos same name)
       integrity_signature: signature,
     });
 
-    // Opcional: Wompi checkout puede usar customer_email (no siempre usado)
     if (customer_email) params.set("customer-email", customer_email);
 
     const urlCheckout = `https://checkout.wompi.co/p/?${params.toString()}`;
@@ -250,7 +234,7 @@ app.post("/api/crear-transaccion", async (req, res) => {
 });
 
 // ----------------------
-// WEBHOOK - Ruta aislada con express.raw para verificar integridad
+// WEBHOOK - express.raw + verificación integridad con WOMPI_INTEGRITY_KEY
 // ----------------------
 const webhookRouter = express.Router();
 webhookRouter.post("/webhook-wompi", express.raw({ type: "application/json" }), async (req, res) => {
@@ -262,7 +246,7 @@ webhookRouter.post("/webhook-wompi", express.raw({ type: "application/json" }), 
 
     const tx = data.transaction;
 
-    // Verificar integridad con WOMPI_INTEGRITY_KEY
+    // Integrity verification using INTEGRITY_KEY (sha256)
     const integrityKey = process.env.WOMPI_INTEGRITY_KEY || "";
     const localSignature = crypto
       .createHash("sha256")
@@ -279,7 +263,7 @@ webhookRouter.post("/webhook-wompi", express.raw({ type: "application/json" }), 
       return res.sendStatus(403);
     }
 
-    // Procesar evento APPROVED
+    // Procesar APPROVED
     if (event === "transaction.updated" && tx.status === "APPROVED") {
       const pendiente = await Pendiente.findOne({ reference: tx.reference });
       if (pendiente) {
@@ -293,9 +277,9 @@ webhookRouter.post("/webhook-wompi", express.raw({ type: "application/json" }), 
         });
         await pendiente.deleteOne();
         console.log(`🎟️ Ticket confirmado: ${tx.reference}`);
-        // Aquí dispara el envío de correo si lo deseas (desde backend)
+        // Aquí puedes disparar envío de correo desde backend
       } else {
-        console.log(`ℹ️ Aprobado pero no existe pendiente: ${tx.reference}`);
+        console.log(`ℹ️ Transacción aprobada pero no existe pendiente: ${tx.reference}`);
       }
     }
 

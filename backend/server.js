@@ -186,21 +186,17 @@ app.post("/api/signature", (req, res) => {
     const { reference, amountInCents, currency } = req.body;
 
     if (!reference || !amountInCents || !currency) {
-      return res
-        .status(400)
-        .json({ exito: false, mensaje: "Faltan datos para generar la firma" });
+      return res.status(400).json({ exito: false, mensaje: "Faltan datos para generar la firma" });
     }
 
-    const integrityKey = process.env.WOMPI_INTEGRITY_KEY;
-    if (!integrityKey) {
-      return res
-        .status(500)
-        .json({ exito: false, mensaje: "Falta WOMPI_INTEGRITY_KEY" });
+    const privateKey = process.env.WOMPI_PRIVATE_KEY;
+    if (!privateKey) {
+      return res.status(500).json({ exito: false, mensaje: "Falta WOMPI_PRIVATE_KEY" });
     }
 
     const signature = crypto
-      .createHash("sha256")
-      .update(`${reference}${amountInCents}${currency}${integrityKey}`)
+      .createHmac("sha256", privateKey)
+      .update(`${reference}${amountInCents}${currency}`)
       .digest("hex");
 
     return res.json({ exito: true, signature });

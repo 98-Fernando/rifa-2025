@@ -295,6 +295,30 @@ function toggleNumero(num, btn) {
 
   actualizarTotal();
 }
+/* ======================
+   ACTUALIZAR PROGRESO
+====================== */
+async function actualizarProgreso() {
+  try {
+    const res = await fetch("/api/tickets/consulta");
+    const data = await res.json();
+    if (!data.exito) return;
+
+    const barra = document.getElementById("progreso");
+    barra.style.width = data.porcentaje + "%";
+    barra.textContent = data.porcentaje + "%";
+    barra.className =
+      "relleno " +
+      (data.porcentaje < 50 ? "rojo" : data.porcentaje < 80 ? "amarillo" : "verde");
+
+    document.getElementById("porcentaje-texto").textContent =
+      `${data.porcentaje}% (${data.vendidos}/100)`;
+
+    document.getElementById("alerta80").classList.toggle("hidden", data.porcentaje < 80);
+  } catch (e) {
+    console.error("💥 Error actualizarProgreso:", e);
+  }
+}
 
 /* ======================
    INICIO

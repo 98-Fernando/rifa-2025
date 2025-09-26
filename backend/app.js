@@ -4,20 +4,37 @@ const ticketBox = document.getElementById("ticket-box");
 const spinner = document.getElementById("spinner");
 const barraProgreso = document.querySelector(".relleno");
 
-// 📥 Escuchar envío de formulario
+let CONFIG = {};
+
+// ===============================
+// 🔹 Cargar configuración del backend
+// ===============================
+async function cargarConfig() {
+  try {
+    const res = await fetch("/api/config");
+    CONFIG = await res.json();
+    console.log("⚙️ Config cargada:", CONFIG);
+  } catch (err) {
+    console.error("❌ Error cargando configuración:", err);
+  }
+}
+
+// ===============================
+// 📥 Envío de formulario
+// ===============================
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
 
   const nombre = document.getElementById("nombre").value.trim();
   const correo = document.getElementById("correo").value.trim();
-  const numerosSeleccionados = obtenerNumerosSeleccionados(); // ["001", "045", ...]
+  const telefono = document.getElementById("telefono").value.trim();
+  const numerosSeleccionados = obtenerNumerosSeleccionados(); // ["1", "2", ...]
 
   // Validaciones
-  if (!nombre || !correo) {
-    mostrarMensaje("⚠️ Completa todos los campos correctamente.", "error");
+  if (!nombre || !correo || !telefono) {
+    mostrarMensaje("⚠️ Completa todos los campos.", "error");
     return;
   }
-
   if (numerosSeleccionados.length < 1 || numerosSeleccionados.length > 20) {
     mostrarMensaje("⚠️ Debes seleccionar entre 1 y 20 números.", "error");
     return;
@@ -29,100 +46,98 @@ form.addEventListener("submit", async (e) => {
   ticketBox.classList.add("hidden");
 
   try {
-    const res = await fetch("http://localhost:5000/api/tickets", {
+    // 1️⃣ Guardar en "pendiente"
+    const res = await fetch("/api/tickets/guardar-pendiente", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nombre, correo, numeros: numerosSeleccionados })
+      body: JSON.stringify({ nombre, correo, telefono, numeros: numerosSeleccionados }),
     });
 
     const data = await res.json();
+    if (!data.exito) throw new Error(data.mensaje || "Error guardando pendiente");
 
-    if (data.exito) {
-      const numeros = data.numeros.join(", ");
-      escribirMensaje("¡Gracias por participar! Revisa tu correo.");
+    const reference = data.reference;
 
-      ticketBox.innerHTML = `
-        <h3>🎟️ Tus números:</h3>
-        <p>${numeros}</p>
-      `;
-      ticketBox.classList.remove("hidden");
+    // 2️⃣ Calcular firma con el backend
+    const precio = CONFIG.precio || 5000;
+    const signatureRes = await fetch("/api/signature", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        reference,
+        amountInCents: precio * 100,
+        currency: "COP",
+      }),
+    });
 
-      if (data.porcentaje) {
-        actualizarBarra(data.porcentaje);
-      }
+    const sigData = await signatureRes.json();
+    if (!sigData.signature) throw new Error("No se pudo generar la firma");
 
-      // Enviar correo
-      await window.emailjs.send("service_fcgsd9j", "template_6qvu9xt", {
-        to_email: correo,
-        nombre: nombre,
-        cantidad: numerosSeleccionados.length,
-        numeros: numeros
-      });
+    // 3️⃣ Abrir Wompi Checkout
+    const checkout = new WidgetCheckout({
+      currency: "COP",
+      amountInCents: precio * 100,
+      reference,
+      publicKey: CONFIG.publicKey,
+      redirectUrl: CONFIG.urlSuccess, // El backend valida y envía correo si pago aprobado
+      signature: sigData.signature,
+    });
 
-      console.log("📧 Correo enviado con éxito");
+    checkout.open(function (result) {
+      console.log("💳 Resultado Wompi:", result);
+      // Aquí NO enviamos correo, solo backend vía webhook debe hacerlo
+    });
 
-    } else {
-      mostrarMensaje(data.mensaje || "❌ Ocurrió un error. Intenta más tarde.", "error");
-    }
+    mostrarMensaje("✅ Redirigiendo a Wompi...", "exito");
 
   } catch (error) {
     console.error("Error:", error);
-    mostrarMensaje("🚫 Error al conectar con el servidor.", "error");
+    mostrarMensaje("🚫 Ocurrió un error: " + error.message, "error");
   } finally {
     spinner.classList.add("hidden");
   }
 });
 
-// ✅ Obtener los números seleccionados por el usuario
+// ===============================
+// ✅ Obtener los números seleccionados
+// ===============================
 function obtenerNumerosSeleccionados() {
   return Array.from(document.querySelectorAll(".numero.seleccionado"))
-    .map(btn => btn.textContent.trim());
+    .map((btn) => btn.textContent.trim());
 }
 
-// 🟢 Mostrar mensaje con estilo animado
+// ===============================
+// 🟢 Mostrar mensajes
+// ===============================
 function mostrarMensaje(texto, tipo = "exito") {
   mensaje.textContent = texto;
   mensaje.className = `mensaje ${tipo}`;
 }
 
-// ✨ Efecto máquina de escribir solo para éxito
-function escribirMensaje(texto) {
-  mensaje.textContent = "";
-  mensaje.className = "mensaje exito";
-  let i = 0;
-  const intervalo = setInterval(() => {
-    mensaje.textContent += texto.charAt(i);
-    i++;
-    if (i >= texto.length) clearInterval(intervalo);
-  }, 40);
-}
-
+// ===============================
 // 📊 Actualizar barra de progreso
+// ===============================
 function actualizarBarra(porcentaje) {
   if (barraProgreso) {
     barraProgreso.style.width = `${porcentaje}%`;
 
-    if (porcentaje < 50) {
-      barraProgreso.style.backgroundColor = "#f44336"; // rojo
-    } else if (porcentaje < 90) {
-      barraProgreso.style.backgroundColor = "#ff9800"; // naranja
-    } else {
-      barraProgreso.style.backgroundColor = "#4caf50"; // verde
-    }
+    if (porcentaje < 50) barraProgreso.style.backgroundColor = "#f44336";
+    else if (porcentaje < 90) barraProgreso.style.backgroundColor = "#ff9800";
+    else barraProgreso.style.backgroundColor = "#4caf50";
   }
 }
-// 📊 Cargar barra de progreso al iniciar la página
-document.addEventListener("DOMContentLoaded", async () => {
-  try {
-    const res = await fetch("http://localhost:5000/api/tickets/consulta");
-    const data = await res.json();
 
-    if (data.exito && data.porcentaje !== undefined) {
-      actualizarBarra(data.porcentaje);
-    } else {
-      console.warn("⚠️ No se pudo obtener el porcentaje inicial:", data.mensaje);
-    }
+// ===============================
+// 🚀 Al iniciar
+// ===============================
+document.addEventListener("DOMContentLoaded", async () => {
+  await cargarConfig();
+
+  try {
+    const res = await fetch("/api/tickets/consulta");
+    const data = await res.json();
+    if (data.exito) actualizarBarra(data.porcentaje);
   } catch (error) {
-    console.error("❌ Error al cargar el porcentaje inicial:", error);
+    console.error("❌ Error cargando porcentaje:", error);
   }
 });

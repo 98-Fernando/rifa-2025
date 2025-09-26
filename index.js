@@ -28,13 +28,28 @@ const PORT = process.env.PORT || 5000;
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ==============================
-// Rutas
+// Rutas frontend
 // ==============================
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Importar rutas de la API
+// 🔹 Rutas para resultados de pago
+app.get('/success', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'success.html'));
+});
+
+app.get('/failure', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'failure.html'));
+});
+
+app.get('/pending', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'pending.html'));
+});
+
+// ==============================
+// Rutas API
+// ==============================
 import ticketsRouter from './backend/routes/tickets.js';
 app.use('/api/tickets', ticketsRouter);
 

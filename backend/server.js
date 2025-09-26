@@ -231,7 +231,7 @@ app.post(
         .digest("hex");
 
       const headerSignature =
-        req.headers["integrity"] || req.headers["content-signature"];
+        req.headers["signature"] || req.headers["content-signature"];
 
       if (headerSignature && localSignature && headerSignature !== localSignature) {
         console.warn("⚠️ Firma de integridad no coincide");

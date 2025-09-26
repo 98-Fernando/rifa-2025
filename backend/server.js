@@ -186,16 +186,18 @@ app.post("/api/signature", (req, res) => {
     const { reference, amountInCents, currency } = req.body;
 
     if (!reference || !amountInCents || !currency) {
-      return res.status(400).json({ exito: false, mensaje: "Faltan datos para generar la firma" });
+      return res
+        .status(400)
+        .json({ exito: false, mensaje: "Faltan datos para generar la firma" });
     }
 
-    const privateKey = process.env.WOMPI_PRIVATE_KEY;
-    if (!privateKey) {
-      return res.status(500).json({ exito: false, mensaje: "Falta WOMPI_PRIVATE_KEY" });
+    const integrityKey = process.env.WOMPI_INTEGRITY_KEY;
+    if (!integrityKey) {
+      return res.status(500).json({ exito: false, mensaje: "Falta WOMPI_INTEGRITY_KEY" });
     }
 
     const signature = crypto
-      .createHmac("sha256", privateKey)
+      .createHmac("sha256", integrityKey)
       .update(`${reference}${amountInCents}${currency}`)
       .digest("hex");
 
@@ -205,6 +207,55 @@ app.post("/api/signature", (req, res) => {
     return res.status(500).json({ exito: false, mensaje: "Error interno" });
   }
 });
+
+
+// ======================
+// API - CREAR TRANSACCIÓN WOMPI
+// ======================
+import fetch from "node-fetch";
+
+app.post("/api/crear-transaccion", async (req, res) => {
+  try {
+    const { reference, amountInCents, currency, signature } = req.body;
+
+    if (!reference || !amountInCents || !currency || !signature) {
+      return res.status(400).json({ exito: false, mensaje: "Faltan datos" });
+    }
+
+    const resp = await fetch("https://production.wompi.co/v1/transactions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.WOMPI_PRIVATE_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        amount_in_cents: amountInCents,
+        currency,
+        customer_email: "cliente@test.com", // ⚠️ Puedes pasar el real desde frontend
+        reference,
+        signature,
+        redirect_url: process.env.URL_SUCCESS, // URL donde volverá el cliente
+      }),
+    });
+
+    const data = await resp.json();
+    console.log("🔗 Respuesta Wompi:", data);
+
+    if (!data?.data?.payment_link) {
+      return res.status(500).json({ exito: false, mensaje: "Error creando transacción", detalle: data });
+    }
+
+    return res.json({
+      exito: true,
+      urlCheckout: data.data.payment_link,
+    });
+
+  } catch (err) {
+    console.error("❌ Error creando transacción:", err);
+    res.status(500).json({ exito: false, mensaje: "Error interno" });
+  }
+});
+
 
 // ======================
 // WEBHOOK WOMPI

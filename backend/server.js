@@ -10,8 +10,11 @@ import rateLimit from "express-rate-limit";
 import crypto from "crypto";
 import { config } from "dotenv";
 import { fileURLToPath } from "url";
-import fetch from "node-fetch";
+import fetch from "node-fetch"; // si usas Node >=18 puedes quitar esta línea
 
+// ======================
+// CONFIG
+// ======================
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 config({ path: path.join(__dirname, "..", ".env") });
@@ -20,78 +23,56 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // ======================
-// NONCE GENERATOR
+// NONCE GENERATOR (por petición) + CSP header middleware
 // ======================
+// Genera res.locals.nonce y establece un CSP que NO usa 'unsafe-inline'.
+// El frontend puede usar el nonce inyectado por /api/config si necesita inline scripts.
 app.use((req, res, next) => {
+  // 128-bit random nonce en base64
   res.locals.nonce = crypto.randomBytes(16).toString("base64");
+
+  // Construir el CSP dinámicamente incluyendo el nonce
+  const nonce = `'nonce-${res.locals.nonce}'`;
+  const csp = [
+    `default-src 'self'`,
+    // permitimos scripts desde self y hosts de Wompi/CDN; además permitimos inline con nonce
+    `script-src 'self' ${nonce} https://checkout.wompi.co https://cdn.wompi.co https://cdn.jsdelivr.net https://unpkg.com`,
+    // estilos: permitimos google fonts y self; estilos inline permitidos solo con nonce
+    `style-src 'self' ${nonce} https://fonts.googleapis.com https://cdn.jsdelivr.net`,
+    `font-src 'self' https://fonts.gstatic.com`,
+    `img-src 'self' data: https://cdn-icons-png.flaticon.com https://checkout.wompi.co https://cdn.wompi.co`,
+    `connect-src 'self' https://production.wompi.co https://sandbox.wompi.co https://checkout.wompi.co https://api.wompi.co https://api.emailjs.com`,
+    `frame-src 'self' https://checkout.wompi.co https://cdn.wompi.co`,
+    // bloquear todo lo demás por defecto
+  ].join("; ");
+
+  // Establecer header
+  res.setHeader("Content-Security-Policy", csp);
+
   next();
 });
 
 // ======================
-// HELMET CSP (con nonce)
+// Helmet (sin contentSecurityPolicy, porque lo manejamos arriba)
 // ======================
 app.use(
   helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-
-        scriptSrc: [
-          "'self'",
-          (req, res) => `'nonce-${res.locals.nonce}'`,
-          "https://checkout.wompi.co",
-          "https://cdn.wompi.co",
-          "https://cdn.jsdelivr.net",
-          "https://unpkg.com",
-        ],
-
-        scriptSrcElem: [
-          "'self'",
-          "https://checkout.wompi.co",
-          "https://cdn.wompi.co",
-          "https://cdn.jsdelivr.net",
-          "https://unpkg.com",
-        ],
-
-        styleSrc: [
-          "'self'",
-          (req, res) => `'nonce-${res.locals.nonce}'`,
-          "https://fonts.googleapis.com",
-          "https://cdn.jsdelivr.net",
-        ],
-
-        fontSrc: ["'self'", "https://fonts.gstatic.com"],
-
-        imgSrc: [
-          "'self'",
-          "data:",
-          "https://cdn-icons-png.flaticon.com",
-          "https://checkout.wompi.co",
-          "https://cdn.wompi.co",
-        ],
-
-        connectSrc: [
-          "'self'",
-          "https://production.wompi.co",
-          "https://sandbox.wompi.co",
-          "https://checkout.wompi.co",
-          "https://api.wompi.co",
-          "https://api.emailjs.com",
-        ],
-
-        frameSrc: ["'self'", "https://checkout.wompi.co", "https://cdn.wompi.co"],
-      },
-    },
+    // evitar que helmet establezca su propia CSP, ya lo hacemos arriba
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
   })
 );
 
+// ======================
+// RATE LIMIT, PARSERS, CORS
+// ======================
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
-app.use(express.json());
+app.use(express.json()); // para la mayoría de APIs
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({ origin: true }));
 
 // ======================
-// SESIONES
+// SESSIONS
 // ======================
 app.use(
   session({
@@ -112,15 +93,13 @@ app.use(
 );
 
 // ======================
-// STATIC FILES
+// STATIC FILES (public)
 // ======================
 app.use(express.static(path.join(__dirname, "..", "public")));
-app.get("/", (req, res) =>
-  res.sendFile(path.join(__dirname, "..", "public", "index.html"))
-);
+app.get("/", (req, res) => res.sendFile(path.join(__dirname, "..", "public", "index.html")));
 
 // ======================
-// DB
+// DB MODELS
 // ======================
 import Ticket from "./models/Ticket.js";
 import Pendiente from "./models/Pendiente.js";
@@ -131,17 +110,18 @@ mongoose
   .catch((err) => console.error("❌ Error MongoDB:", err));
 
 // ======================
-// API CONFIG
+// API - CONFIG
 // ======================
+// Devuelve publicKey (para frontend), precio y el nonce (si quieres usar scripts inline)
 app.get("/api/config", (req, res) => {
   res.json({
     exito: true,
     precio: Number(process.env.PRECIO_BOLETO) || 5000,
-    publicKey: process.env.WOMPI_PUBLIC_KEY,
-    urlSuccess: process.env.URL_SUCCESS,
-    urlFailure: process.env.URL_FAILURE,
-    urlPending: process.env.URL_PENDING,
-    nonce: res.locals.nonce, // opcional: para usar en frontend
+    publicKey: process.env.WOMPI_PUBLIC_KEY || "",
+    urlSuccess: process.env.URL_SUCCESS || "",
+    urlFailure: process.env.URL_FAILURE || "",
+    urlPending: process.env.URL_PENDING || "",
+    nonce: res.locals.nonce, // opcional: el frontend puede usar este nonce si necesita inline scripts
   });
 });
 
@@ -178,7 +158,7 @@ app.get("/api/tickets/consulta", async (req, res) => {
 app.post("/api/tickets/guardar-pendiente", async (req, res) => {
   try {
     const { nombre, correo, telefono, numeros } = req.body;
-    if (!nombre || !correo || !telefono || !numeros?.length) {
+    if (!nombre || !correo || !telefono || !Array.isArray(numeros) || !numeros.length) {
       return res.status(400).json({ exito: false, mensaje: "Datos incompletos" });
     }
     const reference = `RIFA-${Date.now()}`;
@@ -197,22 +177,25 @@ app.post("/api/tickets/guardar-pendiente", async (req, res) => {
 });
 
 // ======================
-// API - SIGNATURE WOMPI
+// API - SIGNATURE (HMAC-SHA256 con PRIVATE KEY)
 // ======================
+// Usa la llave privada para firmar: HMAC_SHA256(privateKey, reference + amountInCents + currency)
 app.post("/api/signature", (req, res) => {
   try {
     const { reference, amountInCents, currency } = req.body;
     if (!reference || !amountInCents || !currency) {
       return res.status(400).json({ exito: false, mensaje: "Faltan datos para generar la firma" });
     }
-    const integrityKey = process.env.WOMPI_INTEGRITY_KEY;
-    if (!integrityKey) {
-      return res.status(500).json({ exito: false, mensaje: "Falta WOMPI_INTEGRITY_KEY" });
+
+    const privateKey = process.env.WOMPI_PRIVATE_KEY;
+    if (!privateKey) {
+      return res.status(500).json({ exito: false, mensaje: "Falta WOMPI_PRIVATE_KEY" });
     }
-    const signature = crypto
-      .createHmac("sha256", integrityKey)
-      .update(`${reference}${amountInCents}${currency}`)
-      .digest("hex");
+
+    const hmac = crypto.createHmac("sha256", privateKey);
+    hmac.update(`${reference}${amountInCents}${currency}`);
+    const signature = hmac.digest("hex");
+
     return res.json({ exito: true, signature });
   } catch (err) {
     console.error("❌ Error generando firma:", err);
@@ -221,11 +204,13 @@ app.post("/api/signature", (req, res) => {
 });
 
 // ======================
-// API - CREAR TRANSACCIÓN WOMPI
+// API - CREAR TRANSACCIÓN EN WOMPI (opcional)
 // ======================
+// Crea la transacción server-side usando la private key (Bearer) y devuelve payment_link
 app.post("/api/crear-transaccion", async (req, res) => {
   try {
     const { reference, amountInCents, currency, signature, customer_email } = req.body;
+
     if (!reference || !amountInCents || !currency || !signature) {
       return res.status(400).json({ exito: false, mensaje: "Faltan datos" });
     }
@@ -239,7 +224,7 @@ app.post("/api/crear-transaccion", async (req, res) => {
       body: JSON.stringify({
         amount_in_cents: amountInCents,
         currency,
-        customer_email: customer_email || "cliente@ejemplo.com",
+        customer_email: customer_email || undefined,
         reference,
         signature,
         redirect_url: process.env.URL_SUCCESS,
@@ -247,8 +232,9 @@ app.post("/api/crear-transaccion", async (req, res) => {
     });
 
     const data = await resp.json();
-    console.log("🔗 Respuesta Wompi:", data);
+    console.log("🔗 Respuesta Wompi crear-transaccion:", data);
 
+    // Wompi devuelve payment link en data.data.payment_link o similar (dependiendo versión)
     if (!data?.data?.payment_link) {
       return res.status(500).json({ exito: false, mensaje: "Error creando transacción", detalle: data });
     }
@@ -263,6 +249,7 @@ app.post("/api/crear-transaccion", async (req, res) => {
 // ======================
 // WEBHOOK WOMPI
 // ======================
+// Usamos express.raw para leer el body tal cual y verificar integridad
 app.post("/webhook-wompi", express.raw({ type: "application/json" }), async (req, res) => {
   try {
     const rawBody = req.body.toString("utf8");
@@ -271,17 +258,23 @@ app.post("/webhook-wompi", express.raw({ type: "application/json" }), async (req
     if (!data?.transaction) return res.sendStatus(400);
 
     const tx = data.transaction;
+
+    // Calcular signature de integridad local (usando la INTEGRITY KEY)
+    const integrityKey = process.env.WOMPI_INTEGRITY_KEY || "";
     const localSignature = crypto
       .createHash("sha256")
-      .update(`${tx.reference}${tx.amount_in_cents}${tx.currency}${process.env.WOMPI_INTEGRITY_KEY || ""}`)
+      .update(`${tx.reference}${tx.amount_in_cents}${tx.currency}${integrityKey}`)
       .digest("hex");
-    const headerSignature = req.headers["signature"] || req.headers["content-signature"];
+
+    // Wompi puede enviar diferentes headers; revisamos los más comunes
+    const headerSignature = req.headers["integrity-signature"] || req.headers["signature"] || req.headers["content-signature"];
 
     if (headerSignature && localSignature && headerSignature !== localSignature) {
-      console.warn("⚠️ Firma de integridad no coincide");
+      console.warn("⚠️ Firma de integridad no coincide (webhook). Esperado:", localSignature, "Recibido:", headerSignature);
       return res.sendStatus(403);
     }
 
+    // Procesar evento cuando la transacción está aprobada
     if (event === "transaction.updated" && tx.status === "APPROVED") {
       const pendiente = await Pendiente.findOne({ reference: tx.reference });
       if (pendiente) {
@@ -295,6 +288,9 @@ app.post("/webhook-wompi", express.raw({ type: "application/json" }), async (req
         });
         await pendiente.deleteOne();
         console.log(`🎟️ Ticket confirmado y pagado: ${tx.reference}`);
+        // Aquí podrías disparar un envío de correo
+      } else {
+        console.log(`ℹ️ Transacción aprobada pero no existe pendiente con reference ${tx.reference}`);
       }
     }
 
@@ -306,6 +302,6 @@ app.post("/webhook-wompi", express.raw({ type: "application/json" }), async (req
 });
 
 // ======================
-// SERVIDOR
+// START SERVER
 // ======================
 app.listen(PORT, () => console.log(`🚀 Servidor corriendo en puerto ${PORT}`));

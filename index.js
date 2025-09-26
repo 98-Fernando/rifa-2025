@@ -11,6 +11,7 @@ import { fileURLToPath } from 'url';
 // Configuración de entorno
 // ==============================
 dotenv.config();
+console.log("🔑 WOMPI PUBLIC KEY:", process.env.WOMPI_PUBLIC_KEY);
 
 // Adaptar __dirname para ES Modules
 const __filename = fileURLToPath(import.meta.url);

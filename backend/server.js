@@ -28,33 +28,39 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
+        // scripts (incluimos cdn.wompi.co y checkout.wompi.co)
         scriptSrc: [
           "'self'",
           "'unsafe-inline'",
           "https://cdn.jsdelivr.net",
           "https://unpkg.com",
           "https://checkout.wompi.co",
+          "https://cdn.wompi.co"
         ],
-        styleSrc: [
+        // script-src-elem es usado por navegadores modernos para <script src=...>
+        scriptSrcElem: [
           "'self'",
-          "'unsafe-inline'",
-          "https://fonts.googleapis.com",
-          "https://cdn.jsdelivr.net",
-        ],
-        fontSrc: ["'self'", "https://fonts.gstatic.com"],
-        imgSrc: [
-          "'self'",
-          "data:",
-          "https://cdn-icons-png.flaticon.com",
           "https://checkout.wompi.co",
+          "https://cdn.wompi.co",
+          "https://cdn.jsdelivr.net",
+          "https://unpkg.com"
         ],
+        // estilos
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdn.jsdelivr.net"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        // imágenes
+        imgSrc: ["'self'", "data:", "https://cdn-icons-png.flaticon.com", "https://checkout.wompi.co", "https://cdn.wompi.co"],
+        // conexiones XHR/fetch/websocket — añadimos api.wompi.co
         connectSrc: [
           "'self'",
           "https://production.wompi.co",
+          "https://sandbox.wompi.co",
           "https://checkout.wompi.co",
-          "https://api.emailjs.com",
+          "https://api.wompi.co",
+          "https://api.emailjs.com"
         ],
-        frameSrc: ["'self'", "https://checkout.wompi.co"],
+        // si el widget abre frames
+        frameSrc: ["'self'", "https://checkout.wompi.co", "https://cdn.wompi.co"],
       },
     },
   })

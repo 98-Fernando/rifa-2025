@@ -117,9 +117,16 @@ let CONFIG = {
   urlPending: ""
 };
 
-/* ======================
-   UTILIDADES
-====================== */
+// ======================
+// ELEMENTOS DEL DOM
+// ======================
+const nombre = document.getElementById("nombre");
+const correo = document.getElementById("correo");
+const telefono = document.getElementById("telefono");
+
+// ======================
+// UTILIDADES
+// ======================
 function showMessage(text, success = false) {
   const m = document.getElementById("mensaje");
   m.textContent = text;
@@ -133,9 +140,36 @@ function actualizarTotal() {
     (seleccionados.length * CONFIG.precio).toLocaleString();
 }
 
-/* ======================
-   CARGAR CONFIG
-====================== */
+// ======================
+// VALIDAR FORMULARIO
+// ======================
+function validar() {
+  if (nombre.value.trim().length < 2) {
+    showMessage("❌ Nombre muy corto");
+    return false;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo.value.trim())) {
+    showMessage("❌ Email inválido");
+    return false;
+  }
+  if (!/^\d{10}$/.test(telefono.value.trim())) {
+    showMessage("❌ Teléfono inválido (10 dígitos)");
+    return false;
+  }
+  if (seleccionados.length === 0) {
+    showMessage("❌ Selecciona al menos un número (máx: 10)");
+    return false;
+  }
+  if (seleccionados.length > 10) {
+    showMessage("❌ Solo puedes seleccionar hasta 10 números");
+    return false;
+  }
+  return true;
+}
+
+// ======================
+// CARGAR CONFIG
+// ======================
 async function cargarConfig() {
   try {
     const res = await fetch("/api/config");
@@ -151,10 +185,10 @@ async function cargarConfig() {
     document.getElementById("valor-boleto").textContent =
       `VALOR: $ ${CONFIG.precio.toLocaleString()}`;
 
-    // Actualiza el total si ya hay números seleccionados
     actualizarTotal();
   } catch (e) {
     showMessage("❌ Error config: " + e.message);
+    console.error(e);
   }
 }
 
@@ -188,7 +222,7 @@ async function cargarNumeros() {
     });
   } catch (e) {
     showMessage("❌ Error cargando números");
-    console.error("Error cargarNumeros:", e);
+    console.error(e);
   }
 }
 
@@ -199,12 +233,10 @@ function toggleNumero(num, btn) {
   const index = seleccionados.indexOf(num);
 
   if (index > -1) {
-    // Deseleccionar
     seleccionados.splice(index, 1);
     btn.classList.remove("seleccionado");
     btn.classList.add("disponible");
   } else {
-    // Seleccionar
     if (seleccionados.length >= 10) {
       showMessage("Máximo 10 números");
       return;
@@ -214,78 +246,51 @@ function toggleNumero(num, btn) {
     btn.classList.add("seleccionado");
   }
 
-  // Actualizar total a pagar
   actualizarTotal();
 }
 
+// ======================
+// ACTUALIZAR PROGRESO
+// ======================
+async function actualizarProgreso() {
+  try {
+    const res = await fetch("/api/tickets/consulta");
+    const data = await res.json();
+    if (!data.exito) return;
 
-/* ======================
-   PROGRESO
-====================== */
-async function actualizarProgreso(){
-  try{
-    const res=await fetch("/api/tickets/consulta");
-    const data=await res.json(); if(!data.exito) return;
-    const barra=document.getElementById("progreso");
-    barra.style.width=data.porcentaje+"%"; barra.textContent=data.porcentaje+"%";
-    barra.className="relleno "+(data.porcentaje<50?"rojo":data.porcentaje<80?"amarillo":"verde");
-    document.getElementById("porcentaje-texto").textContent=`${data.porcentaje}% (${data.vendidos}/100)`;
-    document.getElementById("alerta80").classList.toggle("hidden",data.porcentaje<80);
-  }catch{}
+    const barra = document.getElementById("progreso");
+    barra.style.width = data.porcentaje + "%";
+    barra.textContent = data.porcentaje + "%";
+    barra.className =
+      "relleno " +
+      (data.porcentaje < 50 ? "rojo" : data.porcentaje < 80 ? "amarillo" : "verde");
+
+    document.getElementById("porcentaje-texto").textContent =
+      `${data.porcentaje}% (${data.vendidos}/100)`;
+
+    document.getElementById("alerta80").classList.toggle("hidden", data.porcentaje < 80);
+  } catch (e) {
+    console.error("Error actualizarProgreso:", e);
+  }
 }
 
-/* ======================
-   VALIDAR
-====================== */
-function validar() {
-  const nombre = document.getElementById("nombre").value.trim();
-  const correo = document.getElementById("correo").value.trim();
-  const telefono = document.getElementById("telefono").value.trim();
-
-  // ✅ Validaciones
-  if (nombre.length < 2) {
-    showMessage("❌ Nombre muy corto");
-    return false;
-  }
-
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
-    showMessage("❌ Email inválido");
-    return false;
-  }
-
-  if (!/^\d{10}$/.test(telefono)) {
-    showMessage("❌ Teléfono inválido (10 dígitos)");
-    return false;
-  }
-
-  if (!seleccionados.length) {
-    showMessage(`❌ Selecciona al menos un número (máx: 10)`);
-    return false;
-  }
-
-  // Opcional: podrías limitar a 10 números usando CONFIG
-  if (seleccionados.length > 10) {
-    showMessage(`❌ Solo puedes seleccionar hasta 10 números`);
-    return false;
-  }
-
-  return true;
-}
-
-
-/* ======================
-   PAGO
-====================== */
+// ======================
+// INICIAR PAGO
+// ======================
 async function iniciarPago(ref) {
   if (!seleccionados.length) {
     showMessage("❌ Debes seleccionar al menos un número");
     return;
   }
 
-  const total = seleccionados.length * (CONFIG.precio || 5000) * 100;
+  if (!CONFIG.publicKey) {
+    showMessage("❌ Public key no cargada");
+    return;
+  }
+
+  const total = seleccionados.length * CONFIG.precio * 100;
 
   try {
-    // 🔹 1. Pedir firma al backend
     const r = await fetch("/api/signature", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -301,44 +306,73 @@ async function iniciarPago(ref) {
 
     const signature = data.signature;
 
-    // 🔹 2. Construir URL con los valores de CONFIG
-    const url = `https://checkout.wompi.co/p/?public-key=${CONFIG.publicKey}` +
+    const url =
+      `https://checkout.wompi.co/p/?public-key=${CONFIG.publicKey}` +
       `&currency=COP&amount-in-cents=${total}` +
       `&reference=${ref}&redirect-url=${CONFIG.urlSuccess}` +
       `&integrity_signature=${signature}`;
 
-    // 🔹 3. Redirigir a Wompi
     window.location.href = url;
-
   } catch (e) {
     console.error("❌ Error iniciando pago:", e);
     showMessage("❌ Error iniciando pago: " + e.message);
   }
 }
 
+// ======================
+// INICIO
+// ======================
+document.addEventListener("DOMContentLoaded", async () => {
+  await cargarConfig();
+  await cargarNumeros();
+  await actualizarProgreso();
 
-/* ======================
-   INICIO
-====================== */
-document.addEventListener("DOMContentLoaded",async()=>{
-  await cargarConfig(); await cargarNumeros(); await actualizarProgreso();
-  setInterval(()=>{cargarNumeros(); actualizarProgreso();},15000);
-  document.getElementById("formulario").onsubmit=async e=>{
+  setInterval(() => {
+    cargarNumeros();
+    actualizarProgreso();
+  }, 15000);
+
+  // Evento submit
+  document.getElementById("formulario").onsubmit = async e => {
     e.preventDefault();
-    if(!validar())return;
-    document.getElementById("enviar-btn").disabled=true;
+    if (!validar()) return;
+
+    document.getElementById("enviar-btn").disabled = true;
     document.getElementById("spinner").classList.remove("hidden");
-    try{
-      const r=await fetch("/api/tickets/guardar-pendiente",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({nombre:nombre.value,correo:correo.value,telefono:telefono.value,numeros:seleccionados})});
-      const d=await r.json(); if(!d.exito) throw new Error(d.mensaje);
-      document.getElementById("ticket-box").classList.remove("hidden");
-      document.getElementById("ticket-box").innerHTML=`<h3>🎫 Ticket generado</h3><p>Números: ${seleccionados.join(", ")}</p><p>Ref: ${d.reference}</p>`;
+
+    try {
+      const r = await fetch("/api/tickets/guardar-pendiente", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nombre: nombre.value,
+          correo: correo.value,
+          telefono: telefono.value,
+          numeros: seleccionados
+        })
+      });
+
+      const d = await r.json();
+      if (!d.exito) throw new Error(d.mensaje);
+
+      const box = document.getElementById("ticket-box");
+      box.classList.remove("hidden");
+      box.innerHTML = `<h3>🎫 Ticket generado</h3>
+                       <p>Números: ${seleccionados.join(", ")}</p>
+                       <p>Ref: ${d.reference}</p>`;
+
       iniciarPago(d.reference);
-    }catch(err){ showMessage("❌ "+err.message); document.getElementById("enviar-btn").disabled=false; }
-    document.getElementById("spinner").classList.add("hidden");
+    } catch (err) {
+      showMessage("❌ " + err.message);
+      document.getElementById("enviar-btn").disabled = false;
+    } finally {
+      document.getElementById("spinner").classList.add("hidden");
+    }
   };
-  telefono.oninput=e=>e.target.value=e.target.value.replace(/\D/g,"").slice(0,10);
-  nombre.oninput=e=>e.target.value=e.target.value.replace(/[^a-zA-ZÁÉÍÓÚáéíóúÑñ\s]/g,"");
+
+  // Limitar inputs
+  telefono.oninput = e => e.target.value = e.target.value.replace(/\D/g, "").slice(0, 10);
+  nombre.oninput = e => e.target.value = e.target.value.replace(/[^a-zA-ZÁÉÍÓÚáéíóúÑñ\s]/g, "");
 });
 </script>
 </body>

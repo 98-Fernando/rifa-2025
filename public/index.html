@@ -245,8 +245,8 @@ async function iniciarPago(ref) {
     const signature = data.signature;
     console.log("🔹 Signature generada:", signature);
 
-    // ✅ Solo un redirect-url (Wompi no acepta failure ni pending en la URL)
-    const url = `https://checkout.wompi.co/p/?public-key=${encodeURIComponent(CONFIG.publicKey)}&currency=COP&amount-in-cents=${total}&reference=${encodeURIComponent(ref)}&signature=${encodeURIComponent(signature)}&redirect-url=${encodeURIComponent(CONFIG.urlSuccess)}`;
+    // ✅ URL CORRECTA DEL CHECKOUT
+    const url = `https://checkout.wompi.co/p/?public-key=${encodeURIComponent(CONFIG.publicKey)}&currency=COP&amount-in-cents=${total}&reference=${encodeURIComponent(ref)}&signature=${encodeURIComponent(signature)}&redirect-url=${encodeURIComponent(CONFIG.urlSuccess)}&redirect-url-failure=${encodeURIComponent(CONFIG.urlFailure)}&redirect-url-pending=${encodeURIComponent(CONFIG.urlPending)}`;
 
     console.log("💡 URL construida:", url);
 

@@ -85,22 +85,20 @@ if (form) {
       return;
     }
 
-    // Reiniciar estados visuales
     spinner?.classList.remove("hidden");
     mensaje.textContent = "";
     ticketBox?.classList.add("hidden");
 
     try {
-      // 1️⃣ Guardar en "pendiente"
+      // 1️⃣ Guardar pendiente
       const res = await fetch("/api/tickets/guardar-pendiente", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nombre, correo, telefono, numeros: numerosSeleccionados }),
       });
 
-      if (!res.ok) throw new Error("Error guardando pendiente");
       const data = await res.json();
-      if (!data.exito) throw new Error(data.mensaje || "Error guardando pendiente");
+      if (!res.ok || !data.exito) throw new Error(data.mensaje || "Error guardando pendiente");
 
       const reference = data.reference;
       const precio = CONFIG.precio || 5000;
@@ -109,16 +107,15 @@ if (form) {
       console.log("💾 Pendiente guardado:", data);
       console.log("💰 Total a pagar:", amountInCents);
 
-      // 2️⃣ Calcular firma
+      // 2️⃣ Generar firma
       const signatureRes = await fetch("/api/signature", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reference, amountInCents, currency: "COP" }),
       });
 
-      if (!signatureRes.ok) throw new Error("Error generando firma");
       const sigData = await signatureRes.json();
-      if (!sigData.signature) throw new Error("No se pudo generar la firma");
+      if (!signatureRes.ok || !sigData.exito) throw new Error("No se pudo generar la firma");
 
       console.log("✍️ Firma generada:", sigData.signature);
 
@@ -135,13 +132,12 @@ if (form) {
         }),
       });
 
-      if (!txRes.ok) throw new Error("Error creando la transacción");
       const txData = await txRes.json();
-      if (!txData.urlCheckout) throw new Error("No se obtuvo la URL de checkout");
+      if (!txRes.ok || !txData.exito) throw new Error("No se obtuvo la URL de checkout");
 
       console.log("🔗 Redirigiendo a:", txData.urlCheckout);
-
       window.location.href = txData.urlCheckout;
+
     } catch (error) {
       console.error("❌ Error:", error);
       mostrarMensaje("🚫 Ocurrió un error: " + error.message, "error");
@@ -150,6 +146,7 @@ if (form) {
     }
   });
 }
+
 
 // ===============================
 // ✅ Obtener los números seleccionados

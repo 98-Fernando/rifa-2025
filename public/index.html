@@ -199,15 +199,29 @@ async function cargarConfig() {
 ====================== */
 async function iniciarPago(ref) {
   try {
-    if (!seleccionados.length) {
+    console.log("🔹 iniciarPago llamado con ref:", ref);
+    console.log("🔹 CONFIG actual:", CONFIG);
+    
+    if (!ref) {
+      console.error("❌ La referencia es inválida o está vacía");
+      showMessage("❌ Error: referencia inválida");
+      return;
+    }
+
+    if (!CONFIG.publicKey) {
+      console.error("❌ Public Key no cargada");
+      showMessage("❌ Error: public key no cargada");
+      return;
+    }
+
+    if (seleccionados.length === 0) {
+      console.error("❌ No hay números seleccionados");
       showMessage("❌ Debes seleccionar al menos un número");
       return;
     }
-    if (!CONFIG.publicKey) {
-      showMessage("❌ Public Key no cargada");
-      return;
-    }
+
     const total = seleccionados.length * CONFIG.precio * 100;
+    console.log("🔹 Total a pagar (en centavos):", total);
 
     const r = await fetch("/api/signature", {
       method: "POST",
@@ -216,23 +230,24 @@ async function iniciarPago(ref) {
     });
 
     const data = await r.json();
-    if (!data.exito || !data.signature) throw new Error("No se generó la firma");
+    console.log("🔹 Respuesta de /api/signature:", data);
+
+    if (!data.exito || !data.signature) {
+      console.error("❌ No se generó la firma correctamente");
+      showMessage("❌ Error al generar la firma");
+      return;
+    }
 
     const signature = data.signature;
+    console.log("🔹 Signature generada:", signature);
 
-    // Debug console
-    console.log("💡 Redirigiendo a Wompi con datos:", {
-      publicKey: CONFIG.publicKey,
-      total,
-      reference: ref,
-      signature,
-      urlSuccess: CONFIG.urlSuccess
-    });
-
-    // Redirección segura
+    // URL de redirección a Wompi
     const url = `https://checkout.wompi.co/p/?public-key=${encodeURIComponent(CONFIG.publicKey)}&currency=COP&amount-in-cents=${total}&reference=${encodeURIComponent(ref)}&redirect-url=${encodeURIComponent(CONFIG.urlSuccess)}&integrity_signature=${encodeURIComponent(signature)}`;
 
-    window.location.href = url;
+    console.log("💡 URL lista para redirigir a Wompi:", url);
+
+    // ✅ Por ahora comentamos la redirección hasta confirmar que todo está bien
+    // window.location.href = url;
 
   } catch (e) {
     console.error("❌ Error iniciando pago:", e);

@@ -98,6 +98,7 @@ if (form) {
         body: JSON.stringify({ nombre, correo, telefono, numeros: numerosSeleccionados }),
       });
 
+      if (!res.ok) throw new Error("Error guardando pendiente");
       const data = await res.json();
       if (!data.exito) throw new Error(data.mensaje || "Error guardando pendiente");
 
@@ -108,23 +109,20 @@ if (form) {
       console.log("💾 Pendiente guardado:", data);
       console.log("💰 Total a pagar:", amountInCents);
 
-      // 2️⃣ Calcular firma con el backend
+      // 2️⃣ Calcular firma
       const signatureRes = await fetch("/api/signature", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          reference,
-          amountInCents,
-          currency: "COP",
-        }),
+        body: JSON.stringify({ reference, amountInCents, currency: "COP" }),
       });
 
+      if (!signatureRes.ok) throw new Error("Error generando firma");
       const sigData = await signatureRes.json();
       if (!sigData.signature) throw new Error("No se pudo generar la firma");
 
       console.log("✍️ Firma generada:", sigData.signature);
 
-      // 3️⃣ Crear transacción en el backend y obtener la URL de Wompi
+      // 3️⃣ Crear transacción
       const txRes = await fetch("/api/crear-transaccion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -137,14 +135,13 @@ if (form) {
         }),
       });
 
+      if (!txRes.ok) throw new Error("Error creando la transacción");
       const txData = await txRes.json();
       if (!txData.urlCheckout) throw new Error("No se obtuvo la URL de checkout");
 
       console.log("🔗 Redirigiendo a:", txData.urlCheckout);
 
-      // 🚀 Redirigir al Checkout de Wompi
       window.location.href = txData.urlCheckout;
-
     } catch (error) {
       console.error("❌ Error:", error);
       mostrarMensaje("🚫 Ocurrió un error: " + error.message, "error");
@@ -183,7 +180,8 @@ function actualizarBarra(porcentaje) {
   else if (porcentaje < 90) barraProgreso.style.backgroundColor = "#ff9800";
   else barraProgreso.style.backgroundColor = "#4caf50";
 
-  document.getElementById("porcentaje").textContent = `Progreso: ${porcentaje}% vendido`;
+  const porcentajeTxt = document.getElementById("porcentaje");
+  if (porcentajeTxt) porcentajeTxt.textContent = `Progreso: ${porcentaje}% vendido`;
 }
 
 // ===============================

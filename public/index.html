@@ -244,10 +244,8 @@ async function iniciarPago(ref) {
     // URL de redirección a Wompi
     const url = `https://checkout.wompi.co/p/?public-key=${encodeURIComponent(CONFIG.publicKey)}&currency=COP&amount-in-cents=${total}&reference=${encodeURIComponent(ref)}&redirect-url=${encodeURIComponent(CONFIG.urlSuccess)}&integrity_signature=${encodeURIComponent(signature)}`;
 
-    console.log("💡 URL lista para redirigir a Wompi:", url);
-
-    // ✅ Por ahora comentamos la redirección hasta confirmar que todo está bien
-    // window.location.href = url;
+console.log("💡 URL construida:", url);
+alert("💡 URL construida: " + url);
 
   } catch (e) {
     console.error("❌ Error iniciando pago:", e);

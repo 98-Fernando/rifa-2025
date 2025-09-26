@@ -98,18 +98,21 @@
     // ===============================
     document.addEventListener("DOMContentLoaded", async () => {
       await cargarConfig();       // cargo config
-      await cargarScriptWompi();  // cargo script wompi
-      await cargarNumeros();      // cargo números
-      await cargarConsulta();     // cargo porcentaje
+await cargarNumeros();      // cargo números
+await cargarConsulta();     // cargo porcentaje
 
-      // Inicializo Wompi con la llave pública
-      if (window.$wompi) {
-        window.$wompi.initialize({
-          publicKey: CONFIG.publicKey,
-        });
-      } else {
-        console.error("❌ $wompi no está disponible");
-      }
+// 🔹 Cargar script de Wompi y luego inicializar
+await cargarScriptWompi();
+
+if (window.$wompi && CONFIG.publicKey) {
+  window.$wompi.initialize({
+    publicKey: CONFIG.publicKey,
+  });
+  console.log("✅ Wompi inicializado con llave:", CONFIG.publicKey);
+} else {
+  console.error("❌ $wompi sigue sin estar disponible");
+}
+
 
       // Evento del formulario
       document.getElementById("formCompra").addEventListener("submit", async (e) => {

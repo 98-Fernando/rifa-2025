@@ -105,22 +105,32 @@
    VARIABLES GLOBALES
 ====================== */
 let seleccionados = [];
-let PRECIO_BOLETO = 0;
-let PUBLIC_KEY = "";
-let URL_SUCCESS = "", URL_FAILURE = "", URL_PENDING = "";
+
+// ======================
+// CONFIG GLOBAL
+// ======================
+let CONFIG = {
+  precio: 0,
+  publicKey: "",
+  urlSuccess: "",
+  urlFailure: "",
+  urlPending: ""
+};
 
 /* ======================
    UTILIDADES
 ====================== */
-function showMessage(text, success=false) {
+function showMessage(text, success = false) {
   const m = document.getElementById("mensaje");
   m.textContent = text;
   m.className = "mensaje " + (success ? "exito" : "error");
   m.classList.remove("hidden");
-  setTimeout(()=>m.classList.add("hidden"),5000);
+  setTimeout(() => m.classList.add("hidden"), 5000);
 }
+
 function actualizarTotal() {
-  document.getElementById("total-pagar").textContent = (seleccionados.length * PRECIO_BOLETO).toLocaleString();
+  document.getElementById("total-pagar").textContent =
+    (seleccionados.length * CONFIG.precio).toLocaleString();
 }
 
 /* ======================
@@ -131,13 +141,21 @@ async function cargarConfig() {
     const res = await fetch("/api/config");
     const data = await res.json();
     if (!data.exito) throw new Error("Config inválida");
-    PRECIO_BOLETO = data.precio;
-    PUBLIC_KEY = data.publicKey;
-    URL_SUCCESS = data.urlSuccess || "";
-    URL_FAILURE = data.urlFailure || "";
-    URL_PENDING = data.urlPending || "";
-    document.getElementById("valor-boleto").textContent = `VALOR: $ ${PRECIO_BOLETO.toLocaleString()}`;
-  } catch(e){ showMessage("❌ Error config: "+e.message); }
+
+    CONFIG.precio = Number(data.precio) || 0;
+    CONFIG.publicKey = data.publicKey;
+    CONFIG.urlSuccess = data.urlSuccess || "";
+    CONFIG.urlFailure = data.urlFailure || "";
+    CONFIG.urlPending = data.urlPending || "";
+
+    document.getElementById("valor-boleto").textContent =
+      `VALOR: $ ${CONFIG.precio.toLocaleString()}`;
+
+    // Actualiza el total si ya hay números seleccionados
+    actualizarTotal();
+  } catch (e) {
+    showMessage("❌ Error config: " + e.message);
+  }
 }
 
 /* ======================

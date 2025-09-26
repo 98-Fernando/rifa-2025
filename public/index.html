@@ -182,6 +182,8 @@ async function cargarConfig() {
     CONFIG.urlFailure = data.urlFailure || "";
     CONFIG.urlPending = data.urlPending || "";
 
+    console.log("CONFIG cargada:", CONFIG);
+
     document.getElementById("valor-boleto").textContent =
       `VALOR: $ ${CONFIG.precio.toLocaleString()}`;
 

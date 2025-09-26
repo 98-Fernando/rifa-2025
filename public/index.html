@@ -1,402 +1,49 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Rifa 2025 - iPhone 16 Pro Max o Samsung S24 Ultra</title>
-  <link rel="icon" href="favicon.ico" />
-  <style>
-    /* 🎨 ESTILOS GENERALES */
-    * { box-sizing: border-box; margin:0; padding:0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background: #f8f9fa; color: #111; line-height:1.4; }
-    .container { max-width: 480px; margin: auto; padding: 1rem; }
-    img { width: 100%; border-radius: 8px; margin-bottom:1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-    h1,h2,h3,p { margin:0.5rem 0; text-align:center; }
-    h1 { color: #1f2937; font-size: 1.5rem; }
-    h2 { color: #374151; font-size: 1.2rem; }
-
-    /* 📊 PROGRESO */
-    .progreso-container { margin: 1.5rem 0; padding: 1rem; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    .barra { width: 100%; background: #e5e7eb; border-radius: 12px; overflow: hidden; height: 32px; }
-    .relleno { width:0; height:100%; display:flex; justify-content:center; align-items:center; font-weight:bold; color:white; border-radius:12px; transition: width 0.7s ease; font-size: 0.9rem; }
-    .verde { background: linear-gradient(45deg, #10b981, #059669); }
-    .amarillo { background: linear-gradient(45deg, #f59e0b, #d97706); }
-    .rojo { background: linear-gradient(45deg, #ef4444, #dc2626); }
-
-    /* 📋 FORMULARIO */
-    form { display:flex; flex-direction:column; gap:1rem; margin-top:1.5rem; padding: 1.5rem; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-    input, button { padding:0.875rem; font-size:1rem; border-radius:8px; border:1px solid #d1d5db; }
-    input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
-    button { background: linear-gradient(45deg, #3b82f6, #2563eb); color:white; font-weight:bold; cursor:pointer; border:none; transition:0.2s; }
-    button:hover:not(:disabled) { background: linear-gradient(45deg, #2563eb, #1d4ed8); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
-    button:disabled { background: #9ca3af; cursor:not-allowed; }
-
-    /* 🎟️ NÚMEROS */
-    #lista-numeros { display:grid; grid-template-columns: repeat(auto-fill, minmax(50px,1fr)); gap:6px; max-height:220px; overflow-y:auto; margin-top:1rem; padding: 0.5rem; }
-    .numero-btn { padding:0.75rem 0.5rem; border-radius:8px; border:2px solid #e5e7eb; text-align:center; cursor:pointer; font-weight:bold; background:white; min-height: 45px; transition:0.2s; }
-    .disponible { border-color: #10b981; background: #f0fdf4; color: #065f46; }
-    .disponible:hover { background: #dcfce7; transform: scale(1.05); }
-    .seleccionado { background: linear-gradient(45deg, #3b82f6, #2563eb); color:white; border-color: #2563eb; }
-    .ocupado { background: #fee2e2; color: #991b1b; cursor:not-allowed; border-color: #fca5a5; opacity:0.7; }
-
-    /* 📢 MENSAJES */
-    .mensaje { margin-top:1rem; padding:0.75rem; border-radius:8px; font-weight:bold; text-align:center; }
-    .mensaje.error { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
-    .mensaje.exito { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
-
-    /* 🎫 TICKET */
-    .ticket-box { margin-top:1.5rem; padding:1.5rem; border-radius:8px; background:white; box-shadow:0 4px 6px rgba(0,0,0,0.1); border-left:4px solid #10b981; word-break:break-word; }
-
-    /* 🔄 SPINNER */
-    .spinner { display:inline-block; width:20px; height:20px; border:3px solid #f3f3f3; border-top:3px solid #3b82f6; border-radius:50%; animation:spin 1s linear infinite; }
-    @keyframes spin { 100% { transform: rotate(360deg); } }
-    .loading-state { display:flex; align-items:center; justify-content:center; gap:0.5rem; color:#6b7280; }
-
-    /* 📱 RESPONSIVE */
-    @media (max-width:480px) {
-      .container { padding:0.5rem; }
-      .numero-btn { min-height:40px; font-size:0.9rem; }
-    }
-  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pagar con Wompi</title>
 </head>
 <body>
-<div class="container">
-  <h1>🎉 PARTICIPA EN LA GRAN RIFA 🎉</h1>
-  <img src="img.jpg" alt="iPhone 16 Pro Max y Samsung S24 Ultra - Rifa 2025">
-  <h2>🏆 Un iPhone 16 Pro Max o un Samsung S24 Ultra 🏆</h2>
+  <h1>Compra tu Rifa 🎟️</h1>
+  <button id="btnPagar">Pagar</button>
 
-  <!-- Barra de progreso -->
-  <div class="progreso-container">
-    <div class="barra"><div id="progreso" class="relleno rojo">0%</div></div>
-    <p id="porcentaje-texto">0% completado</p>
-    <p id="alerta80" class="hidden" style="color:#dc2626;font-weight:bold;">🔥 ¡Ya alcanzamos el 80%! 🎉</p>
-    <h3 id="valor-boleto">VALOR: $ 0</h3>
-  </div>
+  <!-- Script oficial de Wompi -->
+  <script src="https://checkout.wompi.co/widget.js"></script>
 
-  <!-- Formulario -->
-  <form id="formulario" autocomplete="off">
-    <input id="nombre" type="text" placeholder="Tu nombre completo" required minlength="2" maxlength="50">
-    <input id="correo" type="email" placeholder="Tu correo electrónico" required>
-    <input id="telefono" type="tel" placeholder="Tu número de celular (10 dígitos)" required maxlength="10" pattern="[0-9]{10}">
-    
-    <div>
-      <p><strong>🎯 Selecciona hasta 10 números:</strong></p>
-      <div id="lista-numeros"></div>
-    </div>
+  <script>
+    let CONFIG = {};
 
-    <button id="enviar-btn" type="submit">
-      🎟 Participar y Pagar - $<span id="total-pagar">0</span>
-    </button>
-    <div id="spinner" class="loading-state hidden">
-      <div class="spinner"></div><span>Procesando...</span>
-    </div>
-  </form>
+    async function cargarConfig() {
+      try {
+        const res = await fetch("/api/config"); // tu backend
+        const data = await res.json();
+        CONFIG = data;
 
-  <div id="mensaje" class="mensaje hidden" aria-live="polite"></div>
-  <div id="ticket-box" class="ticket-box hidden"></div>
+        console.log("⚙️ Config cargada:", CONFIG);
 
-  <footer style="text-align:center;margin-top:2rem;font-size:13px;color:#6b7280;">
-    &copy; 2025 Rifa Digital | Elaborado por <strong>Ing. Fernando Gómez</strong>
-  </footer>
-</div>
-<script>
-/* ======================
-   VARIABLES GLOBALES
-====================== */
-let seleccionados = [];
+        // Inicializar Wompi solo después de cargar la config
+        window.$wompi.initialize({
+          publicKey: CONFIG.publicKey,
+        });
 
-/* ======================
-   CONFIG GLOBAL
-====================== */
-let CONFIG = {
-  precio: 0,
-  publicKey: "",
-  urlSuccess: "",
-  urlFailure: "",
-  urlPending: ""
-};
-
-/* ======================
-   ELEMENTOS DEL DOM
-====================== */
-const nombre = document.getElementById("nombre");
-const correo = document.getElementById("correo");
-const telefono = document.getElementById("telefono");
-
-/* ======================
-   UTILIDADES
-====================== */
-function showMessage(text, success = false) {
-  const m = document.getElementById("mensaje");
-  m.textContent = text;
-  m.className = "mensaje " + (success ? "exito" : "error");
-  m.classList.remove("hidden");
-  setTimeout(() => m.classList.add("hidden"), 5000);
-}
-
-function actualizarTotal() {
-  document.getElementById("total-pagar").textContent =
-    (seleccionados.length * CONFIG.precio).toLocaleString();
-}
-
-/* ======================
-   VALIDAR FORMULARIO
-====================== */
-function validar() {
-  if (nombre.value.trim().length < 2) {
-    showMessage("❌ Nombre muy corto");
-    return false;
-  }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo.value.trim())) {
-    showMessage("❌ Email inválido");
-    return false;
-  }
-  if (!/^\d{10}$/.test(telefono.value.trim())) {
-    showMessage("❌ Teléfono inválido (10 dígitos)");
-    return false;
-  }
-  if (seleccionados.length === 0) {
-    showMessage("❌ Selecciona al menos un número (máx: 10)");
-    return false;
-  }
-  if (seleccionados.length > 10) {
-    showMessage("❌ Solo puedes seleccionar hasta 10 números");
-    return false;
-  }
-  return true;
-}
-
-/* ======================
-   CARGAR CONFIG
-====================== */
-async function cargarConfig() {
-  try {
-    const res = await fetch("/api/config");
-    const data = await res.json();
-    if (!data.exito) throw new Error("Config inválida");
-
-    CONFIG.precio = Number(data.precio) || 0;
-    CONFIG.publicKey = data.publicKey || "";
-    CONFIG.urlSuccess = data.urlSuccess || "";
-    CONFIG.urlFailure = data.urlFailure || "";
-    CONFIG.urlPending = data.urlPending || "";
-
-    if (!CONFIG.publicKey) throw new Error("Public Key no encontrada");
-
-    document.getElementById("valor-boleto").textContent =
-      `VALOR: $ ${CONFIG.precio.toLocaleString()}`;
-
-    actualizarTotal();
-  } catch (e) {
-    showMessage("❌ Error config: " + e.message);
-    console.error("💥 Error cargarConfig:", e);
-  }
-}
-
-/* ======================
-   INICIAR PAGO
-====================== */
-async function iniciarPago(ref) {
-  try {
-    console.log("🔹 iniciarPago llamado con ref:", ref);
-    console.log("🔹 CONFIG actual:", CONFIG);
-
-    if (!ref) {
-      console.error("❌ La referencia es inválida o está vacía");
-      showMessage("❌ Error: referencia inválida");
-      return;
-    }
-
-    if (!CONFIG.publicKey) {
-      console.error("❌ Public Key no cargada");
-      showMessage("❌ Error: public key no cargada");
-      return;
-    }
-
-    if (seleccionados.length === 0) {
-      console.error("❌ No hay números seleccionados");
-      showMessage("❌ Debes seleccionar al menos un número");
-      return;
-    }
-
-    const total = seleccionados.length * CONFIG.precio * 100; // en centavos
-    console.log("🔹 Total a pagar (en centavos):", total);
-
-    // Pedir la firma al backend
-    const r = await fetch("/api/signature", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        reference: ref,
-        amountInCents: total,
-        currency: "COP"
-      })
-    });
-
-    const data = await r.json();
-    console.log("🔹 Respuesta de /api/signature:", data);
-
-    if (!data.exito || !data.signature) {
-      console.error("❌ No se generó la firma correctamente");
-      showMessage("❌ Error al generar la firma");
-      return;
-    }
-
-    const signature = data.signature;
-    console.log("🔹 Signature generada:", signature);
-
-    // ✅ URL CORRECTA DEL CHECKOUT
-    const url = `https://checkout.wompi.co/p/?public-key=${encodeURIComponent(CONFIG.publicKey)}&currency=COP&amount-in-cents=${total}&reference=${encodeURIComponent(ref)}&signature=${encodeURIComponent(signature)}&redirect-url=${encodeURIComponent(CONFIG.urlSuccess)}&redirect-url-failure=${encodeURIComponent(CONFIG.urlFailure)}&redirect-url-pending=${encodeURIComponent(CONFIG.urlPending)}`;
-
-    console.log("💡 URL construida:", url);
-
-    // Redirigir al checkout
-    window.location.href = url;
-
-  } catch (e) {
-    console.error("❌ Error iniciando pago:", e);
-    showMessage("❌ Error iniciando pago: " + e.message);
-  }
-}
-/* ======================
-   CARGAR NÚMEROS
-====================== */
-async function cargarNumeros() {
-  try {
-    const res = await fetch("/api/tickets/numeros");
-    const data = await res.json();
-    if (!data.exito) return;
-
-    const cont = document.getElementById("lista-numeros");
-    cont.innerHTML = "";
-
-    data.numeros.forEach(({ numero, disponible }) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.textContent = numero;
-      btn.className = "numero-btn";
-
-      if (disponible) {
-        btn.classList.add("disponible");
-        btn.onclick = () => toggleNumero(numero, btn);
-      } else {
-        btn.classList.add("ocupado");
-        btn.disabled = true;
+        // Activar botón de pago
+        document.getElementById("btnPagar").addEventListener("click", () => {
+          window.$wompi.open({
+            currency: "COP",
+            amountInCents: CONFIG.precio * 100, // Wompi usa centavos
+            reference: "COMPRA_" + Date.now(),
+            redirectUrl: CONFIG.urlSuccess, // o Pending/Failure si aplica
+          });
+        });
+      } catch (error) {
+        console.error("❌ Error cargando config:", error);
       }
-
-      cont.appendChild(btn);
-    });
-  } catch (e) {
-    showMessage("❌ Error cargando números");
-    console.error("💥 Error cargarNumeros:", e);
-  }
-}
-
-/* ======================
-   SELECCIÓN / DESELECCIÓN
-====================== */
-function toggleNumero(num, btn) {
-  const index = seleccionados.indexOf(num);
-
-  if (index > -1) {
-    seleccionados.splice(index, 1);
-    btn.classList.remove("seleccionado");
-    btn.classList.add("disponible");
-  } else {
-    if (seleccionados.length >= 10) {
-      showMessage("Máximo 10 números");
-      return;
     }
-    seleccionados.push(num);
-    btn.classList.remove("disponible");
-    btn.classList.add("seleccionado");
-  }
 
-  actualizarTotal();
-}
-
-/* ======================
-   ACTUALIZAR PROGRESO
-====================== */
-async function actualizarProgreso() {
-  try {
-    const res = await fetch("/api/tickets/consulta");
-    const data = await res.json();
-    if (!data.exito) return;
-
-    const barra = document.getElementById("progreso");
-    barra.style.width = data.porcentaje + "%";
-    barra.textContent = data.porcentaje + "%";
-    barra.className =
-      "relleno " +
-      (data.porcentaje < 50 ? "rojo" : data.porcentaje < 80 ? "amarillo" : "verde");
-
-    document.getElementById("porcentaje-texto").textContent =
-      `${data.porcentaje}% (${data.vendidos}/100)`;
-
-    document.getElementById("alerta80").classList.toggle("hidden", data.porcentaje < 80);
-  } catch (e) {
-    console.error("💥 Error actualizarProgreso:", e);
-  }
-}
-
-/* ======================
-   INICIO
-====================== */
-document.addEventListener("DOMContentLoaded", async () => {
-  await cargarConfig();
-  await cargarNumeros();
-  await actualizarProgreso();
-
-  setInterval(() => {
-    cargarNumeros();
-    actualizarProgreso();
-  }, 15000);
-
-  // Evento submit
-  document.getElementById("formulario").onsubmit = async e => {
-    e.preventDefault();
-    if (!validar()) return;
-
-    document.getElementById("enviar-btn").disabled = true;
-    document.getElementById("spinner").classList.remove("hidden");
-
-    try {
-      const r = await fetch("/api/tickets/guardar-pendiente", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nombre: nombre.value,
-          correo: correo.value,
-          telefono: telefono.value,
-          numeros: seleccionados
-        })
-      });
-
-      const d = await r.json();
-      if (!d.exito) throw new Error(d.mensaje);
-
-      const box = document.getElementById("ticket-box");
-      box.classList.remove("hidden");
-      box.innerHTML = `<h3>🎫 Ticket generado</h3>
-                       <p>Números: ${seleccionados.join(", ")}</p>
-                       <p>Ref: ${d.reference}</p>`;
-
-      // Llamada a Wompi
-      iniciarPago(d.reference);
-
-    } catch (err) {
-      showMessage("❌ " + err.message);
-      document.getElementById("enviar-btn").disabled = false;
-    } finally {
-      document.getElementById("spinner").classList.add("hidden");
-    }
-  };
-
-  // Limitar inputs
-  telefono.oninput = e => e.target.value = e.target.value.replace(/\D/g, "").slice(0, 10);
-  nombre.oninput = e => e.target.value = e.target.value.replace(/[^a-zA-ZÁÉÍÓÚáéíóúÑñ\s]/g, "");
-});
-</script>
+    // Ejecutar
+    cargarConfig();
+  </script>
 </body>
 </html>

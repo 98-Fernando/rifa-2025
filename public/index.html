@@ -203,14 +203,34 @@ function validar(){
 /* ======================
    PAGO
 ====================== */
-async function iniciarPago(ref){
-  const total=seleccionados.length*PRECIO_BOLETO*100;
-  try{
-    const r=await fetch("/api/signature",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({reference:ref,amountInCents:total,currency:"COP"})});
-    const {signature}=await r.json();
-    const url=`https://checkout.wompi.co/p/?public-key=${PUBLIC_KEY}&currency=COP&amount-in-cents=${total}&reference=${ref}&redirect-url=${URL_SUCCESS}&integrity_signature=${signature}`;
-    window.location.href=url;
-  }catch(e){ showMessage("❌ Error iniciando pago"); }
+async function iniciarPago(ref) {
+  const total = seleccionados.length * (CONFIG.precio || 5000) * 100;
+
+  try {
+    // 🔹 1. Pedir firma al backend
+    const r = await fetch("/api/signature", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        reference: ref,
+        amountInCents: total,
+        currency: "COP"
+      })
+    });
+
+    const { signature } = await r.json();
+    if (!signature) throw new Error("No se generó la firma");
+
+    // 🔹 2. Construir URL con los valores de CONFIG
+    const url = `https://checkout.wompi.co/p/?public-key=${CONFIG.publicKey}&currency=COP&amount-in-cents=${total}&reference=${ref}&redirect-url=${CONFIG.urlSuccess}&integrity_signature=${signature}`;
+
+    // 🔹 3. Redirigir
+    window.location.href = url;
+
+  } catch (e) {
+    console.error("❌ Error iniciando pago:", e);
+    showMessage("❌ Error iniciando pago: " + e.message);
+  }
 }
 
 /* ======================

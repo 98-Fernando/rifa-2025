@@ -96,6 +96,9 @@ app.use(
 // STATIC FILES (public)
 // ======================
 app.use(express.static(path.join(__dirname, "..", "public")));
+app.get("/app.js", (req, res) => {
+  res.sendFile(path.join(__dirname, "app.js"));
+});
 app.get("/", (req, res) => res.sendFile(path.join(__dirname, "..", "public", "index.html")));
 
 // ======================

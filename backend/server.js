@@ -48,7 +48,7 @@ app.use(
 );
 
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
-app.use(express.json());
+app.use(express.json()); // ⚠️ No afecta a webhook porque ahí usamos raw
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({ origin: true }));
 
@@ -112,15 +112,17 @@ app.get("/api/config", (req, res) => {
 app.get("/api/tickets/numeros", async (req, res) => {
   try {
     const tickets = await Ticket.find({}, "numeros").lean();
-    const ocupados = tickets.flatMap(t => t.numeros);
+    const ocupados = tickets.flatMap((t) => t.numeros.map((n) => Number(n)));
+
     const total = 100;
     const numeros = Array.from({ length: total }, (_, i) => {
       const num = i + 1;
       return { numero: num, disponible: !ocupados.includes(num) };
     });
+
     res.json({ exito: true, numeros });
   } catch (err) {
-    console.error(err);
+    console.error("❌ Error cargando números:", err);
     res.json({ exito: false, mensaje: "Error cargando números" });
   }
 });
@@ -131,6 +133,7 @@ app.get("/api/tickets/consulta", async (req, res) => {
     const porcentaje = Math.min(100, Math.round((vendidos / 100) * 100));
     res.json({ exito: true, vendidos, porcentaje });
   } catch (err) {
+    console.error("❌ Error consulta:", err);
     res.json({ exito: false });
   }
 });
@@ -139,14 +142,26 @@ app.post("/api/tickets/guardar-pendiente", async (req, res) => {
   try {
     const { nombre, correo, telefono, numeros } = req.body;
     if (!nombre || !correo || !telefono || !numeros?.length) {
-      return res.status(400).json({ exito: false, mensaje: "Datos incompletos" });
+      return res
+        .status(400)
+        .json({ exito: false, mensaje: "Datos incompletos" });
     }
+
     const reference = `RIFA-${Date.now()}`;
-    await Pendiente.create({ nombre, correo, telefono, numeros, reference });
+    await Pendiente.create({
+      nombre,
+      correo,
+      telefono,
+      numeros: numeros.map((n) => Number(n)),
+      reference,
+    });
+
     res.json({ exito: true, reference });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ exito: false, mensaje: "Error guardando pendiente" });
+    console.error("❌ Error guardando pendiente:", err);
+    res
+      .status(500)
+      .json({ exito: false, mensaje: "Error guardando pendiente" });
   }
 });
 
@@ -158,12 +173,16 @@ app.post("/api/signature", (req, res) => {
     const { reference, amountInCents, currency } = req.body;
 
     if (!reference || !amountInCents || !currency) {
-      return res.status(400).json({ error: "Faltan datos para generar la firma" });
+      return res
+        .status(400)
+        .json({ error: "Faltan datos para generar la firma" });
     }
 
     const integrityKey = process.env.WOMPI_INTEGRITY_KEY;
     if (!integrityKey) {
-      return res.status(500).json({ error: "Falta WOMPI_INTEGRITY_KEY en el servidor" });
+      return res
+        .status(500)
+        .json({ error: "Falta WOMPI_INTEGRITY_KEY en el servidor" });
     }
 
     const signature = crypto
@@ -187,47 +206,56 @@ const generarFirma = (reference, amountInCents, currency, integrityKey) =>
     .update(`${reference}${amountInCents}${currency}${integrityKey}`)
     .digest("hex");
 
-app.post("/webhook-wompi", express.raw({ type: "application/json" }), async (req, res) => {
-  try {
-    const parsed = JSON.parse(req.body.toString("utf8"));
-    const { event, data } = parsed;
-    if (!data?.transaction) return res.sendStatus(400);
+app.post(
+  "/webhook-wompi",
+  express.raw({ type: "application/json" }),
+  async (req, res) => {
+    try {
+      const parsed = JSON.parse(req.body.toString("utf8"));
+      const { event, data } = parsed;
+      if (!data?.transaction) return res.sendStatus(400);
 
-    const tx = data.transaction;
-    const localSignature = generarFirma(
-      tx.reference,
-      tx.amount_in_cents,
-      tx.currency,
-      process.env.WOMPI_INTEGRITY_KEY || ""
-    );
-    const headerSignature =
-      req.headers["integrity-signature"] || req.headers["content-signature"];
+      const tx = data.transaction;
 
-    if (headerSignature && localSignature && headerSignature !== localSignature) {
-      console.warn("❌ Firma de integridad no coincide");
-      return res.sendStatus(403);
-    }
+      // ✅ Verificar firma
+      const localSignature = generarFirma(
+        tx.reference,
+        tx.amount_in_cents,
+        tx.currency,
+        process.env.WOMPI_INTEGRITY_KEY || ""
+      );
+      const headerSignature =
+        req.headers["integrity-signature"] || req.headers["content-signature"];
 
-    if (event === "transaction.updated" && tx.status === "APPROVED") {
-      const pendiente = await Pendiente.findOne({ reference: tx.reference });
-      if (pendiente) {
-        await Ticket.create({
-          correo: tx.customer_email || pendiente.correo,
-          nombre: tx.customer_name || pendiente.nombre,
-          numeros: pendiente.numeros,
-          estadoPago: "pagado",
-          referencia: tx.reference,
-        });
-        await pendiente.deleteOne();
+      if (headerSignature && localSignature && headerSignature !== localSignature) {
+        console.warn("❌ Firma de integridad no coincide");
+        return res.sendStatus(403);
       }
-    }
 
-    res.sendStatus(200);
-  } catch (err) {
-    console.error("Webhook error:", err);
-    res.sendStatus(500);
+      // ✅ Procesar transacción aprobada
+      if (event === "transaction.updated" && tx.status === "APPROVED") {
+        const pendiente = await Pendiente.findOne({ reference: tx.reference });
+        if (pendiente) {
+          await Ticket.create({
+            reference: tx.reference,
+            correo: tx.customer_email || pendiente.correo,
+            nombre: tx.customer_name || pendiente.nombre,
+            telefono: pendiente.telefono,
+            numeros: pendiente.numeros,
+            estadoPago: "pagado",
+          });
+          await pendiente.deleteOne();
+          console.log(`🎟️ Ticket confirmado: ${tx.reference}`);
+        }
+      }
+
+      res.sendStatus(200);
+    } catch (err) {
+      console.error("❌ Webhook error:", err);
+      res.sendStatus(500);
+    }
   }
-});
+);
 
 // ======================
 // SERVIDOR

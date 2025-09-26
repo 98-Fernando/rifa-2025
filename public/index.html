@@ -193,15 +193,12 @@ async function cargarConfig() {
     console.error("💥 Error cargarConfig:", e);
   }
 }
-
-/* ======================
-   INICIAR PAGO
-====================== */
+/* ====================== INICIAR PAGO ====================== */
 async function iniciarPago(ref) {
   try {
     console.log("🔹 iniciarPago llamado con ref:", ref);
     console.log("🔹 CONFIG actual:", CONFIG);
-    
+
     if (!ref) {
       console.error("❌ La referencia es inválida o está vacía");
       showMessage("❌ Error: referencia inválida");
@@ -220,13 +217,18 @@ async function iniciarPago(ref) {
       return;
     }
 
-    const total = seleccionados.length * CONFIG.precio * 100;
+    const total = seleccionados.length * CONFIG.precio * 100; // en centavos
     console.log("🔹 Total a pagar (en centavos):", total);
 
+    // Pedir la firma al backend
     const r = await fetch("/api/signature", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reference: ref, amountInCents: total, currency: "COP" })
+      body: JSON.stringify({
+        reference: ref,
+        amountInCents: total,
+        currency: "COP"
+      })
     });
 
     const data = await r.json();
@@ -241,11 +243,13 @@ async function iniciarPago(ref) {
     const signature = data.signature;
     console.log("🔹 Signature generada:", signature);
 
-    // URL de redirección a Wompi
-    const url = `https://checkout.wompi.co/p/?public-key=${encodeURIComponent(CONFIG.publicKey)}&currency=COP&amount-in-cents=${total}&reference=${encodeURIComponent(ref)}&redirect-url=${encodeURIComponent(CONFIG.urlSuccess)}&signature=${encodeURIComponent(signature)}`;
+    // Construir URL de redirección a Wompi con las 3 rutas
+    const url = `https://checkout.wompi.co/p/?public-key=${encodeURIComponent(CONFIG.publicKey)}&currency=COP&amount-in-cents=${total}&reference=${encodeURIComponent(ref)}&signature=${encodeURIComponent(signature)}&redirect-url=${encodeURIComponent(CONFIG.urlSuccess)}&url-failure=${encodeURIComponent(CONFIG.urlFailure)}&url-pending=${encodeURIComponent(CONFIG.urlPending)}`;
 
-console.log("💡 URL construida:", url);
-alert("💡 URL construida: " + url);
+    console.log("💡 URL construida:", url);
+
+    // Redirigir al checkout
+    window.location.href = url;
 
   } catch (e) {
     console.error("❌ Error iniciando pago:", e);

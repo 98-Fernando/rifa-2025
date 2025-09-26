@@ -1,24 +1,22 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
-const ticketSchema = new mongoose.Schema({
-  nombre: String,
-  correo: String,
-  telefono: String,
-  fecha: {
-    type: Date,
-    default: Date.now
-  },
-  numeros: [String],
+const TicketSchema = new mongoose.Schema({
+  reference: { type: String, required: true, unique: true }, // referencia de Wompi
+  nombre: { type: String, required: true },
+  correo: { type: String, required: true },
+  telefono: { type: String, required: true },
+  numeros: { type: [Number], required: true }, // consistente con Pendiente
   estadoPago: {
     type: String,
     enum: ["pendiente", "pagado"],
     default: "pendiente"
+  },
+  fecha: {
+    type: Date,
+    default: Date.now
   }
 }, {
   timestamps: true
 });
 
-// Exportación como default (ES6)
-const Ticket = mongoose.model('Ticket', ticketSchema);
-
-export default Ticket;
+export default mongoose.model("Ticket", TicketSchema);

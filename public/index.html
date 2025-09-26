@@ -158,36 +158,66 @@ async function cargarConfig() {
   }
 }
 
-/* ======================
-   NÚMEROS
-====================== */
+// ======================
+// CARGAR NÚMEROS
+// ======================
 async function cargarNumeros() {
   try {
     const res = await fetch("/api/tickets/numeros");
     const data = await res.json();
     if (!data.exito) return;
+
     const cont = document.getElementById("lista-numeros");
-    cont.innerHTML="";
-    data.numeros.forEach(({numero,disponible})=>{
-      const btn=document.createElement("button");
-      btn.type="button"; btn.textContent=numero; btn.className="numero-btn";
-      if(disponible){ 
+    cont.innerHTML = "";
+
+    data.numeros.forEach(({ numero, disponible }) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = numero;
+      btn.className = "numero-btn";
+
+      if (disponible) {
         btn.classList.add("disponible");
-        btn.onclick=()=>toggleNumero(numero,btn);
-      } else { btn.classList.add("ocupado"); btn.disabled=true; }
+        btn.onclick = () => toggleNumero(numero, btn);
+      } else {
+        btn.classList.add("ocupado");
+        btn.disabled = true;
+      }
+
       cont.appendChild(btn);
     });
-  } catch(e){ showMessage("❌ Error cargando números"); }
-}
-function toggleNumero(num,btn){
-  const i=seleccionados.indexOf(num);
-  if(i>-1){ seleccionados.splice(i,1); btn.classList.remove("seleccionado"); btn.classList.add("disponible"); }
-  else{
-    if(seleccionados.length>=10){ showMessage("Máximo 10 números"); return; }
-    seleccionados.push(num); btn.classList.remove("disponible"); btn.classList.add("seleccionado");
+  } catch (e) {
+    showMessage("❌ Error cargando números");
+    console.error("Error cargarNumeros:", e);
   }
+}
+
+// ======================
+// SELECCIÓN / DESELECCIÓN
+// ======================
+function toggleNumero(num, btn) {
+  const index = seleccionados.indexOf(num);
+
+  if (index > -1) {
+    // Deseleccionar
+    seleccionados.splice(index, 1);
+    btn.classList.remove("seleccionado");
+    btn.classList.add("disponible");
+  } else {
+    // Seleccionar
+    if (seleccionados.length >= 10) {
+      showMessage("Máximo 10 números");
+      return;
+    }
+    seleccionados.push(num);
+    btn.classList.remove("disponible");
+    btn.classList.add("seleccionado");
+  }
+
+  // Actualizar total a pagar
   actualizarTotal();
 }
+
 
 /* ======================
    PROGRESO
@@ -207,21 +237,51 @@ async function actualizarProgreso(){
 /* ======================
    VALIDAR
 ====================== */
-function validar(){
-  const n=document.getElementById("nombre").value.trim();
-  const c=document.getElementById("correo").value.trim();
-  const t=document.getElementById("telefono").value.trim();
-  if(n.length<2){ showMessage("Nombre muy corto"); return false; }
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c)){ showMessage("Email inválido"); return false; }
-  if(!/^\d{10}$/.test(t)){ showMessage("Teléfono inválido"); return false; }
-  if(seleccionados.length===0){ showMessage("Selecciona al menos un número"); return false; }
+function validar() {
+  const nombre = document.getElementById("nombre").value.trim();
+  const correo = document.getElementById("correo").value.trim();
+  const telefono = document.getElementById("telefono").value.trim();
+
+  // ✅ Validaciones
+  if (nombre.length < 2) {
+    showMessage("❌ Nombre muy corto");
+    return false;
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
+    showMessage("❌ Email inválido");
+    return false;
+  }
+
+  if (!/^\d{10}$/.test(telefono)) {
+    showMessage("❌ Teléfono inválido (10 dígitos)");
+    return false;
+  }
+
+  if (!seleccionados.length) {
+    showMessage(`❌ Selecciona al menos un número (máx: 10)`);
+    return false;
+  }
+
+  // Opcional: podrías limitar a 10 números usando CONFIG
+  if (seleccionados.length > 10) {
+    showMessage(`❌ Solo puedes seleccionar hasta 10 números`);
+    return false;
+  }
+
   return true;
 }
+
 
 /* ======================
    PAGO
 ====================== */
 async function iniciarPago(ref) {
+  if (!seleccionados.length) {
+    showMessage("❌ Debes seleccionar al menos un número");
+    return;
+  }
+
   const total = seleccionados.length * (CONFIG.precio || 5000) * 100;
 
   try {
@@ -236,13 +296,18 @@ async function iniciarPago(ref) {
       })
     });
 
-    const { signature } = await r.json();
-    if (!signature) throw new Error("No se generó la firma");
+    const data = await r.json();
+    if (!data.exito || !data.signature) throw new Error("No se generó la firma");
+
+    const signature = data.signature;
 
     // 🔹 2. Construir URL con los valores de CONFIG
-    const url = `https://checkout.wompi.co/p/?public-key=${CONFIG.publicKey}&currency=COP&amount-in-cents=${total}&reference=${ref}&redirect-url=${CONFIG.urlSuccess}&integrity_signature=${signature}`;
+    const url = `https://checkout.wompi.co/p/?public-key=${CONFIG.publicKey}` +
+      `&currency=COP&amount-in-cents=${total}` +
+      `&reference=${ref}&redirect-url=${CONFIG.urlSuccess}` +
+      `&integrity_signature=${signature}`;
 
-    // 🔹 3. Redirigir
+    // 🔹 3. Redirigir a Wompi
     window.location.href = url;
 
   } catch (e) {
@@ -250,6 +315,7 @@ async function iniciarPago(ref) {
     showMessage("❌ Error iniciando pago: " + e.message);
   }
 }
+
 
 /* ======================
    INICIO

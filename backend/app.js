@@ -6,6 +6,7 @@ const mensaje = document.getElementById("mensaje");
 const ticketBox = document.getElementById("ticket-box");
 const spinner = document.getElementById("spinner");
 const barraProgreso = document.querySelector(".relleno");
+const numerosContainer = document.getElementById("numeros-container");
 
 let CONFIG = {};
 
@@ -29,6 +30,40 @@ async function cargarConfig() {
 }
 
 // ===============================
+// 🔹 Renderizar números disponibles
+// ===============================
+async function cargarNumeros() {
+  try {
+    const res = await fetch("/api/tickets/numeros");
+    if (!res.ok) throw new Error("No se pudieron cargar los números");
+
+    const data = await res.json();
+    if (!data.exito) throw new Error("Respuesta inválida");
+
+    numerosContainer.innerHTML = "";
+    data.numeros.forEach((item) => {
+      const btn = document.createElement("button");
+      btn.textContent = item.numero;
+      btn.className = item.disponible ? "numero disponible" : "numero ocupado";
+      btn.disabled = !item.disponible;
+
+      if (item.disponible) {
+        btn.addEventListener("click", () => {
+          btn.classList.toggle("seleccionado");
+        });
+      }
+
+      numerosContainer.appendChild(btn);
+    });
+
+    console.log("🎟️ Números cargados:", data.numeros);
+  } catch (err) {
+    console.error("❌ Error cargando números:", err);
+    mostrarMensaje("🚫 No se pudieron cargar los números.", "error");
+  }
+}
+
+// ===============================
 // 📥 Envío de formulario
 // ===============================
 if (form) {
@@ -38,7 +73,7 @@ if (form) {
     const nombre = document.getElementById("nombre")?.value.trim();
     const correo = document.getElementById("correo")?.value.trim();
     const telefono = document.getElementById("telefono")?.value.trim();
-    const numerosSeleccionados = obtenerNumerosSeleccionados(); // ["1", "2", ...]
+    const numerosSeleccionados = obtenerNumerosSeleccionados();
 
     // Validaciones
     if (!nombre || !correo || !telefono) {
@@ -98,6 +133,7 @@ if (form) {
           amountInCents,
           currency: "COP",
           signature: sigData.signature,
+          customer_email: correo,
         }),
       });
 
@@ -122,7 +158,7 @@ if (form) {
 // ✅ Obtener los números seleccionados
 // ===============================
 function obtenerNumerosSeleccionados() {
-  return Array.from(document.querySelectorAll(".seleccionado"))
+  return Array.from(document.querySelectorAll(".numero.seleccionado"))
     .map((btn) => btn.textContent.trim());
 }
 
@@ -146,6 +182,8 @@ function actualizarBarra(porcentaje) {
   if (porcentaje < 50) barraProgreso.style.backgroundColor = "#f44336";
   else if (porcentaje < 90) barraProgreso.style.backgroundColor = "#ff9800";
   else barraProgreso.style.backgroundColor = "#4caf50";
+
+  document.getElementById("porcentaje").textContent = `Progreso: ${porcentaje}% vendido`;
 }
 
 // ===============================
@@ -153,6 +191,7 @@ function actualizarBarra(porcentaje) {
 // ===============================
 document.addEventListener("DOMContentLoaded", async () => {
   await cargarConfig();
+  await cargarNumeros();
 
   try {
     const res = await fetch("/api/tickets/consulta");

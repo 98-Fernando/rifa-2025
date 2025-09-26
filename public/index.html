@@ -239,6 +239,62 @@ async function iniciarPago(ref) {
     showMessage("❌ Error iniciando pago: " + e.message);
   }
 }
+/* ======================
+   CARGAR NÚMEROS
+====================== */
+async function cargarNumeros() {
+  try {
+    const res = await fetch("/api/tickets/numeros");
+    const data = await res.json();
+    if (!data.exito) return;
+
+    const cont = document.getElementById("lista-numeros");
+    cont.innerHTML = "";
+
+    data.numeros.forEach(({ numero, disponible }) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = numero;
+      btn.className = "numero-btn";
+
+      if (disponible) {
+        btn.classList.add("disponible");
+        btn.onclick = () => toggleNumero(numero, btn);
+      } else {
+        btn.classList.add("ocupado");
+        btn.disabled = true;
+      }
+
+      cont.appendChild(btn);
+    });
+  } catch (e) {
+    showMessage("❌ Error cargando números");
+    console.error("💥 Error cargarNumeros:", e);
+  }
+}
+
+/* ======================
+   SELECCIÓN / DESELECCIÓN
+====================== */
+function toggleNumero(num, btn) {
+  const index = seleccionados.indexOf(num);
+
+  if (index > -1) {
+    seleccionados.splice(index, 1);
+    btn.classList.remove("seleccionado");
+    btn.classList.add("disponible");
+  } else {
+    if (seleccionados.length >= 10) {
+      showMessage("Máximo 10 números");
+      return;
+    }
+    seleccionados.push(num);
+    btn.classList.remove("disponible");
+    btn.classList.add("seleccionado");
+  }
+
+  actualizarTotal();
+}
 
 /* ======================
    INICIO

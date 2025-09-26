@@ -1,604 +1,240 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Rifa 2025 - iPhone 16 Pro Max o Samsung S24 Ultra</title>
-<link rel="icon" href="favicon.ico" />
-<style>
-  * { box-sizing: border-box; margin:0; padding:0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background: #f8f9fa; color: #111; line-height:1.4; }
-  .container { max-width: 480px; margin: auto; padding: 1rem; }
-  img { width: 100%; border-radius: 8px; margin-bottom:1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-  h1,h2,h3,p { margin:0.5rem 0; text-align:center; }
-  h1 { color: #1f2937; font-size: 1.5rem; }
-  h2 { color: #374151; font-size: 1.2rem; }
-  .progreso-container { margin: 1.5rem 0; padding: 1rem; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-  .barra { width: 100%; background: #e5e7eb; border-radius: 12px; overflow: hidden; height: 32px; position: relative; }
-  .relleno { width:0; height:100%; display:flex; justify-content:center; align-items:center; font-weight:bold; color:white; border-radius:12px; transition: width 0.7s ease, background 0.5s; font-size: 0.9rem; }
-  .verde { background: linear-gradient(45deg, #10b981, #059669); }
-  .amarillo { background: linear-gradient(45deg, #f59e0b, #d97706); color:#fff; }
-  .rojo { background: linear-gradient(45deg, #ef4444, #dc2626); }
-  form { display:flex; flex-direction:column; gap:1rem; margin-top:1.5rem; padding: 1.5rem; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-  input, button { padding:0.875rem; font-size:1rem; border-radius:8px; border:1px solid #d1d5db; transition: all 0.2s; }
-  input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
-  button { background: linear-gradient(45deg, #3b82f6, #2563eb); color:white; font-weight:bold; cursor:pointer; border:none; }
-  button:hover:not(:disabled) { background: linear-gradient(45deg, #2563eb, #1d4ed8); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
-  button:disabled { background: #9ca3af; cursor:not-allowed; transform: none; }
-  #lista-numeros { display:grid; grid-template-columns: repeat(auto-fill, minmax(50px,1fr)); gap:6px; max-height:220px; overflow-y:auto; margin-top:1rem; padding: 0.5rem; }
-  .numero-btn { padding:0.75rem 0.5rem; border-radius:8px; border:2px solid #e5e7eb; text-align:center; cursor:pointer; font-weight:bold; transition:all 0.2s; background:white; min-height: 45px; display: flex; align-items: center; justify-content: center; }
-  .disponible { border-color: #10b981; background: #f0fdf4; color: #065f46; }
-  .disponible:hover { background: #dcfce7; transform: scale(1.05); }
-  .seleccionado { background: linear-gradient(45deg, #3b82f6, #2563eb); color:white; border-color: #2563eb; transform: scale(1.05); box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3); }
-  .ocupado { background: #fee2e2; color: #991b1b; cursor:not-allowed; border-color: #fca5a5; opacity: 0.7; }
-  .hidden { display:none; }
-  .mensaje { margin-top:1rem; padding: 0.75rem; border-radius:8px; font-weight:bold; text-align:center; }
-  .mensaje.error { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
-  .mensaje.exito { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
-  .ticket-box { margin-top:1.5rem; padding:1.5rem; border-radius:8px; background:white; box-shadow:0 4px 6px rgba(0,0,0,0.1); word-wrap:break-word; border-left: 4px solid #10b981; }
-  .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); justify-content:center; align-items:center; z-index:1000; backdrop-filter: blur(4px); }
-  .modal-content { background:white; padding:2rem; border-radius:12px; max-width:380px; width:90%; text-align:center; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
-  .modal-content h3 { color: #1f2937; margin-bottom: 1rem; }
-  .modal-buttons { margin-top:1.5rem; display:flex; justify-content:space-around; gap:1rem; }
-  .modal button { flex:1; }
-  .footer-fixed { text-align:center; padding:1rem; font-size:13px; color:#6b7280; margin-top:2rem; background:white; border-top:1px solid #e5e7eb; }
-  .spinner { display:inline-block; width:20px; height:20px; border:3px solid #f3f3f3; border-top:3px solid #3b82f6; border-radius:50%; animation:spin 1s linear infinite; margin-right: 0.5rem; }
-  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-  .loading-state { display: flex; align-items: center; justify-content: center; color: #6b7280; }
-  .resumen-compra { background: #f8fafc; padding: 1rem; border-radius: 8px; margin: 1rem 0; border: 1px solid #e2e8f0; }
-  .precio-total { font-size: 1.2rem; font-weight: bold; color: #1f2937; }
-  @media (max-width: 480px) {
-    .container { padding: 0.5rem; }
-    #lista-numeros { grid-template-columns: repeat(auto-fill, minmax(45px,1fr)); gap:4px; }
-    .numero-btn { padding: 0.5rem; font-size: 0.9rem; min-height: 40px; }
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Rifa 2025 - iPhone 16 Pro Max o Samsung S24 Ultra</title>
+  <link rel="icon" href="favicon.ico" />
+  <style>
+    /* 🎨 ESTILOS GENERALES */
+    * { box-sizing: border-box; margin:0; padding:0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background: #f8f9fa; color: #111; line-height:1.4; }
+    .container { max-width: 480px; margin: auto; padding: 1rem; }
+    img { width: 100%; border-radius: 8px; margin-bottom:1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    h1,h2,h3,p { margin:0.5rem 0; text-align:center; }
+    h1 { color: #1f2937; font-size: 1.5rem; }
+    h2 { color: #374151; font-size: 1.2rem; }
+
+    /* 📊 PROGRESO */
+    .progreso-container { margin: 1.5rem 0; padding: 1rem; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .barra { width: 100%; background: #e5e7eb; border-radius: 12px; overflow: hidden; height: 32px; }
+    .relleno { width:0; height:100%; display:flex; justify-content:center; align-items:center; font-weight:bold; color:white; border-radius:12px; transition: width 0.7s ease; font-size: 0.9rem; }
+    .verde { background: linear-gradient(45deg, #10b981, #059669); }
+    .amarillo { background: linear-gradient(45deg, #f59e0b, #d97706); }
+    .rojo { background: linear-gradient(45deg, #ef4444, #dc2626); }
+
+    /* 📋 FORMULARIO */
+    form { display:flex; flex-direction:column; gap:1rem; margin-top:1.5rem; padding: 1.5rem; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    input, button { padding:0.875rem; font-size:1rem; border-radius:8px; border:1px solid #d1d5db; }
+    input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+    button { background: linear-gradient(45deg, #3b82f6, #2563eb); color:white; font-weight:bold; cursor:pointer; border:none; transition:0.2s; }
+    button:hover:not(:disabled) { background: linear-gradient(45deg, #2563eb, #1d4ed8); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3); }
+    button:disabled { background: #9ca3af; cursor:not-allowed; }
+
+    /* 🎟️ NÚMEROS */
+    #lista-numeros { display:grid; grid-template-columns: repeat(auto-fill, minmax(50px,1fr)); gap:6px; max-height:220px; overflow-y:auto; margin-top:1rem; padding: 0.5rem; }
+    .numero-btn { padding:0.75rem 0.5rem; border-radius:8px; border:2px solid #e5e7eb; text-align:center; cursor:pointer; font-weight:bold; background:white; min-height: 45px; transition:0.2s; }
+    .disponible { border-color: #10b981; background: #f0fdf4; color: #065f46; }
+    .disponible:hover { background: #dcfce7; transform: scale(1.05); }
+    .seleccionado { background: linear-gradient(45deg, #3b82f6, #2563eb); color:white; border-color: #2563eb; }
+    .ocupado { background: #fee2e2; color: #991b1b; cursor:not-allowed; border-color: #fca5a5; opacity:0.7; }
+
+    /* 📢 MENSAJES */
+    .mensaje { margin-top:1rem; padding:0.75rem; border-radius:8px; font-weight:bold; text-align:center; }
+    .mensaje.error { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    .mensaje.exito { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+
+    /* 🎫 TICKET */
+    .ticket-box { margin-top:1.5rem; padding:1.5rem; border-radius:8px; background:white; box-shadow:0 4px 6px rgba(0,0,0,0.1); border-left:4px solid #10b981; word-break:break-word; }
+
+    /* 🔄 SPINNER */
+    .spinner { display:inline-block; width:20px; height:20px; border:3px solid #f3f3f3; border-top:3px solid #3b82f6; border-radius:50%; animation:spin 1s linear infinite; }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+    .loading-state { display:flex; align-items:center; justify-content:center; gap:0.5rem; color:#6b7280; }
+
+    /* 📱 RESPONSIVE */
+    @media (max-width:480px) {
+      .container { padding:0.5rem; }
+      .numero-btn { min-height:40px; font-size:0.9rem; }
+    }
+  </style>
 </head>
 <body>
-
 <div class="container">
   <h1>🎉 PARTICIPA EN LA GRAN RIFA 🎉</h1>
   <img src="img.jpg" alt="iPhone 16 Pro Max y Samsung S24 Ultra - Rifa 2025">
   <h2>🏆 Un iPhone 16 Pro Max o un Samsung S24 Ultra 🏆</h2>
 
+  <!-- Barra de progreso -->
   <div class="progreso-container">
-    <div class="barra">
-      <div id="progreso" class="relleno rojo">0%</div>
-    </div>
+    <div class="barra"><div id="progreso" class="relleno rojo">0%</div></div>
     <p id="porcentaje-texto">0% completado</p>
-    <p id="alerta80" class="hidden" style="color:#dc2626; font-weight:bold; margin-top:0.5rem;">🔥 ¡Ya hemos alcanzado el 80%! El sorteo está cerca 🎉</p>
-    <h3 id="valor-boleto" style="color:#1f2937; margin-top:1rem;">VALOR: $ 0</h3>
+    <p id="alerta80" class="hidden" style="color:#dc2626;font-weight:bold;">🔥 ¡Ya alcanzamos el 80%! 🎉</p>
+    <h3 id="valor-boleto">VALOR: $ 0</h3>
   </div>
 
+  <!-- Formulario -->
   <form id="formulario" autocomplete="off">
-    <input type="text" id="nombre" placeholder="Tu nombre completo" required minlength="2" maxlength="50" />
-    <input type="email" id="correo" placeholder="Tu correo electrónico" required />
-    <input type="tel" id="telefono" placeholder="Tu número de celular (10 dígitos)" required pattern="[0-9]{10}" title="Debe tener 10 dígitos" maxlength="10" />
+    <input id="nombre" type="text" placeholder="Tu nombre completo" required minlength="2" maxlength="50">
+    <input id="correo" type="email" placeholder="Tu correo electrónico" required>
+    <input id="telefono" type="tel" placeholder="Tu número de celular (10 dígitos)" required maxlength="10" pattern="[0-9]{10}">
     
-    <div class="resumen-compra">
-      <p><strong>📱 Números seleccionados:</strong></p>
-      <p id="numeros-seleccionados" style="color:#3b82f6; font-weight:bold;">Ninguno</p>
-    </div>
-
-    <div id="seleccion-numeros">
-      <p><strong>🎯 Selecciona tus números de la suerte:</strong></p>
-      <small style="color:#6b7280;">Máximo 10 números por compra</small>
-      <div id="lista-numeros" aria-live="polite"></div>
-      <p id="limite-error" class="mensaje error hidden">⚠️ Este número ya fue tomado o has alcanzado el límite.</p>
+    <div>
+      <p><strong>🎯 Selecciona hasta 10 números:</strong></p>
+      <div id="lista-numeros"></div>
     </div>
 
     <button id="enviar-btn" type="submit">
       🎟 Participar y Pagar - $<span id="total-pagar">0</span>
     </button>
-    
     <div id="spinner" class="loading-state hidden">
-      <div class="spinner"></div>
-      <span>Procesando tu participación...</span>
+      <div class="spinner"></div><span>Procesando...</span>
     </div>
   </form>
 
-  <div id="mensaje" class="mensaje hidden"></div>
+  <div id="mensaje" class="mensaje hidden" aria-live="polite"></div>
   <div id="ticket-box" class="ticket-box hidden"></div>
 
-  <footer class="footer-fixed">
-    &copy; 2025 Rifa Digital | Elaborado por <strong>Ing. Fernando Gómez</strong> - Popayán, Cauca
+  <footer style="text-align:center;margin-top:2rem;font-size:13px;color:#6b7280;">
+    &copy; 2025 Rifa Digital | Elaborado por <strong>Ing. Fernando Gómez</strong>
   </footer>
 </div>
 
-<!-- Modal de confirmación -->
-<div id="modal-confirm" class="modal" role="dialog" aria-modal="true">
-  <div class="modal-content">
-    <h3>🎫 Confirma tu participación</h3>
-    <div style="text-align: left; margin: 1rem 0;">
-      <p id="modal-numeros" style="margin-bottom: 0.5rem;"></p>
-      <p id="modal-monto" class="precio-total"></p>
-    </div>
-    <p style="font-size: 0.9rem; color: #6b7280; margin-bottom: 1rem;">
-      Serás redirigido a Wompi para completar el pago de forma segura
-    </p>
-    <div class="modal-buttons">
-      <button id="confirmar-btn" style="background: linear-gradient(45deg, #10b981, #059669);">
-        Confirmar ✅
-      </button>
-      <button id="cancelar-btn" style="background: linear-gradient(45deg, #ef4444, #dc2626);">
-        Cancelar ❌
-      </button>
-    </div>
-  </div>
-</div>
-
 <script>
-// ======================
-// VARIABLES GLOBALES
-// ======================
+/* ======================
+   VARIABLES GLOBALES
+====================== */
 let seleccionados = [];
 let PRECIO_BOLETO = 0;
 let PUBLIC_KEY = "";
-let URL_SUCCESS = "";
-let URL_FAILURE = "";
-let URL_PENDING = "";
+let URL_SUCCESS = "", URL_FAILURE = "", URL_PENDING = "";
 
-// ======================
-// UTILIDADES
-// ======================
-function showMessage(text, esExito = false) {
+/* ======================
+   UTILIDADES
+====================== */
+function showMessage(text, success=false) {
   const m = document.getElementById("mensaje");
   m.textContent = text;
-  m.className = esExito ? "mensaje exito" : "mensaje error";
+  m.className = "mensaje " + (success ? "exito" : "error");
   m.classList.remove("hidden");
-  
-  // Auto-ocultar después de 5 segundos
-  setTimeout(() => hideMessage(), 5000);
+  setTimeout(()=>m.classList.add("hidden"),5000);
 }
-
-function hideMessage() {
-  const m = document.getElementById("mensaje");
-  m.classList.add("hidden");
-  m.textContent = "";
-}
-
 function actualizarTotal() {
-  const total = seleccionados.length * PRECIO_BOLETO;
-  document.getElementById("total-pagar").textContent = total.toLocaleString();
+  document.getElementById("total-pagar").textContent = (seleccionados.length * PRECIO_BOLETO).toLocaleString();
 }
 
-// ======================
-// CONFIGURACIÓN
-// ======================
+/* ======================
+   CARGAR CONFIG
+====================== */
 async function cargarConfig() {
   try {
-    console.log("🔄 Cargando configuración desde Render...");
-    
-    const res = await fetch("/api/config", { 
-      cache: "no-store",
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    if (!res.ok) {
-      throw new Error(`Error HTTP ${res.status}: ${res.statusText}`);
-    }
-    
+    const res = await fetch("/api/config");
     const data = await res.json();
-    console.log("✅ Configuración recibida:", {
-      precio: data.precio,
-      tienePublicKey: !!data.publicKey,
-      publicKeyTipo: data.publicKey?.startsWith('pub_prod') ? 'PRODUCCIÓN' : 'TEST'
-    });
-    
-    if (!data.exito) {
-      throw new Error("Configuración inválida del servidor");
-    }
-    
-    if (!data.publicKey) {
-      throw new Error("Clave pública de Wompi no configurada");
-    }
-    
-    if (!data.publicKey.startsWith('pub_')) {
-      throw new Error("Formato de clave pública inválido");
-    }
-    
-    // Asignar valores
-    PRECIO_BOLETO = Number(data.precio) || 5000;
+    if (!data.exito) throw new Error("Config inválida");
+    PRECIO_BOLETO = data.precio;
     PUBLIC_KEY = data.publicKey;
     URL_SUCCESS = data.urlSuccess || "";
     URL_FAILURE = data.urlFailure || "";
     URL_PENDING = data.urlPending || "";
-    
-    // Actualizar UI
     document.getElementById("valor-boleto").textContent = `VALOR: $ ${PRECIO_BOLETO.toLocaleString()}`;
-    actualizarTotal();
-    
-    console.log("✅ Configuración aplicada correctamente");
-    showMessage("✅ Sistema listo para recibir participaciones", true);
-    
-  } catch (err) {
-    console.error("❌ Error cargando configuración:", err);
-    showMessage(`❌ Error de configuración: ${err.message}`);
-  }
+  } catch(e){ showMessage("❌ Error config: "+e.message); }
 }
 
-// ======================
-// NÚMEROS
-// ======================
-async function cargarNumerosDisponibles() {
+/* ======================
+   NÚMEROS
+====================== */
+async function cargarNumeros() {
   try {
-    const res = await fetch("/api/tickets/numeros", {
-      cache: "no-store"
-    });
-    
-    if (!res.ok) {
-      throw new Error(`Error ${res.status}: No se pudieron cargar los números`);
-    }
-    
+    const res = await fetch("/api/tickets/numeros");
     const data = await res.json();
-    if (!data.exito) {
-      throw new Error("Error en la respuesta del servidor");
-    }
-    
+    if (!data.exito) return;
     const cont = document.getElementById("lista-numeros");
-    cont.innerHTML = "";
-    
-    data.numeros.forEach(({ numero, disponible }) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.textContent = numero;
-      btn.dataset.numero = numero;
-      btn.className = "numero-btn";
-      btn.setAttribute('aria-label', `Número ${numero}${disponible ? ' - Disponible' : ' - Ocupado'}`);
-      
-      if (disponible) {
+    cont.innerHTML="";
+    data.numeros.forEach(({numero,disponible})=>{
+      const btn=document.createElement("button");
+      btn.type="button"; btn.textContent=numero; btn.className="numero-btn";
+      if(disponible){ 
         btn.classList.add("disponible");
-        btn.addEventListener("click", () => toggleNumero(numero, btn));
-      } else {
-        btn.disabled = true;
-        btn.classList.add("ocupado");
-      }
-      
+        btn.onclick=()=>toggleNumero(numero,btn);
+      } else { btn.classList.add("ocupado"); btn.disabled=true; }
       cont.appendChild(btn);
     });
-    
-    actualizarResumen();
-    
-  } catch (err) {
-    console.error("❌ Error cargando números:", err);
-    showMessage("❌ Error cargando números disponibles");
-  }
+  } catch(e){ showMessage("❌ Error cargando números"); }
 }
-
-function toggleNumero(numero, btn) {
-  const index = seleccionados.indexOf(numero);
-  
-  if (index > -1) {
-    // Deseleccionar
-    seleccionados.splice(index, 1);
-    btn.classList.remove("seleccionado");
-    btn.classList.add("disponible");
-  } else {
-    // Seleccionar (con límite de 10)
-    if (seleccionados.length >= 10) {
-      showMessage("❌ Máximo 10 números por compra");
-      return;
-    }
-    
-    seleccionados.push(numero);
-    btn.classList.remove("disponible");
-    btn.classList.add("seleccionado");
+function toggleNumero(num,btn){
+  const i=seleccionados.indexOf(num);
+  if(i>-1){ seleccionados.splice(i,1); btn.classList.remove("seleccionado"); btn.classList.add("disponible"); }
+  else{
+    if(seleccionados.length>=10){ showMessage("Máximo 10 números"); return; }
+    seleccionados.push(num); btn.classList.remove("disponible"); btn.classList.add("seleccionado");
   }
-  
-  actualizarResumen();
   actualizarTotal();
 }
 
-function actualizarResumen() {
-  const span = document.getElementById("numeros-seleccionados");
-  
-  if (seleccionados.length === 0) {
-    span.textContent = "Ninguno";
-    span.style.color = "#6b7280";
-  } else {
-    const total = seleccionados.length * PRECIO_BOLETO;
-    span.textContent = `${seleccionados.sort((a, b) => a - b).join(", ")} | Total: $${total.toLocaleString()}`;
-    span.style.color = "#3b82f6";
-  }
+/* ======================
+   PROGRESO
+====================== */
+async function actualizarProgreso(){
+  try{
+    const res=await fetch("/api/tickets/consulta");
+    const data=await res.json(); if(!data.exito) return;
+    const barra=document.getElementById("progreso");
+    barra.style.width=data.porcentaje+"%"; barra.textContent=data.porcentaje+"%";
+    barra.className="relleno "+(data.porcentaje<50?"rojo":data.porcentaje<80?"amarillo":"verde");
+    document.getElementById("porcentaje-texto").textContent=`${data.porcentaje}% (${data.vendidos}/100)`;
+    document.getElementById("alerta80").classList.toggle("hidden",data.porcentaje<80);
+  }catch{}
 }
 
-// ======================
-// PROGRESO
-// ======================
-async function actualizarProgreso() {
-  try {
-    const res = await fetch("/api/tickets/consulta", {
-      cache: "no-store"
-    });
-    
-    if (!res.ok) return;
-    
-    const data = await res.json();
-    if (!data.exito) return;
-    
-    const barra = document.getElementById("progreso");
-    const texto = document.getElementById("porcentaje-texto");
-    
-    barra.style.width = data.porcentaje + "%";
-    barra.textContent = data.porcentaje + "%";
-    texto.textContent = `${data.porcentaje}% completado (${data.vendidos || 0}/100 números)`;
-    
-    // Colores según progreso
-    barra.className = "relleno " + (
-      data.porcentaje < 50 ? "rojo" : 
-      data.porcentaje < 80 ? "amarillo" : 
-      "verde"
-    );
-    
-    // Alerta 80%
-    document.getElementById("alerta80").classList.toggle("hidden", data.porcentaje < 80);
-    
-  } catch (err) {
-    console.error("❌ Error actualizando progreso:", err);
-  }
-}
-
-// ======================
-// VALIDACIÓN
-// ======================
-function validarFormulario() {
-  const nombre = document.getElementById("nombre").value.trim();
-  const correo = document.getElementById("correo").value.trim();
-  const telefono = document.getElementById("telefono").value.trim();
-  
-  if (nombre.length < 2) {
-    showMessage("❌ El nombre debe tener al menos 2 caracteres");
-    document.getElementById("nombre").focus();
-    return false;
-  }
-  
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(correo)) {
-    showMessage("❌ Por favor ingresa un email válido");
-    document.getElementById("correo").focus();
-    return false;
-  }
-  
-  const phoneRegex = /^\d{10}$/;
-  if (!phoneRegex.test(telefono)) {
-    showMessage("❌ El teléfono debe tener exactamente 10 dígitos");
-    document.getElementById("telefono").focus();
-    return false;
-  }
-  
-  if (seleccionados.length === 0) {
-    showMessage("❌ Selecciona al menos un número");
-    return false;
-  }
-  
-  if (seleccionados.length > 10) {
-    showMessage("❌ Máximo 10 números por compra");
-    return false;
-  }
-  
+/* ======================
+   VALIDAR
+====================== */
+function validar(){
+  const n=document.getElementById("nombre").value.trim();
+  const c=document.getElementById("correo").value.trim();
+  const t=document.getElementById("telefono").value.trim();
+  if(n.length<2){ showMessage("Nombre muy corto"); return false; }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c)){ showMessage("Email inválido"); return false; }
+  if(!/^\d{10}$/.test(t)){ showMessage("Teléfono inválido"); return false; }
+  if(seleccionados.length===0){ showMessage("Selecciona al menos un número"); return false; }
   return true;
 }
 
-// ======================
-// PAGO
-// ======================
-async function iniciarPago(totalBoletos, reference) {
-  if (!PUBLIC_KEY) {
-    alert("❌ Sistema de pago no disponible. Contacta al administrador.");
-    return;
-  }
-  
-  const amountInCents = totalBoletos * PRECIO_BOLETO * 100;
-  
-  console.log("💰 Iniciando pago en Render:", {
-    reference,
-    amount: amountInCents,
-    boletos: totalBoletos,
-    publicKeyTipo: PUBLIC_KEY.startsWith('pub_prod') ? 'PRODUCCIÓN' : 'TEST'
-  });
-  
-  try {
-    // Generar firma
-    const resSignature = await fetch("/api/signature", {
-      method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-      },
-      body: JSON.stringify({ 
-        reference, 
-        amountInCents, 
-        currency: "COP" 
-      })
-    });
-    
-    if (!resSignature.ok) {
-      const errorText = await resSignature.text();
-      throw new Error(`Error generando firma: ${errorText}`);
-    }
-    
-    const { signature } = await resSignature.json();
-    
-    if (!signature) {
-      throw new Error("No se pudo generar la firma de integridad");
-    }
-    
-    console.log("🔐 Firma generada correctamente para Render");
-    
-    // URL de Wompi
-    const checkoutParams = new URLSearchParams({
-      'public-key': PUBLIC_KEY,
-      'currency': 'COP',
-      'amount-in-cents': amountInCents.toString(),
-      'reference': reference,
-      'redirect-url': URL_SUCCESS,
-      'integrity_signature': signature
-    });
-    
-    const checkoutUrl = `https://checkout.wompi.co/p/?${checkoutParams.toString()}`;
-    
-    console.log("🚀 Redirigiendo a Wompi desde Render...");
-    
-    // Mostrar mensaje de redirección
-    const box = document.getElementById("ticket-box");
-    box.innerHTML += `<p style="color:#10b981; font-weight:bold; margin-top:1rem;">🔄 Redirigiendo a Wompi...</p>`;
-    
-    // Redireccionar
-    setTimeout(() => {
-      window.location.href = checkoutUrl;
-    }, 1500);
-    
-  } catch (err) {
-    console.error("❌ Error en pago:", err);
-    alert(`❌ Error procesando el pago: ${err.message}`);
-    
-    // Rehabilitar UI
-    document.getElementById("enviar-btn").disabled = false;
-    document.getElementById("spinner").classList.add("hidden");
-  }
+/* ======================
+   PAGO
+====================== */
+async function iniciarPago(ref){
+  const total=seleccionados.length*PRECIO_BOLETO*100;
+  try{
+    const r=await fetch("/api/signature",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({reference:ref,amountInCents:total,currency:"COP"})});
+    const {signature}=await r.json();
+    const url=`https://checkout.wompi.co/p/?public-key=${PUBLIC_KEY}&currency=COP&amount-in-cents=${total}&reference=${ref}&redirect-url=${URL_SUCCESS}&integrity_signature=${signature}`;
+    window.location.href=url;
+  }catch(e){ showMessage("❌ Error iniciando pago"); }
 }
 
-// ======================
-// INICIALIZACIÓN
-// ======================
-document.addEventListener("DOMContentLoaded", async () => {
-  console.log("🚀 Iniciando Rifa 2025 en Render...");
-  
-  // Cargar configuración
-  await cargarConfig();
-  
-  if (PUBLIC_KEY) {
-    // Cargar datos iniciales
-    await Promise.all([
-      cargarNumerosDisponibles(),
-      actualizarProgreso()
-    ]);
-    
-    // Actualizar cada 15 segundos
-    setInterval(() => { 
-      cargarNumerosDisponibles(); 
-      actualizarProgreso(); 
-    }, 15000);
-    
-    console.log("✅ Aplicación lista en Render");
-  } else {
-    console.error("❌ No se pudo inicializar - Falta configuración");
-  }
-
-  // ======================
-  // EVENT LISTENERS
-  // ======================
-  
-  // Formulario
-  const form = document.getElementById("formulario");
-  const spinner = document.getElementById("spinner");
-  const enviarBtn = document.getElementById("enviar-btn");
-  const modal = document.getElementById("modal-confirm");
-  const modalNumeros = document.getElementById("modal-numeros");
-  const modalMonto = document.getElementById("modal-monto");
-
-  form.addEventListener("submit", async (e) => {
+/* ======================
+   INICIO
+====================== */
+document.addEventListener("DOMContentLoaded",async()=>{
+  await cargarConfig(); await cargarNumeros(); await actualizarProgreso();
+  setInterval(()=>{cargarNumeros(); actualizarProgreso();},15000);
+  document.getElementById("formulario").onsubmit=async e=>{
     e.preventDefault();
-    hideMessage();
-    
-    if (!validarFormulario()) return;
-    if (!PUBLIC_KEY) {
-      showMessage("❌ Sistema de pago no disponible");
-      return;
-    }
-    
-    // Modal de confirmación
-    const totalMonto = seleccionados.length * PRECIO_BOLETO;
-    modalNumeros.textContent = `📱 Números: ${seleccionados.sort((a, b) => a - b).join(", ")}`;
-    modalMonto.textContent = `💰 Total a pagar: $${totalMonto.toLocaleString()} COP`;
-    modal.style.display = "flex";
-  });
-
-  // Modal - Cancelar
-  document.getElementById("cancelar-btn").addEventListener("click", () => {
-    modal.style.display = "none";
-  });
-
-  // Modal - Confirmar
-  document.getElementById("confirmar-btn").addEventListener("click", async () => {
-    modal.style.display = "none";
-    spinner.classList.remove("hidden");
-    enviarBtn.disabled = true;
-    
-    try {
-      const payload = {
-        nombre: document.getElementById("nombre").value.trim(),
-        correo: document.getElementById("correo").value.trim(),
-        telefono: document.getElementById("telefono").value.trim(),
-        numeros: seleccionados
-      };
-      
-      const res = await fetch("/api/tickets/guardar-pendiente", {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        body: JSON.stringify(payload)
-      });
-      
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.mensaje || `Error ${res.status} del servidor`);
-      }
-      
-      const ticketData = await res.json();
-      
-      if (!ticketData.exito) {
-        throw new Error(ticketData.mensaje || "Error generando ticket");
-      }
-      
-      console.log("✅ Ticket creado en Render:", ticketData.reference);
-      
-      // Mostrar ticket info
-      const box = document.getElementById("ticket-box");
-      box.classList.remove("hidden");
-      box.innerHTML = `
-        <h3 style="color:#10b981; margin-bottom:1rem;">🎫 ¡Participación Registrada!</h3>
-        <p><strong>📱 Números:</strong> ${seleccionados.sort((a, b) => a - b).join(", ")}</p>
-        <p><strong>📋 Referencia:</strong> <code style="background:#f3f4f6; padding:0.25rem 0.5rem; border-radius:4px;">${ticketData.reference}</code></p>
-        <p><strong>💰 Total:</strong> $${(seleccionados.length * PRECIO_BOLETO).toLocaleString()} COP</p>
-        <p style="color:#059669; font-weight:bold; margin-top:1rem;">⏳ Preparando pago seguro...</p>
-      `;
-      
-      // Iniciar pago
-      setTimeout(() => {
-        iniciarPago(seleccionados.length, ticketData.reference);
-      }, 2000);
-      
-    } catch (err) {
-      console.error("❌ Error:", err);
-      showMessage(`❌ ${err.message}`);
-      enviarBtn.disabled = false;
-    } finally {
-      spinner.classList.add("hidden");
-    }
-  });
-
-  // Cerrar modal al hacer clic fuera
-  modal.addEventListener("click", (e) => {
-    if (e.target === modal) {
-      modal.style.display = "none";
-    }
-  });
-  
-  // Validación teléfono en tiempo real
-  document.getElementById("telefono").addEventListener("input", (e) => {
-    e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 10);
-  });
-  
-  // Validación nombre
-  document.getElementById("nombre").addEventListener("input", (e) => {
-    e.target.value = e.target.value.replace(/[^a-zA-ZÁÉÍÓÚáéíóúÑñ\s]/g, '');
-  });
+    if(!validar())return;
+    document.getElementById("enviar-btn").disabled=true;
+    document.getElementById("spinner").classList.remove("hidden");
+    try{
+      const r=await fetch("/api/tickets/guardar-pendiente",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({nombre:nombre.value,correo:correo.value,telefono:telefono.value,numeros:seleccionados})});
+      const d=await r.json(); if(!d.exito) throw new Error(d.mensaje);
+      document.getElementById("ticket-box").classList.remove("hidden");
+      document.getElementById("ticket-box").innerHTML=`<h3>🎫 Ticket generado</h3><p>Números: ${seleccionados.join(", ")}</p><p>Ref: ${d.reference}</p>`;
+      iniciarPago(d.reference);
+    }catch(err){ showMessage("❌ "+err.message); document.getElementById("enviar-btn").disabled=false; }
+    document.getElementById("spinner").classList.add("hidden");
+  };
+  telefono.oninput=e=>e.target.value=e.target.value.replace(/\D/g,"").slice(0,10);
+  nombre.oninput=e=>e.target.value=e.target.value.replace(/[^a-zA-ZÁÉÍÓÚáéíóúÑñ\s]/g,"");
 });
 </script>
 </body>

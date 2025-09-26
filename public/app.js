@@ -15,6 +15,9 @@ let CONFIG = {};
 // ===============================
 async function cargarConfig() {
   try {
+    const btnPagar = document.getElementById("btnPagar");
+    if (btnPagar) btnPagar.disabled = true; // 🔒 Bloquear botón al inicio
+
     const res = await fetch("/api/config");
     if (!res.ok) throw new Error("No se pudo cargar la configuración");
 
@@ -23,11 +26,26 @@ async function cargarConfig() {
 
     CONFIG = data;
     console.log("⚙️ Config cargada:", CONFIG);
+
+    // ✅ Solo habilitar botón si la publicKey existe
+    if (btnPagar && CONFIG.publicKey) {
+      btnPagar.disabled = false;
+    }
   } catch (err) {
     console.error("❌ Error cargando configuración:", err);
     mostrarMensaje("🚫 No se pudo cargar la configuración. Intenta más tarde.", "error");
   }
 }
+
+// ===============================
+// 🔹 Inicializar app
+// ===============================
+async function initApp() {
+  await cargarConfig();
+}
+
+initApp();
+
 
 // ===============================
 // 🔹 Renderizar números disponibles

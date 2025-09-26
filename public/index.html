@@ -21,9 +21,6 @@
     <button type="submit">Reservar y Pagar</button>
   </form>
 
-  <!-- ✅ Script oficial de Wompi Widget -->
-  <script src="https://cdn.wompi.co/libs/js/v1.js"></script>
-
   <script>
     let CONFIG = {};
 
@@ -31,14 +28,46 @@
     // 🔹 Cargar configuración desde backend
     // ===============================
     async function cargarConfig() {
-      try {
-        const res = await fetch("/api/config");
-        CONFIG = await res.json();
-        console.log("⚙️ Config cargada:", CONFIG);
-      } catch (err) {
-        console.error("❌ Error cargando configuración:", err);
-        alert("No se pudo cargar la configuración del pago");
-      }
+      const res = await fetch("/api/config");
+      const data = await res.json();
+      if (!data.exito) throw new Error("Config inválida");
+      CONFIG = {
+        precio: Number(data.precio) || 5000,
+        publicKey: data.publicKey,
+        urlSuccess: data.urlSuccess,
+        urlFailure: data.urlFailure,
+        urlPending: data.urlPending
+      };
+      console.log("⚙️ Config:", CONFIG);
+    }
+
+    // ===============================
+    // 🔹 Cargar script de Wompi dinámicamente
+    // ===============================
+    function cargarScriptWompi() {
+      return new Promise((resolve, reject) => {
+        if (window.$wompi) return resolve(); // ya cargado
+        const script = document.createElement("script");
+        script.src = "https://cdn.wompi.co/libs/js/v1.js";
+        script.onload = () => {
+          console.log("✅ Script Wompi cargado");
+          resolve();
+        };
+        script.onerror = () => reject(new Error("No se pudo cargar script Wompi"));
+        document.head.appendChild(script);
+      });
+    }
+
+    // ===============================
+    // 🔹 Inicializar Wompi
+    // ===============================
+    async function initWompi() {
+      await cargarConfig();
+      await cargarScriptWompi();
+      if (!window.$wompi) throw new Error("$wompi no disponible tras cargar script");
+      if (!CONFIG.publicKey) throw new Error("publicKey faltante en CONFIG");
+      window.$wompi.initialize({ publicKey: CONFIG.publicKey });
+      console.log("✅ Wompi inicializado con publicKey:", CONFIG.publicKey);
     }
 
     // ===============================
@@ -85,9 +114,15 @@
     // 🚀 Flujo principal
     // ===============================
     document.addEventListener("DOMContentLoaded", async () => {
-      await cargarConfig();
-      await cargarNumeros();
-      await cargarConsulta();
+      try {
+        await initWompi();     // ✅ Carga config + script + inicializa
+        await cargarNumeros(); // 🔹 carga números disponibles
+        await cargarConsulta();// 🔹 carga porcentaje vendido
+      } catch (err) {
+        console.error("❌ Error inicializando la app:", err);
+        alert("Error cargando la aplicación");
+        return;
+      }
 
       // Evento del formulario
       document.getElementById("formCompra").addEventListener("submit", async (e) => {
@@ -138,13 +173,12 @@
             return;
           }
 
-          // ✅ Verificar que Wompi esté disponible
-          if (typeof $wompi === "undefined") {
+          if (!window.$wompi) {
             alert("❌ Error: Wompi no se cargó correctamente");
             return;
           }
 
-          // Abrir Wompi Widget
+          // ✅ Abrir Wompi Widget
           $wompi.open({
             currency,
             amountInCents,

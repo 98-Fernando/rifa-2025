@@ -10,6 +10,9 @@ import crypto from "crypto";
 import { config } from "dotenv";
 import { fileURLToPath } from "url";
 
+// ======================
+// CONFIG
+// ======================
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 config({ path: path.join(__dirname, "..", ".env") });
@@ -32,9 +35,19 @@ app.use(
           "https://unpkg.com",
           "https://checkout.wompi.co",
         ],
-        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        styleSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          "https://fonts.googleapis.com",
+          "https://cdn.jsdelivr.net",
+        ],
         fontSrc: ["'self'", "https://fonts.gstatic.com"],
-        imgSrc: ["'self'", "data:", "https://cdn-icons-png.flaticon.com"],
+        imgSrc: [
+          "'self'",
+          "data:",
+          "https://cdn-icons-png.flaticon.com",
+          "https://checkout.wompi.co",
+        ],
         connectSrc: [
           "'self'",
           "https://production.wompi.co",
@@ -48,7 +61,7 @@ app.use(
 );
 
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
-app.use(express.json()); // ⚠️ No afecta a webhook porque ahí usamos raw
+app.use(express.json()); // 🚨 Importante: NO afecta /webhook-wompi (usa raw)
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({ origin: true }));
 
@@ -134,7 +147,7 @@ app.get("/api/tickets/consulta", async (req, res) => {
     res.json({ exito: true, vendidos, porcentaje });
   } catch (err) {
     console.error("❌ Error consulta:", err);
-    res.json({ exito: false });
+    res.json({ exito: false, mensaje: "Error consultando" });
   }
 });
 
@@ -175,14 +188,14 @@ app.post("/api/signature", (req, res) => {
     if (!reference || !amountInCents || !currency) {
       return res
         .status(400)
-        .json({ error: "Faltan datos para generar la firma" });
+        .json({ exito: false, mensaje: "Faltan datos para generar la firma" });
     }
 
     const integrityKey = process.env.WOMPI_INTEGRITY_KEY;
     if (!integrityKey) {
       return res
         .status(500)
-        .json({ error: "Falta WOMPI_INTEGRITY_KEY en el servidor" });
+        .json({ exito: false, mensaje: "Falta WOMPI_INTEGRITY_KEY" });
     }
 
     const signature = crypto
@@ -190,45 +203,42 @@ app.post("/api/signature", (req, res) => {
       .update(`${reference}${amountInCents}${currency}${integrityKey}`)
       .digest("hex");
 
-    return res.json({ signature });
+    return res.json({ exito: true, signature });
   } catch (err) {
     console.error("❌ Error generando firma:", err);
-    return res.status(500).json({ error: "Error interno generando la firma" });
+    return res.status(500).json({ exito: false, mensaje: "Error interno" });
   }
 });
 
 // ======================
 // WEBHOOK WOMPI
 // ======================
-const generarFirma = (reference, amountInCents, currency, integrityKey) =>
-  crypto
-    .createHash("sha256")
-    .update(`${reference}${amountInCents}${currency}${integrityKey}`)
-    .digest("hex");
-
 app.post(
   "/webhook-wompi",
   express.raw({ type: "application/json" }),
   async (req, res) => {
     try {
-      const parsed = JSON.parse(req.body.toString("utf8"));
+      const rawBody = req.body.toString("utf8");
+      const parsed = JSON.parse(rawBody);
+
       const { event, data } = parsed;
       if (!data?.transaction) return res.sendStatus(400);
 
       const tx = data.transaction;
 
       // ✅ Verificar firma
-      const localSignature = generarFirma(
-        tx.reference,
-        tx.amount_in_cents,
-        tx.currency,
-        process.env.WOMPI_INTEGRITY_KEY || ""
-      );
+      const localSignature = crypto
+        .createHash("sha256")
+        .update(
+          `${tx.reference}${tx.amount_in_cents}${tx.currency}${process.env.WOMPI_INTEGRITY_KEY || ""}`
+        )
+        .digest("hex");
+
       const headerSignature =
         req.headers["integrity-signature"] || req.headers["content-signature"];
 
       if (headerSignature && localSignature && headerSignature !== localSignature) {
-        console.warn("❌ Firma de integridad no coincide");
+        console.warn("⚠️ Firma de integridad no coincide");
         return res.sendStatus(403);
       }
 
@@ -245,7 +255,10 @@ app.post(
             estadoPago: "pagado",
           });
           await pendiente.deleteOne();
-          console.log(`🎟️ Ticket confirmado: ${tx.reference}`);
+          console.log(`🎟️ Ticket confirmado y pagado: ${tx.reference}`);
+
+          // 🔹 Aquí puedes disparar el envío de correo
+          // sendEmail(pendiente.correo, pendiente.nombre, pendiente.numeros);
         }
       }
 

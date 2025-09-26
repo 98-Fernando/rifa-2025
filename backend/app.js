@@ -73,22 +73,23 @@ form.addEventListener("submit", async (e) => {
     const sigData = await signatureRes.json();
     if (!sigData.signature) throw new Error("No se pudo generar la firma");
 
-    // 3️⃣ Abrir Wompi Checkout
-    const checkout = new WidgetCheckout({
-      currency: "COP",
-      amountInCents: precio * 100,
-      reference,
-      publicKey: CONFIG.publicKey,
-      redirectUrl: CONFIG.urlSuccess, // El backend valida y envía correo si pago aprobado
-      signature: sigData.signature,
+    // 3️⃣ Crear transacción en el backend y obtener la URL de Wompi
+    const txRes = await fetch("/api/crear-transaccion", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        reference,
+        amountInCents: precio * 100,
+        currency: "COP",
+        signature: sigData.signature,
+      }),
     });
 
-    checkout.open(function (result) {
-      console.log("💳 Resultado Wompi:", result);
-      // Aquí NO enviamos correo, solo backend vía webhook debe hacerlo
-    });
+    const txData = await txRes.json();
+    if (!txData.urlCheckout) throw new Error("No se obtuvo la URL de checkout");
 
-    mostrarMensaje("✅ Redirigiendo a Wompi...", "exito");
+    // 🚀 Redirigir al Checkout de Wompi
+    window.location.href = txData.urlCheckout;
 
   } catch (error) {
     console.error("Error:", error);

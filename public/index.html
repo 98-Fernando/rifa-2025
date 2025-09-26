@@ -106,9 +106,9 @@
 ====================== */
 let seleccionados = [];
 
-// ======================
-// CONFIG GLOBAL
-// ======================
+/* ======================
+   CONFIG GLOBAL
+====================== */
 let CONFIG = {
   precio: 0,
   publicKey: "",
@@ -117,16 +117,16 @@ let CONFIG = {
   urlPending: ""
 };
 
-// ======================
-// ELEMENTOS DEL DOM
-// ======================
+/* ======================
+   ELEMENTOS DEL DOM
+====================== */
 const nombre = document.getElementById("nombre");
 const correo = document.getElementById("correo");
 const telefono = document.getElementById("telefono");
 
-// ======================
-// UTILIDADES
-// ======================
+/* ======================
+   UTILIDADES
+====================== */
 function showMessage(text, success = false) {
   const m = document.getElementById("mensaje");
   m.textContent = text;
@@ -140,9 +140,9 @@ function actualizarTotal() {
     (seleccionados.length * CONFIG.precio).toLocaleString();
 }
 
-// ======================
-// VALIDAR FORMULARIO
-// ======================
+/* ======================
+   VALIDAR FORMULARIO
+====================== */
 function validar() {
   if (nombre.value.trim().length < 2) {
     showMessage("❌ Nombre muy corto");
@@ -167,9 +167,9 @@ function validar() {
   return true;
 }
 
-// ======================
-// CARGAR CONFIG
-// ======================
+/* ======================
+   CARGAR CONFIG
+====================== */
 async function cargarConfig() {
   try {
     const res = await fetch("/api/config");
@@ -177,12 +177,12 @@ async function cargarConfig() {
     if (!data.exito) throw new Error("Config inválida");
 
     CONFIG.precio = Number(data.precio) || 0;
-    CONFIG.publicKey = data.publicKey;
+    CONFIG.publicKey = data.publicKey || "";
     CONFIG.urlSuccess = data.urlSuccess || "";
     CONFIG.urlFailure = data.urlFailure || "";
     CONFIG.urlPending = data.urlPending || "";
 
-    console.log("CONFIG cargada:", CONFIG);
+    if (!CONFIG.publicKey) throw new Error("Public Key no encontrada");
 
     document.getElementById("valor-boleto").textContent =
       `VALOR: $ ${CONFIG.precio.toLocaleString()}`;
@@ -190,117 +190,29 @@ async function cargarConfig() {
     actualizarTotal();
   } catch (e) {
     showMessage("❌ Error config: " + e.message);
-    console.error(e);
+    console.error("💥 Error cargarConfig:", e);
   }
 }
 
-// ======================
-// CARGAR NÚMEROS
-// ======================
-async function cargarNumeros() {
+/* ======================
+   INICIAR PAGO
+====================== */
+async function iniciarPago(ref) {
   try {
-    const res = await fetch("/api/tickets/numeros");
-    const data = await res.json();
-    if (!data.exito) return;
-
-    const cont = document.getElementById("lista-numeros");
-    cont.innerHTML = "";
-
-    data.numeros.forEach(({ numero, disponible }) => {
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.textContent = numero;
-      btn.className = "numero-btn";
-
-      if (disponible) {
-        btn.classList.add("disponible");
-        btn.onclick = () => toggleNumero(numero, btn);
-      } else {
-        btn.classList.add("ocupado");
-        btn.disabled = true;
-      }
-
-      cont.appendChild(btn);
-    });
-  } catch (e) {
-    showMessage("❌ Error cargando números");
-    console.error(e);
-  }
-}
-
-// ======================
-// SELECCIÓN / DESELECCIÓN
-// ======================
-function toggleNumero(num, btn) {
-  const index = seleccionados.indexOf(num);
-
-  if (index > -1) {
-    seleccionados.splice(index, 1);
-    btn.classList.remove("seleccionado");
-    btn.classList.add("disponible");
-  } else {
-    if (seleccionados.length >= 10) {
-      showMessage("Máximo 10 números");
+    if (!seleccionados.length) {
+      showMessage("❌ Debes seleccionar al menos un número");
       return;
     }
-    seleccionados.push(num);
-    btn.classList.remove("disponible");
-    btn.classList.add("seleccionado");
-  }
+    if (!CONFIG.publicKey) {
+      showMessage("❌ Public Key no cargada");
+      return;
+    }
+    const total = seleccionados.length * CONFIG.precio * 100;
 
-  actualizarTotal();
-}
-
-// ======================
-// ACTUALIZAR PROGRESO
-// ======================
-async function actualizarProgreso() {
-  try {
-    const res = await fetch("/api/tickets/consulta");
-    const data = await res.json();
-    if (!data.exito) return;
-
-    const barra = document.getElementById("progreso");
-    barra.style.width = data.porcentaje + "%";
-    barra.textContent = data.porcentaje + "%";
-    barra.className =
-      "relleno " +
-      (data.porcentaje < 50 ? "rojo" : data.porcentaje < 80 ? "amarillo" : "verde");
-
-    document.getElementById("porcentaje-texto").textContent =
-      `${data.porcentaje}% (${data.vendidos}/100)`;
-
-    document.getElementById("alerta80").classList.toggle("hidden", data.porcentaje < 80);
-  } catch (e) {
-    console.error("Error actualizarProgreso:", e);
-  }
-}
-
-// ======================
-// INICIAR PAGO
-// ======================
-async function iniciarPago(ref) {
-  if (!seleccionados.length) {
-    showMessage("❌ Debes seleccionar al menos un número");
-    return;
-  }
-
-  if (!CONFIG.publicKey) {
-    showMessage("❌ Public key no cargada");
-    return;
-  }
-
-  const total = seleccionados.length * CONFIG.precio * 100;
-
-  try {
     const r = await fetch("/api/signature", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        reference: ref,
-        amountInCents: total,
-        currency: "COP"
-      })
+      body: JSON.stringify({ reference: ref, amountInCents: total, currency: "COP" })
     });
 
     const data = await r.json();
@@ -308,22 +220,29 @@ async function iniciarPago(ref) {
 
     const signature = data.signature;
 
-    const url =
-      `https://checkout.wompi.co/p/?public-key=${CONFIG.publicKey}` +
-      `&currency=COP&amount-in-cents=${total}` +
-      `&reference=${ref}&redirect-url=${CONFIG.urlSuccess}` +
-      `&integrity_signature=${signature}`;
+    // Debug console
+    console.log("💡 Redirigiendo a Wompi con datos:", {
+      publicKey: CONFIG.publicKey,
+      total,
+      reference: ref,
+      signature,
+      urlSuccess: CONFIG.urlSuccess
+    });
+
+    // Redirección segura
+    const url = `https://checkout.wompi.co/p/?public-key=${encodeURIComponent(CONFIG.publicKey)}&currency=COP&amount-in-cents=${total}&reference=${encodeURIComponent(ref)}&redirect-url=${encodeURIComponent(CONFIG.urlSuccess)}&integrity_signature=${encodeURIComponent(signature)}`;
 
     window.location.href = url;
+
   } catch (e) {
     console.error("❌ Error iniciando pago:", e);
     showMessage("❌ Error iniciando pago: " + e.message);
   }
 }
 
-// ======================
-// INICIO
-// ======================
+/* ======================
+   INICIO
+====================== */
 document.addEventListener("DOMContentLoaded", async () => {
   await cargarConfig();
   await cargarNumeros();
@@ -363,7 +282,9 @@ document.addEventListener("DOMContentLoaded", async () => {
                        <p>Números: ${seleccionados.join(", ")}</p>
                        <p>Ref: ${d.reference}</p>`;
 
+      // Llamada a Wompi
       iniciarPago(d.reference);
+
     } catch (err) {
       showMessage("❌ " + err.message);
       document.getElementById("enviar-btn").disabled = false;
@@ -377,5 +298,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   nombre.oninput = e => e.target.value = e.target.value.replace(/[^a-zA-ZÁÉÍÓÚáéíóúÑñ\s]/g, "");
 });
 </script>
+
 </body>
 </html>

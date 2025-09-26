@@ -99,7 +99,6 @@
     &copy; 2025 Rifa Digital | Elaborado por <strong>Ing. Fernando Gómez</strong>
   </footer>
 </div>
-
 <script>
 /* ======================
    VARIABLES GLOBALES
@@ -193,7 +192,10 @@ async function cargarConfig() {
     console.error("💥 Error cargarConfig:", e);
   }
 }
-/* ====================== INICIAR PAGO ====================== */
+
+/* ======================
+   INICIAR PAGO
+====================== */
 async function iniciarPago(ref) {
   try {
     console.log("🔹 iniciarPago llamado con ref:", ref);
@@ -243,8 +245,8 @@ async function iniciarPago(ref) {
     const signature = data.signature;
     console.log("🔹 Signature generada:", signature);
 
-    // Construir URL de redirección a Wompi con las 3 rutas
-    const url = `https://checkout.wompi.co/p/?public-key=${encodeURIComponent(CONFIG.publicKey)}&currency=COP&amount-in-cents=${total}&reference=${encodeURIComponent(ref)}&signature=${encodeURIComponent(signature)}&redirect-url=${encodeURIComponent(CONFIG.urlSuccess)}&url-failure=${encodeURIComponent(CONFIG.urlFailure)}&url-pending=${encodeURIComponent(CONFIG.urlPending)}`;
+    // ✅ Solo un redirect-url (Wompi no acepta failure ni pending en la URL)
+    const url = `https://checkout.wompi.co/p/?public-key=${encodeURIComponent(CONFIG.publicKey)}&currency=COP&amount-in-cents=${total}&reference=${encodeURIComponent(ref)}&signature=${encodeURIComponent(signature)}&redirect-url=${encodeURIComponent(CONFIG.urlSuccess)}`;
 
     console.log("💡 URL construida:", url);
 
@@ -312,6 +314,7 @@ function toggleNumero(num, btn) {
 
   actualizarTotal();
 }
+
 /* ======================
    ACTUALIZAR PROGRESO
 ====================== */
@@ -395,6 +398,5 @@ document.addEventListener("DOMContentLoaded", async () => {
   nombre.oninput = e => e.target.value = e.target.value.replace(/[^a-zA-ZÁÉÍÓÚáéíóúÑñ\s]/g, "");
 });
 </script>
-
 </body>
 </html>

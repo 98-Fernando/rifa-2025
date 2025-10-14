@@ -26,17 +26,16 @@ const PORT = process.env.PORT || 5000;
 
 // ----------------------
 // NONCE + CSP header (por petición)
-// Nota: La clave 'nonce' no es estrictamente necesaria para el widget, pero mantenemos CSP
+// CORRECCIÓN CLAVE: Se añadió 'unsafe-inline' a style-src para permitir los estilos del Widget de Wompi
 // ----------------------
 app.use((req, res, next) => {
     res.locals.nonce = crypto.randomBytes(16).toString("base64");
     const nonce = `'nonce-${res.locals.nonce}'`;
     const csp = [
         `default-src 'self'`,
-        // Importante: El script de Wompi NO usa la clave privada, solo la pública en el frontend.
-        // Mantenemos las URLs de Wompi para cargar el widget y sus recursos.
         `script-src 'self' ${nonce} https://checkout.wompi.co https://cdn.wompi.co https://cdn.jsdelivr.net https://unpkg.com`,
-        `style-src 'self' ${nonce} https://fonts.googleapis.com https://cdn.jsdelivr.net`,
+        // 🚨 CAMBIO CRÍTICO: Añadir 'unsafe-inline' aquí para resolver el bloqueo de estilos del Widget 🚨
+        `style-src 'self' ${nonce} 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net`, 
         `font-src 'self' https://fonts.gstatic.com`,
         `img-src 'self' data: https://cdn-icons-png.flaticon.com https://checkout.wompi.co https://cdn.wompi.co`,
         `connect-src 'self' https://production.wompi.co https://sandbox.wompi.co https://checkout.wompi.co https://api.wompi.co https://api.emailjs.com`,
@@ -49,7 +48,6 @@ app.use((req, res, next) => {
 // ----------------------
 // Helmet (no CSP, lo manejamos arriba)
 // ----------------------
-// Se recomienda usar la versión más reciente si actualizaste package.json
 app.use(
     helmet({
         contentSecurityPolicy: false,
@@ -95,7 +93,6 @@ app.get("/", (req, res) => res.sendFile(path.join(__dirname, "..", "public", "in
 // ----------------------
 // DB
 // ----------------------
-// Asegúrate de tener los archivos models/Ticket.js y models/Pendiente.js
 import Ticket from "./models/Ticket.js";
 import Pendiente from "./models/Pendiente.js";
 
@@ -107,8 +104,6 @@ mongoose
 // ----------------------
 // API - CONFIG
 // ----------------------
-// Solo se expone la clave pública y las URLs de redirección al frontend.
-// ¡La clave privada NO debe salir del servidor!
 app.get("/api/config", (req, res) => {
     res.json({
         exito: true,
@@ -122,7 +117,7 @@ app.get("/api/config", (req, res) => {
 });
 
 // ----------------------
-// API - TICKETS (MANTENEMOS ESTAS RUTAS)
+// API - TICKETS 
 // ----------------------
 app.get("/api/tickets/numeros", async (req, res) => {
     try {
@@ -157,7 +152,6 @@ app.post("/api/tickets/guardar-pendiente", async (req, res) => {
         if (!nombre || !correo || !telefono || !Array.isArray(numeros) || !numeros.length) {
             return res.status(400).json({ exito: false, mensaje: "Datos incompletos" });
         }
-        // Generamos la referencia ANTES de crear el pago en el frontend
         const reference = `RIFA-${Date.now()}`; 
         await Pendiente.create({
             nombre,
@@ -166,7 +160,6 @@ app.post("/api/tickets/guardar-pendiente", async (req, res) => {
             numeros: numeros.map((n) => Number(n)),
             reference,
         });
-        // Devolvemos la referencia para que el frontend la use en el Widget
         res.json({ exito: true, reference });
     } catch (err) {
         console.error("❌ Error guardando pendiente:", err);
@@ -176,14 +169,12 @@ app.post("/api/tickets/guardar-pendiente", async (req, res) => {
 
 
 // ----------------------
-// RUTAS ELIMINADAS: /api/signature & /api/crear-transaccion
-// El Widget de Wompi gestiona la firma y el checkout directamente en el cliente.
+// RUTAS ELIMINADAS: /api/signature & /api/crear-transaccion (CORRECTO)
 // ----------------------
 
 
 // ----------------------
-// WEBHOOK - express.raw + verificación integridad con WOMPI_INTEGRITY_KEY
-// Esta lógica sigue siendo CRÍTICA para confirmar el pago en tu DB.
+// WEBHOOK 
 // ----------------------
 const webhookRouter = express.Router();
 webhookRouter.post("/webhook-wompi", express.raw({ type: "application/json" }), async (req, res) => {

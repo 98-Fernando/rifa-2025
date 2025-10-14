@@ -1,54 +1,74 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Rifa 2025 🎟️</title>
-  <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rifa 2025 🎟️</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- NOTA: Asegúrate de que styles.css también esté limpio y actualizado -->
 </head>
 <body>
-  <header>
-    <h1>🎉 Bienvenido a la Rifa 2025 🎉</h1>
-    <p>Selecciona tus números y participa por increíbles premios</p>
-  </header>
+  <header>
+    <h1>🎉 Bienvenido a la Rifa 2025 🎉</h1>
+    <p>Selecciona tus números y participa por increíbles premios</p>
+  </header>
 
-  <!-- 🔹 Barra de progreso -->
-  <section class="progreso">
-    <div class="barra">
-      <div class="relleno"></div>
-    </div>
-    <p id="porcentaje">Cargando disponibilidad...</p>
-  </section>
+  <!-- 🔹 Barra de progreso -->
+  <section class="progreso">
+    <div class="barra">
+      <div class="relleno"></div>
+    </div>
+    <p id="porcentaje">Cargando disponibilidad...</p>
+  </section>
 
-  <!-- 🔹 Números disponibles -->
-  <section>
-    <h2>Selecciona tus números 🎟️</h2>
-    <div id="numeros-container" class="grid-numeros"></div>
-  </section>
+  <!-- 🔹 Números disponibles -->
+  <section>
+    <h2>Selecciona tus números 🎟️</h2>
+    <div id="numeros-container" class="grid-numeros"></div>
+  </section>
 
-  <!-- 🔹 Formulario para datos -->
-  <section>
-    <h2>Tus datos 📋</h2>
-    <form id="formulario">
-      <input type="text" id="nombre" placeholder="Tu nombre completo" required>
-      <input type="email" id="correo" placeholder="Tu correo electrónico" required>
-      <input type="tel" id="telefono" placeholder="Tu teléfono" required>
-      <button type="submit">✅ Reservar y Pagar</button>
-    </form>
-    <p id="mensaje" class="mensaje"></p>
-  </section>
+  <!-- 🔹 Formulario para datos -->
+  <section>
+    <h2>Tus datos 📋</h2>
+    <form id="formulario">
+      <input type="text" id="nombre" placeholder="Tu nombre completo" required>
+      <input type="email" id="correo" placeholder="Tu correo electrónico" required>
+      <input type="tel" id="telefono" placeholder="Tu teléfono" required>
+      <!-- El botón ahora solo hace la reserva y pide iniciar el pago -->
+      <button type="submit" id="reservar-btn">✅ Reservar y Continuar</button>
+    </form>
+    <p id="mensaje" class="mensaje"></p>
+  </section>
 
-  <!-- 🔹 Ticket y estado -->
-  <section id="ticket-box" class="hidden">
-    <h3>🎟️ Tus números reservados</h3>
-    <p>En proceso de pago...</p>
-  </section>
+  <!-- 🔹 Área de Pago Wompi -->
+  <section id="pago-area" class="hidden">
+    <h3>Paso 2: Realizar el Pago</h3>
+    <p>Referencia de tu reserva: <strong id="referencia-reserva">N/A</strong></p>
+    <!-- 
+    Este botón será el que disparará el widget de Wompi. 
+    Lo inicializaremos con JavaScript en app.js.
+    -->
+    <button id="wompi-button" disabled>Iniciar Pago Seguro con Wompi</button>
+  </section>
+  
+  <!-- 🔹 Ticket y estado -->
+  <section id="ticket-box" class="hidden">
+    <h3>🎟️ Tus números reservados</h3>
+    <p>Estado: <strong id="estado-ticket">En espera de pago...</strong></p>
+    <p>Números: <span id="numeros-ticket"></span></p>
+  </section>
 
-  <!-- 🔹 Spinner de carga -->
-  <div id="spinner" class="hidden">⏳ Procesando...</div>
+  <!-- 🔹 Spinner de carga -->
+  <div id="spinner" class="hidden">⏳ Procesando...</div>
 
-  <!-- 🔹 App lógica -->
-  <script src="app.js" defer></script>
+  <!-- 
+    1. Script del Widget de Wompi
+    Debe cargarse antes que tu lógica, pero DEFER es opcional si está al final del body.
+  -->
+  <script src="https://checkout.wompi.co/widget.js"></script> 
+  
+  <!-- 2. Tu Lógica JavaScript (app.js) -->
+  <script src="app.js" defer></script>
 
 </body>
 </html>

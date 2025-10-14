@@ -12,6 +12,7 @@
         <p>Selecciona tus números y participa por increíbles premios</p>
     </header>
 
+    <!-- 🔹 Barra de progreso -->
     <section class="progreso">
         <div class="barra">
             <div class="relleno"></div>
@@ -19,11 +20,13 @@
         <p id="porcentaje">Cargando disponibilidad...</p>
     </section>
 
+    <!-- 🔹 Números disponibles -->
     <section>
         <h2>Selecciona tus números 🎟️</h2>
         <div id="numeros-container" class="grid-numeros"></div>
     </section>
 
+    <!-- 🔹 Formulario para datos -->
     <section>
         <h2>Tus datos 📋</h2>
         <form id="formulario">
@@ -31,26 +34,38 @@
             <input type="email" id="correo" placeholder="Tu correo electrónico" required>
             <input type="tel" id="telefono" placeholder="Tu teléfono" required>
             
+            <!-- Botón de Reserva -->
             <button type="submit" id="btn-reservar">✅ Reservar y Pagar</button>
         </form>
         <p id="mensaje" class="mensaje"></p>
     </section>
 
+    <!-- 🔹 Contenedor del Botón de Pago (Aparece después de reservar) -->
     <section id="pago-box" class="hidden">
         <h3>Paso Final: Pagar</h3>
+        <!-- Botón que será usado para disparar el Widget de Wompi en app.js -->
         <button id="wompi-button">Pagar con Wompi</button>
         <p class="small-text">Serás redirigido a la pasarela segura de Wompi.</p>
     </section>
 
+    <!-- 🔹 Ticket y estado (Mantenido para consistencia, aunque no se usa en este flujo) -->
     <section id="ticket-box" class="hidden">
         <h3>🎟️ Tus números reservados</h3>
         <p>En proceso de pago...</p>
     </section>
 
+    <!-- 🔹 Spinner de carga -->
     <div id="spinner" class="hidden">⏳ Procesando...</div>
 
-    <script src="https://checkout.wompi.co/widget.js" defer></script> 
+    <!-- ------------------------------------------------ -->
+    <!-- 🔹 SCRIPTS CRÍTICOS -->
+    <!-- ------------------------------------------------ -->
     
+    <!-- 1. Script del Widget de Wompi -->
+    <!-- Se eliminó 'defer' para asegurar que el objeto $wompi exista antes de app.js -->
+    <script src="https://checkout.wompi.co/widget.js"></script> 
+    
+    <!-- 2. Tu Lógica de aplicación -->
     <script src="app.js" defer></script>
 
 </body>

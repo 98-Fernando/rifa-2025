@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rifa 2025 🎟️</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>🎉 Bienvenido a la Rifa 2025 🎉</h1>
+    <p>Selecciona tus números y participa por increíbles premios</p>
+  </header>
+
+  <!-- 🔹 Barra de progreso -->
+  <section class="progreso">
+    <div class="barra">
+      <div class="relleno"></div>
+    </div>
+    <p id="porcentaje">Cargando disponibilidad...</p>
+  </section>
+
+  <!-- 🔹 Números disponibles -->
+  <section>
+    <h2>Selecciona tus números 🎟️</h2>
+    <div id="numeros-container" class="grid-numeros"></div>
+  </section>
+
+  <!-- 🔹 Formulario para datos -->
+  <section>
+    <h2>Tus datos 📋</h2>
+    <form id="formulario">
+      <input type="text" id="nombre" placeholder="Tu nombre completo" required>
+      <input type="email" id="correo" placeholder="Tu correo electrónico" required>
+      <input type="tel" id="telefono" placeholder="Tu teléfono" required>
+      <button type="submit">✅ Reservar y Pagar</button>
+    </form>
+    <p id="mensaje" class="mensaje"></p>
+  </section>
+
+  <!-- 🔹 Ticket y estado -->
+  <section id="ticket-box" class="hidden">
+    <h3>🎟️ Tus números reservados</h3>
+    <p>En proceso de pago...</p>
+  </section>
+
+  <!-- 🔹 Spinner de carga -->
+  <div id="spinner" class="hidden">⏳ Procesando...</div>
+
+  <!-- 🔹 App lógica -->
+  <script src="app.js" defer></script>
+
+</body>
+</html>

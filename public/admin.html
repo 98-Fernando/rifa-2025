@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tickets Registrados</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>🎟️ Tickets Registrados</h1>
+    <button class="logout-btn">🔒 Cerrar sesión</button>
+
+    <input type="text" id="search" placeholder="🔍 Buscar por nombre o correo...">
+
+    <table>
+      <thead>
+        <tr>
+          <th>NOMBRE</th>
+          <th>CORREO</th>
+          <th>TELÉFONO</th>
+          <th>NÚMEROS</th>
+          <th>FECHA</th>
+          <th>PAGO</th>
+          <th>ACCIONES</th>
+        </tr>
+      </thead>
+      <tbody id="tickets-table">
+        <!-- Aquí se cargarán los registros dinámicamente -->
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+  // Función para renderizar la tabla con los datos
+  async function cargarTickets() {
+    try {
+      const res = await fetch("/api/tickets");
+      const data = await res.json();
+
+      const tableBody = document.getElementById("tickets-table");
+      tableBody.innerHTML = "";
+
+      if (data.exito && Array.isArray(data.tickets)) {
+        data.tickets.forEach(ticket => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${ticket.nombre || "-"}</td>
+            <td>${ticket.correo || "-"}</td>
+            <td>${ticket.telefono || "-"}</td>
+            <td>${Array.isArray(ticket.numeros) ? ticket.numeros.join(", ") : "-"}</td>
+            <td>${ticket.createdAt ? new Date(ticket.createdAt).toLocaleString() : "-"}</td>
+            <td>${ticket.pagado ? "✅ Pagado" : "❌ No pagado"}</td>
+            <td><button class="delete-btn" data-id="${ticket._id}">🗑️ Eliminar</button></td>
+          `;
+          tableBody.appendChild(row);
+        });
+      } else {
+        tableBody.innerHTML = `<tr><td colspan="7">⚠️ No hay tickets registrados</td></tr>`;
+      }
+    } catch (error) {
+      console.error("❌ Error cargando tickets:", error);
+    }
+  }
+
+  // Lógica para eliminar un ticket
+  document.addEventListener("click", async (e) => {
+    if (e.target.classList.contains("delete-btn")) {
+      const id = e.target.getAttribute("data-id");
+      if (confirm("¿Seguro que deseas eliminar este registro?")) {
+        try {
+          const res = await fetch(`/api/tickets/${id}`, { method: "DELETE" });
+          const data = await res.json();
+
+          if (data.exito) {
+            alert("✅ Registro eliminado");
+            cargarTickets(); // refresca la tabla sin recargar toda la página
+          } else {
+            alert("❌ Error eliminando");
+          }
+        } catch (err) {
+          console.error("❌ Error en la eliminación:", err);
+          alert("❌ Error en la eliminación");
+        }
+      }
+    }
+  });
+
+  // Cargar tickets al inicio
+  cargarTickets();
+  </script>
+</body>
+</html>

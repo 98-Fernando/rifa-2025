@@ -11,8 +11,6 @@ import rateLimit from "express-rate-limit";
 import crypto from "crypto";
 import { config } from "dotenv";
 import { fileURLToPath } from "url";
-// fetch ya no es necesario si usas Node >=18, y si lo usas con Node <18, 
-// asegúrate de tener "node-fetch": "^2.6.1" en package.json (versión limpia).
 
 // ----------------------
 // CONFIG
@@ -26,16 +24,17 @@ const PORT = process.env.PORT || 5000;
 
 // ----------------------
 // NONCE + CSP header (por petición)
-// CORRECCIÓN CLAVE: Se añadió 'unsafe-inline' a style-src para permitir los estilos del Widget de Wompi
+// CORRECCIÓN FINAL: Eliminamos ${nonce} de style-src para que 'unsafe-inline' funcione.
 // ----------------------
 app.use((req, res, next) => {
     res.locals.nonce = crypto.randomBytes(16).toString("base64");
     const nonce = `'nonce-${res.locals.nonce}'`;
     const csp = [
         `default-src 'self'`,
+        // Mantenemos nonce para scripts
         `script-src 'self' ${nonce} https://checkout.wompi.co https://cdn.wompi.co https://cdn.jsdelivr.net https://unpkg.com`,
-        // 🚨 CAMBIO CRÍTICO: Añadir 'unsafe-inline' aquí para resolver el bloqueo de estilos del Widget 🚨
-        `style-src 'self' ${nonce} 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net`, 
+        // 🚨 CAMBIO CRÍTICO: Eliminamos ${nonce} para que 'unsafe-inline' funcione y el widget muestre estilos.
+        `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net`, 
         `font-src 'self' https://fonts.gstatic.com`,
         `img-src 'self' data: https://cdn-icons-png.flaticon.com https://checkout.wompi.co https://cdn.wompi.co`,
         `connect-src 'self' https://production.wompi.co https://sandbox.wompi.co https://checkout.wompi.co https://api.wompi.co https://api.emailjs.com`,
@@ -166,11 +165,6 @@ app.post("/api/tickets/guardar-pendiente", async (req, res) => {
         res.status(500).json({ exito: false, mensaje: "Error guardando pendiente" });
     }
 });
-
-
-// ----------------------
-// RUTAS ELIMINADAS: /api/signature & /api/crear-transaccion (CORRECTO)
-// ----------------------
 
 
 // ----------------------

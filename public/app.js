@@ -110,18 +110,10 @@ if (form) {
 }
 
 
-// // ===============================
-// // 💰 Disparar el Pago con el Widget
-// // NOTE: Esta lógica se mueve dentro de DOMContentLoaded
-// // ===============================
-
-// ... (Las funciones auxiliares se mantienen igual) ...
-
 // ===============================
 // 🔹 Renderizar números disponibles
 // ===============================
 async function cargarNumeros() {
-    // La lógica de cargar números se mantiene igual
     try {
         const res = await fetch("/api/tickets/numeros");
         if (!res.ok) throw new Error("No se pudieron cargar los números");
@@ -153,12 +145,12 @@ async function cargarNumeros() {
 }
 
 // ===============================
-// ✅ Funciones utilitarias (sin cambios)
+// ✅ Funciones utilitarias
 // ===============================
 
 function obtenerNumerosSeleccionados() {
     return Array.from(document.querySelectorAll(".numero.seleccionado"))
-        .map((btn) => Number(btn.textContent.trim())); // Usar Number() para seguridad
+        .map((btn) => Number(btn.textContent.trim()));
 }
 
 function mostrarMensaje(texto, tipo = "exito") {
@@ -180,6 +172,31 @@ function actualizarBarra(porcentaje) {
     if (porcentajeTxt) porcentajeTxt.textContent = `Progreso: ${porcentaje}% vendido`;
 }
 
+// ===============================
+// 🚀 Inicialización de Wompi con Retry
+// ===============================
+const MAX_RETRIES = 5;
+const RETRY_DELAY = 200; // 200ms
+
+function initializeWompiWithRetry(paymentData, retryCount = 0) {
+    if (window.$wompi && window.$wompi.initialize) {
+        // Inicialización exitosa
+        wompiButton.disabled = true; 
+        spinner?.classList.remove("hidden");
+        window.$wompi.initialize(paymentData);
+    } else if (retryCount < MAX_RETRIES) {
+        // Reintento si $wompi aún no está listo
+        setTimeout(() => {
+            initializeWompiWithRetry(paymentData, retryCount + 1);
+        }, RETRY_DELAY);
+    } else {
+        // Fallo después de todos los reintentos
+        console.error("❌ El script del Widget de Wompi ($wompi) no se cargó correctamente. (Fallo de reintento)");
+        mostrarMensaje("🚫 Error al cargar la pasarela de pagos. Recarga la página y vuelve a intentarlo.", "error");
+        wompiButton.disabled = false;
+        spinner?.classList.add("hidden");
+    }
+}
 
 // ===============================
 // 🚀 Al iniciar (Lógica sincronizada)
@@ -188,7 +205,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     await cargarConfig();
     await cargarNumeros();
 
-    // 💰 Lógica del botón de Pago con el Widget (Mover aquí garantiza que el DOM existe)
+    // 💰 Lógica del botón de Pago con el Widget
     if (wompiButton) {
         wompiButton.addEventListener('click', () => {
             
@@ -215,21 +232,10 @@ document.addEventListener("DOMContentLoaded", async () => {
                 redirectUrl: urlSuccess,
             };
 
-            // 2. Inicializa el Widget
-            // La comprobación de window.$wompi ahora es más fiable.
-            if (window.$wompi && window.$wompi.initialize) {
-                wompiButton.disabled = true; 
-                spinner?.classList.remove("hidden");
-                window.$wompi.initialize(paymentData);
-            } else {
-                console.error("❌ El script del Widget de Wompi ($wompi) no se cargó correctamente. (Error de script o CSP)");
-                mostrarMensaje("🚫 Error al cargar la pasarela de pagos. Recarga la página.", "error");
-                wompiButton.disabled = false;
-                spinner?.classList.add("hidden");
-            }
+            // 2. Inicializa el Widget usando el mecanismo de reintento
+            initializeWompiWithRetry(paymentData);
         });
     }
-    // Fin de la lógica del botón Wompi
 
     try {
         const res = await fetch("/api/tickets/consulta");

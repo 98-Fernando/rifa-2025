@@ -110,51 +110,12 @@ if (form) {
 }
 
 
-// ===============================
-// 💰 Disparar el Pago con el Widget
-// ===============================
-if (wompiButton) {
-    wompiButton.addEventListener('click', () => {
-        
-        if (!PAGO_PENDIENTE.reference || PAGO_PENDIENTE.amountInCents === 0) {
-            mostrarMensaje("⚠️ Primero debes reservar tus números.", "error");
-            return;
-        }
+// // ===============================
+// // 💰 Disparar el Pago con el Widget
+// // NOTE: Esta lógica se mueve dentro de DOMContentLoaded
+// // ===============================
 
-        // 1. Obtener los datos del estado global
-        const { reference, amountInCents, customerEmail } = PAGO_PENDIENTE;
-        const { publicKey, urlSuccess } = CONFIG;
-        
-        if (!publicKey || !urlSuccess) {
-            mostrarMensaje("🚫 Configuración de Wompi incompleta.", "error");
-            return;
-        }
-        
-        const paymentData = {
-            amountInCents: amountInCents,
-            currency: "COP",
-            reference: reference,
-            customerEmail: customerEmail,
-            
-            // La clave pública es la que Render debe inyectar SIN contaminar
-            publicKey: publicKey, 
-            
-            // URL de redirección final
-            redirectUrl: urlSuccess,
-        };
-
-        // 2. Inicializa el Widget
-        if (window.$wompi && window.$wompi.initialize) {
-            wompiButton.disabled = true; // Deshabilitar para evitar múltiples clicks
-            spinner?.classList.remove("hidden");
-            window.$wompi.initialize(paymentData);
-        } else {
-            console.error("❌ El script del Widget de Wompi ($wompi) no se cargó correctamente.");
-            mostrarMensaje("🚫 Error al cargar la pasarela de pagos. Recarga la página.", "error");
-        }
-    });
-}
-
+// ... (Las funciones auxiliares se mantienen igual) ...
 
 // ===============================
 // 🔹 Renderizar números disponibles
@@ -221,11 +182,54 @@ function actualizarBarra(porcentaje) {
 
 
 // ===============================
-// 🚀 Al iniciar
+// 🚀 Al iniciar (Lógica sincronizada)
 // ===============================
 document.addEventListener("DOMContentLoaded", async () => {
     await cargarConfig();
     await cargarNumeros();
+
+    // 💰 Lógica del botón de Pago con el Widget (Mover aquí garantiza que el DOM existe)
+    if (wompiButton) {
+        wompiButton.addEventListener('click', () => {
+            
+            if (!PAGO_PENDIENTE.reference || PAGO_PENDIENTE.amountInCents === 0) {
+                mostrarMensaje("⚠️ Primero debes reservar tus números.", "error");
+                return;
+            }
+
+            // 1. Obtener los datos del estado global
+            const { reference, amountInCents, customerEmail } = PAGO_PENDIENTE;
+            const { publicKey, urlSuccess } = CONFIG;
+            
+            if (!publicKey || !urlSuccess) {
+                mostrarMensaje("🚫 Configuración de Wompi incompleta.", "error");
+                return;
+            }
+            
+            const paymentData = {
+                amountInCents: amountInCents,
+                currency: "COP",
+                reference: reference,
+                customerEmail: customerEmail,
+                publicKey: publicKey, 
+                redirectUrl: urlSuccess,
+            };
+
+            // 2. Inicializa el Widget
+            // La comprobación de window.$wompi ahora es más fiable.
+            if (window.$wompi && window.$wompi.initialize) {
+                wompiButton.disabled = true; 
+                spinner?.classList.remove("hidden");
+                window.$wompi.initialize(paymentData);
+            } else {
+                console.error("❌ El script del Widget de Wompi ($wompi) no se cargó correctamente. (Error de script o CSP)");
+                mostrarMensaje("🚫 Error al cargar la pasarela de pagos. Recarga la página.", "error");
+                wompiButton.disabled = false;
+                spinner?.classList.add("hidden");
+            }
+        });
+    }
+    // Fin de la lógica del botón Wompi
 
     try {
         const res = await fetch("/api/tickets/consulta");

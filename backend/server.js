@@ -11,6 +11,8 @@ import rateLimit from "express-rate-limit";
 import crypto from "crypto";
 import { config } from "dotenv";
 import { fileURLToPath } from "url";
+import { MercadoPagoConfig, Preference } from 'mercadopago'; // 👈 NUEVO: SDK de Mercado Pago
+import { URL } from 'url'; // 👈 NUEVO: Para manejar URLs
 
 // ----------------------
 // CONFIG
@@ -23,22 +25,30 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // ----------------------
-// NONCE + CSP header (por petición)
-// CORRECCIÓN FINAL: Eliminamos ${nonce} de style-src para que 'unsafe-inline' funcione.
+// 💡 CONFIGURACIÓN MERCADO PAGO 💡
+// ----------------------
+// Usaremos el Access Token. Lo cargamos desde las variables de entorno para seguridad.
+const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN || "APP_USR-6749171446158778-101616-33c0332a1284adf8101f059e5538dcf3-2926318204";
+
+const client = new MercadoPagoConfig({ accessToken: MP_ACCESS_TOKEN });
+const preference = new Preference(client);
+
+// ----------------------
+// NONCE + CSP header (Simplificado para Mercado Pago)
+// Eliminamos todas las referencias a Wompi.
 // ----------------------
 app.use((req, res, next) => {
     res.locals.nonce = crypto.randomBytes(16).toString("base64");
     const nonce = `'nonce-${res.locals.nonce}'`;
     const csp = [
         `default-src 'self'`,
-        // Mantenemos nonce para scripts
-        `script-src 'self' ${nonce} https://checkout.wompi.co https://cdn.wompi.co https://cdn.jsdelivr.net https://unpkg.com`,
-        // 🚨 CAMBIO CRÍTICO: Eliminamos ${nonce} para que 'unsafe-inline' funcione y el widget muestre estilos.
-        `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net`, 
+        // Añadimos dominios de Mercado Pago a script y frame-src
+        `script-src 'self' ${nonce} https://www.mercadopago.com https://http2.mlstatic.com https://sdk.mercadopago.com`,
+        `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net`,
         `font-src 'self' https://fonts.gstatic.com`,
-        `img-src 'self' data: https://cdn-icons-png.flaticon.com https://checkout.wompi.co https://cdn.wompi.co`,
-        `connect-src 'self' https://production.wompi.co https://sandbox.wompi.co https://checkout.wompi.co https://api.wompi.co https://api.emailjs.com`,
-        `frame-src 'self' https://checkout.wompi.co https://cdn.wompi.co`,
+        `img-src 'self' data: https://cdn-icons-png.flaticon.com https://www.mercadopago.com https://http2.mlstatic.com`,
+        `connect-src 'self' https://api.mercadopago.com https://api.emailjs.com`,
+        `frame-src 'self' https://www.mercadopago.com https://sdk.mercadopago.com`,
     ].join("; ");
     res.setHeader("Content-Security-Policy", csp);
     next();
@@ -101,23 +111,82 @@ mongoose
     .catch((err) => console.error("❌ Error MongoDB:", err));
 
 // ----------------------
-// API - CONFIG
+// API - CONFIG (Solo devuelve el precio y nonce)
+// Se eliminan las credenciales de Wompi.
 // ----------------------
 app.get("/api/config", (req, res) => {
     res.json({
         exito: true,
         precio: Number(process.env.PRECIO_BOLETO) || 5000,
-        publicKey: process.env.WOMPI_PUBLIC_KEY || "",
-        urlSuccess: process.env.URL_SUCCESS || "",
-        urlFailure: process.env.URL_FAILURE || "",
-        urlPending: process.env.URL_PENDING || "",
         nonce: res.locals.nonce,
     });
 });
 
 // ----------------------
-// API - TICKETS 
+// API - MERCADO PAGO (Genera la Preferencia) 👈 NUEVO ENDPOINT
 // ----------------------
+app.post("/api/mercadopago/preference", async (req, res) => {
+    try {
+        const { reference, nombre, correo, telefono, monto } = req.body; // monto debe estar en COP, no en centavos
+
+        if (!reference || !monto || !nombre) {
+            return res.status(400).json({ exito: false, mensaje: "Datos de pago incompletos." });
+        }
+
+        const notificationUrl = new URL(`/api/mercadopago/webhook`, req.protocol + '://' + req.get('host')).toString();
+
+        const preferenceBody = {
+            items: [{
+                id: reference,
+                title: `Tickets de Rifa - Ref: ${reference}`,
+                quantity: 1,
+                unit_price: Number(monto),
+                currency_id: "COP" // Asumiendo que es Colombia
+            }],
+            payer: {
+                name: nombre,
+                email: correo,
+                phone: {
+                    area_code: "",
+                    number: telefono,
+                },
+            },
+            external_reference: reference, // Usamos la referencia del ticket pendiente
+            back_urls: {
+                success: process.env.URL_SUCCESS || `${req.protocol}://${req.get('host')}/success`,
+                pending: process.env.URL_PENDING || `${req.protocol}://${req.get('host')}/pending`,
+                failure: process.env.URL_FAILURE || `${req.protocol}://${req.get('host')}/failure`,
+            },
+            notification_url: notificationUrl, // Webhook para notificaciones de pago
+            auto_return: "approved",
+            metadata: {
+                nombre_cliente: nombre,
+                correo_cliente: correo
+            }
+        };
+
+        const result = await preference.create({ body: preferenceBody });
+
+        res.json({
+            exito: true,
+            // El init_point es la URL a la que la app debe redirigir al usuario (Checkout Pro)
+            init_point: result.init_point, 
+            reference: reference,
+        });
+
+    } catch (err) {
+        console.error("❌ Error creando preferencia de Mercado Pago:", err.message);
+        res.status(500).json({ exito: false, mensaje: "Error creando preferencia de pago." });
+    }
+});
+
+
+// ----------------------
+// API - TICKETS y GUARDAR PENDIENTE (SIN CAMBIOS)
+// ----------------------
+
+// ... (El código de app.get("/api/tickets/numeros"), app.get("/api/tickets/consulta"), y app.post("/api/tickets/guardar-pendiente") va aquí sin cambios) ...
+
 app.get("/api/tickets/numeros", async (req, res) => {
     try {
         const tickets = await Ticket.find({}, "numeros").lean();
@@ -151,7 +220,7 @@ app.post("/api/tickets/guardar-pendiente", async (req, res) => {
         if (!nombre || !correo || !telefono || !Array.isArray(numeros) || !numeros.length) {
             return res.status(400).json({ exito: false, mensaje: "Datos incompletos" });
         }
-        const reference = `RIFA-${Date.now()}`; 
+        const reference = `RIFA-${Date.now()}`;
         await Pendiente.create({
             nombre,
             correo,
@@ -168,58 +237,53 @@ app.post("/api/tickets/guardar-pendiente", async (req, res) => {
 
 
 // ----------------------
-// WEBHOOK 
+// WEBHOOK - MERCADO PAGO 👈 NUEVO WEBHOOK
 // ----------------------
 const webhookRouter = express.Router();
-webhookRouter.post("/webhook-wompi", express.raw({ type: "application/json" }), async (req, res) => {
+webhookRouter.post("/api/mercadopago/webhook", async (req, res) => {
     try {
-        const rawBody = req.body.toString("utf8");
-        const parsed = JSON.parse(rawBody);
-        const { event, data } = parsed;
-        if (!data?.transaction) return res.sendStatus(400);
+        const { type, data } = req.body;
+        
+        // Mercado Pago puede enviar notificaciones de 'payment' o 'merchant_order'
+        if (type === 'payment' && data?.id) {
+            const paymentId = data.id;
 
-        const tx = data.transaction;
+            // 1. Obtener detalles del pago desde la API de MP (para verificar estado)
+            const payment = await client.payment.get({ id: paymentId });
 
-        // Integrity verification using INTEGRITY_KEY (sha256)
-        const integrityKey = process.env.WOMPI_INTEGRITY_KEY || "";
-        const localSignature = crypto
-            .createHash("sha256")
-            .update(`${tx.reference}${tx.amount_in_cents}${tx.currency}${integrityKey}`)
-            .digest("hex");
-
-        const headerSignature =
-            req.headers["integrity-signature"] ||
-            req.headers["signature"] ||
-            req.headers["content-signature"];
-
-        // Nota: La verificación de la firma del webhook es clave para la seguridad.
-        if (headerSignature && localSignature && headerSignature !== localSignature) {
-            console.warn("⚠️ Firma no coincide. Esperado:", localSignature, "Recibido:", headerSignature);
-            return res.sendStatus(403);
-        }
-
-        // Procesar APPROVED
-        if (event === "transaction.updated" && tx.status === "APPROVED") {
-            const pendiente = await Pendiente.findOne({ reference: tx.reference });
-            if (pendiente) {
-                await Ticket.create({
-                    reference: tx.reference,
-                    correo: tx.customer_email || pendiente.correo,
-                    nombre: tx.customer_name || pendiente.nombre,
-                    telefono: pendiente.telefono,
-                    numeros: pendiente.numeros,
-                    estadoPago: "pagado",
-                });
-                await pendiente.deleteOne();
-                console.log(`🎟️ Ticket confirmado: ${tx.reference}`);
-            } else {
-                console.log(`ℹ️ Transacción aprobada pero no existe pendiente: ${tx.reference}`);
+            const txStatus = payment.status;
+            const txReference = payment.external_reference; // Usamos la referencia externa
+            
+            // 2. Procesar el pago APROBADO
+            if (txStatus === 'approved') {
+                const pendiente = await Pendiente.findOne({ reference: txReference });
+                
+                if (pendiente) {
+                    await Ticket.create({
+                        reference: txReference,
+                        correo: payment.payer?.email || pendiente.correo,
+                        nombre: payment.payer?.first_name || pendiente.nombre,
+                        telefono: pendiente.telefono,
+                        numeros: pendiente.numeros,
+                        estadoPago: "pagado",
+                    });
+                    await pendiente.deleteOne();
+                    console.log(`🎟️ Ticket confirmado (MP): ${txReference}`);
+                } else {
+                    console.log(`ℹ️ Transacción aprobada (MP) pero no existe pendiente: ${txReference}`);
+                }
+            } else if (txStatus === 'pending') {
+                console.log(`⏳ Transacción pendiente (MP): ${txReference}`);
+            } else if (txStatus === 'rejected' || txStatus === 'cancelled') {
+                 console.log(`❌ Transacción rechazada (MP): ${txReference}`);
+                 // Opcional: Podrías eliminar el pendiente aquí o marcarlo como fallido.
             }
         }
-
-        res.sendStatus(200);
+        
+        // Siempre respondemos 200 para que Mercado Pago no reintente.
+        res.sendStatus(200); 
     } catch (err) {
-        console.error("❌ Webhook error:", err);
+        console.error("❌ Webhook Mercado Pago error:", err);
         res.sendStatus(500);
     }
 });

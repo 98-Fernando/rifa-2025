@@ -22,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Si el servidor responde con un código de éxito (como 204)
                 if (res.ok) {
                     // ¡Esto es lo que forzará la redirección a admin.html!
-                    window.location.href = "/admin/dashboard"; 
+                    window.location.href = "https://rifa-2025.onrender.com/admin.html";
                 } else if (res.status === 401) {
                     errorMessage.textContent = 'Usuario o contraseña incorrectos.';
                 } else {

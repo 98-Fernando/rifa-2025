@@ -5,10 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rifa 2025 🎟️ (000 - 999)</title>
     
-    <!-- Integración de todos tus estilos CSS aquí -->
+    <script src="https://sdk.mercadopago.com/js/v2" nonce="NONCE_PLACEHOLDER"></script> 
+    
     <style>
 /* ===============================
-   🎨 Estilos Globales
+    🎨 Estilos Globales
 =============================== */
 body {
     background: url('https://placehold.co/1920x1080/4CAF50/FFFFFF?text=Fondo+Rifa') no-repeat center center fixed;
@@ -37,7 +38,7 @@ body {
 }
 
 /* ===============================
-   📌 Formularios y Botones
+    📌 Formularios y Botones
 =============================== */
 input,
 button {
@@ -85,7 +86,7 @@ button:active {
 }
 
 /* ===============================
-   🎟️ Tickets y Numeración (ESTILOS CORREGIDOS)
+    🎟️ Tickets y Numeración (ESTILOS CORREGIDOS)
 =============================== */
 .grid-numeros {
     display: grid;
@@ -137,7 +138,7 @@ button:active {
 }
 
 /* ===============================
-   📊 Barra de Progreso
+    📊 Barra de Progreso
 =============================== */
 .progreso {
     margin: 25px 0 15px;
@@ -167,7 +168,7 @@ button:active {
 }
 
 /* ===============================
-   📌 Mensajes de éxito/error
+    📌 Mensajes de éxito/error
 =============================== */
 .mensaje {
     font-size: 15px;
@@ -203,7 +204,7 @@ button:active {
 }
 
 /* ===============================
-   🔄 Loader (spinner)
+    🔄 Loader (spinner)
 =============================== */
 .spinner {
     border: 4px solid #eee;
@@ -220,7 +221,7 @@ button:active {
 }
 
 /* ===============================
-   📱 Responsive
+    📱 Responsive
 =============================== */
 @media screen and (max-width: 600px) {
     body {
@@ -248,14 +249,12 @@ button:active {
     </style>
 </head>
 <body>
-    <!-- Añadimos el contenedor principal para aplicar el fondo difuminado de tu CSS -->
     <div class="container"> 
         <header>
             <h1>🎉 Bienvenido a la Rifa 2025 🎉</h1>
             <p>Selecciona tus números (000 - 999) y participa por increíbles premios</p>
         </header>
 
-        <!-- 🔹 Barra de progreso -->
         <section class="progreso">
             <div class="barra">
                 <div class="relleno"></div>
@@ -263,13 +262,11 @@ button:active {
             <p id="porcentaje">Cargando disponibilidad...</p>
         </section>
 
-        <!-- 🔹 Números disponibles -->
         <section>
             <h2>Selecciona tus números 🎟️</h2>
             <div id="numeros-container" class="grid-numeros"></div> 
         </section>
 
-        <!-- 🔹 Formulario para datos -->
         <section>
             <h2>Tus datos 📋</h2>
             <form id="formulario">
@@ -277,13 +274,11 @@ button:active {
                 <input type="email" id="correo" placeholder="Tu correo electrónico" required>
                 <input type="tel" id="telefono" placeholder="Tu teléfono" required>
                 
-                <!-- Botón de Reserva -->
                 <button type="submit" id="btn-reservar">✅ Reservar y Pagar</button>
             </form>
             <p id="mensaje" class="mensaje"></p>
         </section>
 
-        <!-- 🔹 Contenedor del Botón de Pago (Aparece después de reservar) -->
         <section id="pago-box" class="hidden">
             <h3>Paso Final: Pagar</h3>
             
@@ -291,20 +286,15 @@ button:active {
             <p class="small-text">Serás redirigido a la pasarela segura de Mercado Pago.</p>
         </section>
 
-        <!-- 🔹 Ticket y estado (Mantenido para consistencia) -->
         <section id="ticket-box" class="hidden">
             <h3>🎟️ Tus números reservados</h3>
             <p>En proceso de pago...</p>
         </section>
 
-        <!-- 🔹 Spinner de carga -->
         <div id="spinner" class="spinner hidden">⏳ Procesando...</div>
     </div>
     
-    <!-- ------------------------------------------------ -->
-    <!-- 🔹 SCRIPTS CRÍTICOS -->
-    <!-- ------------------------------------------------ -->
-    <script src="app.js"></script> 
+    <script src="app.js" nonce="NONCE_PLACEHOLDER"></script> 
 
 </body>
 </html>

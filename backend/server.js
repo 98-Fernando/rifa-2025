@@ -78,12 +78,14 @@ app.use(
       ttl: 60 * 60 * 24, // 1 día
     }),
     cookie: {
-      secure: process.env.NODE_ENV === "production",
+      secure: true,      
+      httpOnly: true,
+      sameSite: "none",      
       maxAge: 1000 * 60 * 60 * 24,
-      sameSite: "lax",
     },
   })
 );
+
 
 // ==================== CONEXIÓN BASE DE DATOS ====================
 mongoose

@@ -19,33 +19,31 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        credentials: 'include', // 🔑 Permite guardar la sesión
         body: JSON.stringify({ username, password })
       });
 
-      if (res.ok) {
-        // Intentamos leer JSON, si no hay contenido (204), igual redirigimos
-        try {
-          const data = await res.json();
-          if (data.success) {
-            window.location.href = "/admin.html"; 
-            return;
-          }
-        } catch {
-          // Si no hay cuerpo (204), asumimos login exitoso
-          window.location.href = "/admin.html";
-          return;
+      if (!res.ok) {
+        if (res.status === 401) {
+          errorMessage.textContent = 'Usuario o contraseña incorrectos.';
+        } else {
+          errorMessage.textContent = 'Error interno del servidor. Intenta de nuevo.';
         }
-
-        errorMessage.textContent = 'Error desconocido.';
-      } else if (res.status === 401) {
-        errorMessage.textContent = 'Usuario o contraseña incorrectos.';
-      } else {
-        errorMessage.textContent = 'Error interno del servidor. Intenta de nuevo.';
+        return;
       }
+
+      const data = await res.json();
+
+      if (data.success) {
+        // 🔒 Redirige al panel de administración
+        window.location.replace('/admin.html');
+      } else {
+        errorMessage.textContent = data.mensaje || 'Error al iniciar sesión.';
+      }
+
     } catch (error) {
-      console.error("Error de conexión:", error);
-      errorMessage.textContent = 'Error de conexión con el servidor.';
+      console.error('❌ Error de conexión:', error);
+      errorMessage.textContent = 'No se pudo conectar con el servidor.';
     }
   });
 });

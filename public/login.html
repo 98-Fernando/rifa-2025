@@ -5,38 +5,32 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Acceso Administrador</title>
   <style>
-    /* ====== ESTILOS GENERALES ====== */
-    * {
-      box-sizing: border-box;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-
+    * { box-sizing: border-box; }
     body {
       margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #2980b9, #6dd5fa);
       height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
-      background: linear-gradient(135deg, #1e3c72, #2a5298);
-      overflow: hidden;
-      animation: fadeIn 1.2s ease-in-out;
+      animation: fadeIn 1s ease-in-out;
     }
 
     @keyframes fadeIn {
-      from { opacity: 0; transform: scale(0.98); }
-      to { opacity: 1; transform: scale(1); }
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
-    /* ====== CONTENEDOR DEL LOGIN ====== */
     .login-container {
-      background: #ffffff;
-      padding: 2.5rem 2rem;
+      background: #fff;
+      padding: 2rem;
       border-radius: 20px;
-      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.25);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
       width: 90%;
       max-width: 400px;
       text-align: center;
-      animation: slideUp 0.8s ease forwards;
+      animation: slideUp 0.6s ease;
     }
 
     @keyframes slideUp {
@@ -44,128 +38,59 @@
       to { transform: translateY(0); opacity: 1; }
     }
 
-    .login-container h2 {
-      margin-bottom: 1.8rem;
-      color: #2c3e50;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-    }
+    h2 { margin-bottom: 1.5rem; color: #2c3e50; }
 
-    /* ====== CAMPOS DE TEXTO ====== */
     input {
       width: 100%;
-      padding: 0.9rem;
-      margin: 0.6rem 0;
+      padding: 0.8rem;
+      margin: 0.5rem 0;
       border: 1px solid #ccc;
-      border-radius: 10px;
-      font-size: 15px;
-      outline: none;
-      transition: all 0.3s ease;
+      border-radius: 8px;
+      font-size: 16px;
     }
 
-    input:focus {
-      border-color: #2980b9;
-      box-shadow: 0 0 8px rgba(41, 128, 185, 0.4);
-    }
-
-    /* ====== BOTÓN ====== */
     button {
       width: 100%;
-      padding: 0.9rem;
+      padding: 0.8rem;
       margin-top: 1rem;
-      background: linear-gradient(90deg, #2980b9, #6dd5fa);
+      background-color: #2980b9;
       color: #fff;
       border: none;
-      border-radius: 10px;
+      border-radius: 8px;
       font-size: 16px;
-      font-weight: 600;
       cursor: pointer;
-      transition: all 0.3s ease;
+      transition: background-color 0.3s ease;
     }
 
-    button:hover {
-      background: linear-gradient(90deg, #2471a3, #56ccf2);
-      transform: scale(1.03);
-    }
+    button:hover { background-color: #2471a3; }
 
-    /* ====== MENSAJE DE ERROR ====== */
     #errorMessage {
-      color: #e74c3c;
-      font-size: 14px;
+      color: red;
       margin-top: 10px;
-      min-height: 20px;
-      animation: fadeIn 0.5s ease;
+      font-size: 14px;
+      min-height: 18px;
     }
 
-    /* ====== PIE DE PÁGINA ====== */
     .footer {
-      margin-top: 1.5rem;
-      font-size: 13px;
+      margin-top: 1rem;
+      font-size: 14px;
       color: #7f8c8d;
-      opacity: 0.8;
-    }
-
-    .footer span {
-      font-weight: bold;
-      color: #2a5298;
     }
   </style>
 </head>
 <body>
-  <form id="loginForm">
-    <div class="login-container">
-      <h2>Acceso Administrador</h2>
-      <input type="text" name="username" placeholder="Usuario" required autocomplete="off">
-      <input type="password" name="password" placeholder="Contraseña" required>
+  <div class="login-container">
+    <h2>Acceso Administrador</h2>
+    <!-- 🔹 Sin "action" ni "method" -->
+    <form id="loginForm" autocomplete="off" novalidate>
+      <input type="text" id="username" name="username" placeholder="Usuario" required>
+      <input type="password" id="password" name="password" placeholder="Contraseña" required>
       <button type="submit">Iniciar Sesión</button>
       <p id="errorMessage"></p>
-      <div class="footer">Sistema de <span>Rifas</span> • 2025</div>
-    </div>
-  </form>
+    </form>
+    <div class="footer">Sistema de rifas • 2025</div>
+  </div>
 
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      const form = document.getElementById('loginForm');
-      const errorMessage = document.getElementById('errorMessage');
-
-      form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        errorMessage.textContent = '';
-
-        const username = form.username.value.trim();
-        const password = form.password.value.trim();
-
-        if (!username || !password) {
-          errorMessage.textContent = 'Por favor, completa todos los campos.';
-          return;
-        }
-
-        try {
-          const res = await fetch('/api/admin/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ username, password })
-          });
-
-          if (res.ok) {
-            const data = await res.json();
-            if (data.success) {
-              window.location.href = "https://rifa-2025.onrender.com/admin.html";
-            } else {
-              errorMessage.textContent = 'Error desconocido.';
-            }
-          } else if (res.status === 401) {
-            errorMessage.textContent = 'Usuario o contraseña incorrectos.';
-          } else {
-            errorMessage.textContent = 'Error interno del servidor. Intenta de nuevo.';
-          }
-        } catch (error) {
-          console.error("Error de conexión:", error);
-          errorMessage.textContent = 'Error de conexión. Verifica la URL del servidor.';
-        }
-      });
-    });
-  </script>
+  <script src="login.js" defer></script>
 </body>
 </html>

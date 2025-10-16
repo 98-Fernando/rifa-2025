@@ -61,12 +61,14 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(
   cors({
-    origin: "https://rifa-2025.onrender.com",
+    origin: ["https://rifa-2025.onrender.com"], 
     credentials: true,
+    methods: ["GET", "POST", "DELETE", "PUT", "OPTIONS"],
   })
 );
 
 // ==================== SESIONES ====================
+app.set("trust proxy", 1); 
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "secret-key",
@@ -78,10 +80,10 @@ app.use(
       ttl: 60 * 60 * 24, // 1 día
     }),
     cookie: {
-      secure: true,      
       httpOnly: true,
-      sameSite: "none",      
-      maxAge: 1000 * 60 * 60 * 24,
+      secure: true,      
+      sameSite: "none",   
+      maxAge: 1000 * 60 * 60 * 24, // 1 día
     },
   })
 );

@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
+        credentials: 'include', // 🔥 MUY IMPORTANTE
         body: JSON.stringify({ username, password })
       });
 

@@ -12,9 +12,10 @@ import crypto from "crypto";
 import { config } from "dotenv";
 import { fileURLToPath } from "url";
 import { MercadoPagoConfig, Preference } from 'mercadopago';
-import { URL } from 'url';
-import ticketsRouter from "./routes/tickets.js"; // Maneja /numeros y /guardar-pendiente
-import consultaRouter from "./routes/consulta.js"; // Maneja /consulta
+import ticketsRouter from "./routes/tickets.js"; 
+import consultaRouter from "./routes/consulta.js"; 
+// 💡 Nuevo: Router para la API de Administración
+import adminApiRouter from "./routes/admin.js"; 
 
 // ----------------------
 // CONFIG
@@ -25,25 +26,44 @@ config({ path: path.join(__dirname, "..", ".env") });
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const PUBLIC_PATH = path.join(__dirname, "..", "public");
 
 // ----------------------
 // 💡 CONFIGURACIÓN MERCADO PAGO 💡
 // ----------------------
-const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN || "APP_USR-6749171446158778-101616-33c0332a1284adf8101f059e5538dcf3-2926318204";
+const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN || "TU_TOKEN_MP"; // Usa la variable de entorno
 
 const client = new MercadoPagoConfig({ accessToken: MP_ACCESS_TOKEN });
 const preference = new Preference(client);
 
 // ----------------------
+// 🚨 Middleware de Autenticación (Placeholder)
+// ----------------------
+const isAdmin = (req, res, next) => {
+    // ⚠️ Importante: Debes implementar la lógica real de sesión/autenticación aquí.
+    if (req.session.isAdmin) {
+        next();
+    } else {
+        // Redirige a la página de login si no está autenticado
+        res.redirect("/admin"); 
+    }
+};
+
+// ----------------------
 // NONCE + CSP header
 // ----------------------
 app.use((req, res, next) => {
+    // Generación de Nonce
     res.locals.nonce = crypto.randomBytes(16).toString("base64");
     const nonce = `'nonce-${res.locals.nonce}'`;
+    
+    // **AJUSTE CSP CLAVE:** Añadimos 'unsafe-eval' para Mercado Pago SDK y 'blob:' 
+    // y ajustamos script-src para solo 'self' y el nonce para archivos propios,
+    // dejando las URLs de MP externas. 
     const csp = [
         `default-src 'self'`,
-        `script-src 'self' ${nonce} https://www.mercadopago.com https://http2.mlstatic.com https://sdk.mercadopago.com`,
-        `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net`,
+        `script-src 'self' ${nonce} https://www.mercadopago.com https://http2.mlstatic.com https://sdk.mercadopago.com 'unsafe-eval'`,
+        `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net`, // 'unsafe-inline' es común para CSS
         `font-src 'self' https://fonts.gstatic.com`,
         `img-src 'self' data: https://cdn-icons-png.flaticon.com https://www.mercadopago.com https://http2.mlstatic.com`,
         `connect-src 'self' https://api.mercadopago.com https://api.emailjs.com`,
@@ -93,12 +113,6 @@ app.use(
 );
 
 // ----------------------
-// Static files
-// ----------------------
-app.use(express.static(path.join(__dirname, "..", "public")));
-app.get("/", (req, res) => res.sendFile(path.join(__dirname, "..", "public", "index.html")));
-
-// ----------------------
 // DB
 // ----------------------
 import Ticket from "./models/Ticket.js";
@@ -135,6 +149,7 @@ app.post("/api/mercadopago/preference", async (req, res) => {
         const protocol = req.protocol;
         const notificationUrl = `${protocol}://${host}/api/mercadopago/webhook`;
         
+        // Define las URLs de retorno basadas en el ambiente y host actual
         const backUrls = {
             success: process.env.URL_SUCCESS || `${protocol}://${host}/success`,
             pending: process.env.URL_PENDING || `${protocol}://${host}/pending`,
@@ -182,19 +197,11 @@ app.post("/api/mercadopago/preference", async (req, res) => {
 });
 
 // ----------------------
-// 🔗 CONEXIÓN DE RUTAS MODULARES 🔗
-// ----------------------
-
-// Conecta ticketsRouter (que contiene /numeros y /guardar-pendiente)
-app.use('/api/tickets', ticketsRouter);
-app.use('/api/tickets/consulta', consultaRouter);
-
-
-// ----------------------
-// WEBHOOK - MERCADO PAGO (Se mantiene aquí por simplicidad)
+// WEBHOOK - MERCADO PAGO
 // ----------------------
 const webhookRouter = express.Router();
 webhookRouter.post("/api/mercadopago/webhook", async (req, res) => {
+    // La lógica del webhook se mantiene aquí
     try {
         const { type, data } = req.body;
         
@@ -210,12 +217,14 @@ webhookRouter.post("/api/mercadopago/webhook", async (req, res) => {
                 const pendiente = await Pendiente.findOne({ reference: txReference });
                 
                 if (pendiente) {
+                    // Mover de pendiente a ticket final
                     await Ticket.create({
                         reference: txReference,
                         correo: payment.payer?.email || pendiente.correo,
                         nombre: payment.payer?.first_name || pendiente.nombre,
                         telefono: pendiente.telefono,
                         numeros: pendiente.numeros,
+                        monto: payment.transaction_amount, // Guardar el monto pagado
                         estadoPago: "pagado",
                     });
                     await pendiente.deleteOne();
@@ -238,9 +247,75 @@ webhookRouter.post("/api/mercadopago/webhook", async (req, res) => {
 });
 app.use(webhookRouter);
 
+
+// ----------------------
+// 🔗 CONEXIÓN DE RUTAS MODULARES 🔗
+// ----------------------
+
+// Rutas de API para el Frontend (públicas)
+app.use('/api/tickets', ticketsRouter);
+app.use('/api/tickets/consulta', consultaRouter);
+// Rutas de API para el Administrador (protegidas)
+app.use('/api/admin', adminApiRouter); 
+
+
+// ----------------------
+// 🔒 RUTAS DE ADMINISTRACIÓN Y VISTAS 🔒
+// ----------------------
+
+// 1. Login Handler (Temporal - para manejar la autenticación)
+app.post('/api/admin/login', async (req, res) => {
+    // ⚠️ IMPLEMENTAR LÓGICA DE AUTENTICACIÓN REAL AQUÍ
+    const { username, password } = req.body;
+    
+    // Ejemplo de validación (¡USAR VARIABLES DE ENTORNO EN PRODUCCIÓN!)
+    if (username === process.env.ADMIN_USER && password === process.env.ADMIN_PASS) {
+        req.session.isAdmin = true;
+        return res.redirect("/admin/dashboard");
+    }
+    
+    // Vuelve a la página de login con un mensaje de error (o simplemente redirige)
+    res.redirect("/admin?error=1");
+});
+
+// 2. Logout Handler
+app.post('/api/admin/logout', (req, res) => {
+    req.session.destroy(err => {
+        if (err) console.error("Error al destruir sesión:", err);
+        res.json({ exito: true, mensaje: "Sesión cerrada" });
+    });
+});
+
+
+// 3. Vista de Login
+app.get("/admin", (req, res) => {
+    if (req.session.isAdmin) {
+        return res.redirect("/admin/dashboard");
+    }
+    // Sirve el login.html (el archivo que tenías con el formulario)
+    res.sendFile(path.join(PUBLIC_PATH, "login.html"));
+});
+
+// 4. Vista de Dashboard (Protegida)
+app.get("/admin/dashboard", isAdmin, (req, res) => {
+    // Sirve el admin.html (la tabla de tickets)
+    res.sendFile(path.join(PUBLIC_PATH, "admin.html"));
+});
+
+
+// ----------------------
+// Static files (Archivos públicos, incluyendo index.html)
+// ----------------------
+app.use(express.static(PUBLIC_PATH));
+
+// Ruta principal
+app.get("/", (req, res) => res.sendFile(path.join(PUBLIC_PATH, "index.html")));
+
+
 // ----------------------
 // START
 // ----------------------
 app.listen(PORT, () => {
     console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+    console.log(`🔒 Dashboard Admin: http://localhost:${PORT}/admin`);
 });

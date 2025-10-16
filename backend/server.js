@@ -279,7 +279,7 @@ app.post('/api/admin/login', async (req, res) => {
         req.session.isAdmin = true;
         console.log('✅ Autenticación exitosa. Respondiendo con 204.');
         // CLAVE: Devolvemos 204 para que JS maneje la redirección a /admin/dashboard
-        return res.sendStatus(204); 
+      res.status(200).json({ success: true, redirect: '/admin.html' });
     }
     
     console.log('❌ Autenticación fallida. Respondiendo con 401.');

@@ -25,21 +25,21 @@
       justify-content: center;
       align-items: flex-start;
       min-height: 100vh;
-      padding: 40px 10px;
+      padding: 0;
     }
 
     .container {
       width: 100%;
-      max-width: 1200px;
+      min-height: 100vh;
       background: var(--color-panel);
-      border-radius: 12px;
-      padding: 25px;
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+      border-radius: 0;
+      padding: 30px 40px;
+      box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.4);
     }
 
     h1 {
       color: var(--color-accent);
-      font-size: 1.7em;
+      font-size: 1.9em;
       text-align: center;
       margin-bottom: 25px;
       font-weight: 700;
@@ -49,20 +49,21 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 15px;
+      margin-bottom: 20px;
       flex-wrap: wrap;
       gap: 10px;
     }
 
     #search {
       flex: 1;
-      max-width: 350px;
-      padding: 8px 10px;
+      max-width: 400px;
+      padding: 9px 12px;
       border-radius: 6px;
       border: 1px solid rgba(255, 255, 255, 0.2);
       background: rgba(255, 255, 255, 0.1);
       color: #fff;
       outline: none;
+      font-size: 0.95em;
     }
 
     #search::placeholder {
@@ -72,12 +73,13 @@
     .logout-btn {
       background: var(--color-danger);
       border: none;
-      padding: 8px 15px;
+      padding: 9px 18px;
       border-radius: 6px;
       color: #fff;
       font-weight: 600;
       cursor: pointer;
       transition: 0.3s;
+      font-size: 0.9em;
     }
 
     .logout-btn:hover {
@@ -89,6 +91,7 @@
       overflow-x: auto;
       border-radius: 8px;
       background: rgba(255, 255, 255, 0.03);
+      padding: 10px;
     }
 
     table {
@@ -106,7 +109,7 @@
     th {
       padding: 10px 12px;
       text-transform: uppercase;
-      font-size: 0.75em;
+      font-size: 0.8em;
       letter-spacing: 0.4px;
       color: var(--color-accent);
       border-bottom: 2px solid rgba(255, 255, 255, 0.15);
@@ -119,9 +122,8 @@
       vertical-align: middle;
     }
 
-    /* Filas más compactas */
     tbody tr {
-      line-height: 1.3;
+      line-height: 1.2;
     }
 
     tbody tr:hover {
@@ -189,15 +191,15 @@
       z-index: 2;
     }
 
-    /* Ajuste de columnas proporcionales */
-    th:nth-child(1) { width: 16%; }
-    th:nth-child(2) { width: 20%; }
+    /* Distribución más pareja de columnas */
+    th:nth-child(1) { width: 15%; }
+    th:nth-child(2) { width: 18%; }
     th:nth-child(3) { width: 12%; }
-    th:nth-child(4) { width: 22%; }
+    th:nth-child(4) { width: 23%; }
     th:nth-child(5) { width: 8%; }
     th:nth-child(6) { width: 10%; }
     th:nth-child(7) { width: 8%; }
-    th:nth-child(8) { width: 4%; }
+    th:nth-child(8) { width: 6%; }
 
     @media (max-width: 900px) {
       th, td {
@@ -205,7 +207,10 @@
         font-size: 0.8em;
       }
       h1 {
-        font-size: 1.4em;
+        font-size: 1.5em;
+      }
+      .container {
+        padding: 20px 10px;
       }
     }
   </style>

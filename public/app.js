@@ -63,10 +63,24 @@ function actualizarBarra(vendidos, porcentaje) {
 
     barraProgresoRelleno.style.width = `${porcentaje}%`;
 
-    // Actualizamos el color según el porcentaje
-    if (porcentaje < 50) barraProgresoRelleno.style.background = "linear-gradient(90deg, #f44336, #ef5350)";
-    else if (porcentaje < 90) barraProgresoRelleno.style.background = "linear-gradient(90deg, #ff9800, #ffb300)";
-    else barraProgresoRelleno.style.background = "linear-gradient(90deg, #4caf50, #81c784)";
+    // Actualizamos el color según el porcentaje usando los nuevos colores
+    let startColor, endColor;
+
+    if (porcentaje < 50) {
+        // Rojo (Bajo Progreso)
+        startColor = "#E74C3C"; 
+        endColor = "#C0392B"; 
+    } else if (porcentaje < 90) {
+        // Amarillo/Naranja (Medio Progreso)
+        startColor = "#F39C12"; 
+        endColor = "#E67E22";
+    } else {
+        // Verde (Alto Progreso)
+        startColor = "#27AE60"; 
+        endColor = "#2ECC71";
+    }
+
+    barraProgresoRelleno.style.background = `linear-gradient(90deg, ${startColor}, ${endColor})`;
 
     if (barraProgresoTexto) barraProgresoTexto.textContent = `Progreso: ${porcentaje}% vendido (${vendidos} de 1000)`;
 }

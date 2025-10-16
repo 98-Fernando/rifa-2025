@@ -1,14 +1,15 @@
-<script>
 document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('loginForm');
   const errorMessage = document.getElementById('errorMessage');
 
   form.addEventListener('submit', async (e) => {
-    e.preventDefault();
+    e.preventDefault(); // Evita el envío normal del formulario
+    e.stopPropagation(); // 🔹 Evita que se dispare dos veces
+
     errorMessage.textContent = '';
 
-    const username = form.username.value.trim();
-    const password = form.password.value.trim();
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value.trim();
 
     if (!username || !password) {
       errorMessage.textContent = 'Por favor, completa todos los campos.';
@@ -19,32 +20,26 @@ document.addEventListener('DOMContentLoaded', () => {
       const res = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', // 🔑 Permite guardar la sesión
+        credentials: 'include',
         body: JSON.stringify({ username, password })
       });
 
-      if (!res.ok) {
-        if (res.status === 401) {
-          errorMessage.textContent = 'Usuario o contraseña incorrectos.';
-        } else {
-          errorMessage.textContent = 'Error interno del servidor. Intenta de nuevo.';
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          window.location.href = '/admin.html';
+          return;
         }
-        return;
       }
 
-      const data = await res.json();
-
-      if (data.success) {
-        // 🔒 Redirige al panel de administración
-        window.location.replace('/admin.html');
+      if (res.status === 401) {
+        errorMessage.textContent = 'Usuario o contraseña incorrectos.';
       } else {
-        errorMessage.textContent = data.mensaje || 'Error al iniciar sesión.';
+        errorMessage.textContent = 'Error en el servidor. Intenta nuevamente.';
       }
-
-    } catch (error) {
-      console.error('❌ Error de conexión:', error);
+    } catch (err) {
+      console.error('❌ Error de red:', err);
       errorMessage.textContent = 'No se pudo conectar con el servidor.';
     }
   });
 });
-</script>

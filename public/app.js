@@ -7,15 +7,18 @@ const spinner = document.getElementById("spinner");
 const barraProgreso = document.querySelector(".relleno");
 const numerosContainer = document.getElementById("numeros-container");
 
-// Nuevos elementos del frontend para el flujo del Widget
+// Nuevos elementos del frontend para el flujo de pago
 const pagoBox = document.getElementById("pago-box");
-const wompiButton = document.getElementById("wompi-button");
+// CAMBIO: Renombramos la variable del botón de pago
+const mercadoPagoButton = document.getElementById("mercadopago-button"); 
 
 let CONFIG = {};
 let PAGO_PENDIENTE = {
+    nombre: null,
+    correo: null,
+    telefono: null,
     reference: null,
-    amountInCents: 0,
-    customerEmail: null,
+    amount: 0, // Usaremos el monto en COP (no en centavos)
 };
 
 
@@ -30,6 +33,7 @@ async function cargarConfig() {
         const data = await res.json();
         if (!data.exito) throw new Error("Config inválida");
 
+        // CAMBIO: Ya no se necesita publicKey de Wompi, solo el precio y nonce.
         CONFIG = data;
         console.log("⚙️ Config cargada:", CONFIG);
 
@@ -61,14 +65,12 @@ if (form) {
             mostrarMensaje("⚠️ Debes seleccionar entre 1 y 20 números.", "error");
             return;
         }
-        if (!CONFIG.publicKey) {
-             mostrarMensaje("⚠️ La pasarela de pagos no está configurada.", "error");
-             return;
-        }
+        
+        // La validación de la clave de pago de Wompi ya no es necesaria aquí.
 
         spinner?.classList.remove("hidden");
         mensaje.textContent = "";
-        pagoBox?.classList.add("hidden"); // Ocultar el botón de pago si está visible
+        pagoBox?.classList.add("hidden"); 
 
         try {
             // 1️⃣ Guardar pendiente en el backend
@@ -82,13 +84,16 @@ if (form) {
             if (!res.ok || !data.exito) throw new Error(data.mensaje || "Error guardando pendiente");
 
             const precio = CONFIG.precio || 5000;
-            const amountInCents = precio * 100 * numerosSeleccionados.length;
+            // CAMBIO: El monto se guarda en la moneda local (COP) para Mercado Pago
+            const totalAmount = precio * numerosSeleccionados.length; 
 
-            // 2️⃣ Almacenar datos para el pago
+            // 2️⃣ Almacenar datos completos para el pago
             PAGO_PENDIENTE = {
+                nombre: nombre, // Guardamos el nombre para enviarlo a MP
+                correo: correo, // Guardamos el correo para enviarlo a MP
+                telefono: telefono,
                 reference: data.reference,
-                amountInCents: amountInCents,
-                customerEmail: correo,
+                amount: totalAmount, // Monto total en COP
             };
 
             console.log("💾 Pendiente guardado. Referencia:", data.reference);
@@ -98,7 +103,7 @@ if (form) {
             form.querySelector('button[type="submit"]').disabled = true;
             numerosContainer.querySelectorAll('button').forEach(btn => btn.disabled = true);
             
-            mostrarMensaje(`✅ Números reservados por 15 minutos. Presiona 'Pagar con Wompi'.`, "exito");
+            mostrarMensaje(`✅ Números reservados. Presiona 'Pagar con Mercado Pago'.`, "exito");
             
         } catch (error) {
             console.error("❌ Error en flujo de reserva:", error);
@@ -111,7 +116,7 @@ if (form) {
 
 
 // ===============================
-// 🔹 Renderizar números disponibles
+// 🔹 Renderizar números disponibles (SIN CAMBIOS)
 // ===============================
 async function cargarNumeros() {
     try {
@@ -145,7 +150,7 @@ async function cargarNumeros() {
 }
 
 // ===============================
-// ✅ Funciones utilitarias
+// ✅ Funciones utilitarias (SIN CAMBIOS)
 // ===============================
 
 function obtenerNumerosSeleccionados() {
@@ -173,30 +178,60 @@ function actualizarBarra(porcentaje) {
 }
 
 // ===============================
-// 🚀 Inicialización de Wompi con Retry
+// 🚀 INICIO DE PAGO CON MERCADO PAGO 🚀
 // ===============================
-const MAX_RETRIES = 5;
-const RETRY_DELAY = 200; // 200ms
+async function startMercadoPagoFlow() {
+    const { reference, amount, correo, nombre, telefono } = PAGO_PENDIENTE;
 
-function initializeWompiWithRetry(paymentData, retryCount = 0) {
-    if (window.$wompi && window.$wompi.initialize) {
-        // Inicialización exitosa
-        wompiButton.disabled = true; 
-        spinner?.classList.remove("hidden");
-        window.$wompi.initialize(paymentData);
-    } else if (retryCount < MAX_RETRIES) {
-        // Reintento si $wompi aún no está listo
-        setTimeout(() => {
-            initializeWompiWithRetry(paymentData, retryCount + 1);
-        }, RETRY_DELAY);
-    } else {
-        // Fallo después de todos los reintentos
-        console.error("❌ El script del Widget de Wompi ($wompi) no se cargó correctamente. (Fallo de reintento)");
-        mostrarMensaje("🚫 Error al cargar la pasarela de pagos. Recarga la página y vuelve a intentarlo.", "error");
-        wompiButton.disabled = false;
+    if (!reference || amount === 0) {
+        mostrarMensaje("⚠️ Primero debes reservar tus números.", "error");
+        return;
+    }
+
+    mercadoPagoButton.disabled = true; 
+    spinner?.classList.remove("hidden");
+    mostrarMensaje("⏳ Creando orden de pago...", "info");
+
+    try {
+        // 1. Llamar al NUEVO endpoint del backend para crear la preferencia
+        const res = await fetch("/api/mercadopago/preference", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                reference,
+                monto: amount,
+                nombre,
+                correo,
+                telefono,
+            }),
+        });
+
+        const data = await res.json();
+        
+        if (!res.ok || !data.exito) {
+            throw new Error(data.mensaje || "Error al generar la preferencia de pago.");
+        }
+
+        const { init_point } = data; // La URL de redirección (Checkout Pro)
+
+        if (init_point) {
+            // 2. Redirigir al usuario a la URL de Mercado Pago
+            window.location.href = init_point;
+
+            // NOTA: El control regresa cuando Mercado Pago redirige a success/failure/pending URL.
+        } else {
+            throw new Error("El backend no devolvió la URL de pago.");
+        }
+
+    } catch (error) {
+        console.error("❌ Error en flujo de pago:", error);
+        mostrarMensaje("🚫 Error al iniciar el pago: " + (error.message || "Intenta más tarde"), "error");
+        mercadoPagoButton.disabled = false;
+    } finally {
         spinner?.classList.add("hidden");
     }
 }
+
 
 // ===============================
 // 🚀 Al iniciar (Lógica sincronizada)
@@ -205,36 +240,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     await cargarConfig();
     await cargarNumeros();
 
-    // 💰 Lógica del botón de Pago con el Widget
-    if (wompiButton) {
-        wompiButton.addEventListener('click', () => {
-            
-            if (!PAGO_PENDIENTE.reference || PAGO_PENDIENTE.amountInCents === 0) {
-                mostrarMensaje("⚠️ Primero debes reservar tus números.", "error");
-                return;
-            }
-
-            // 1. Obtener los datos del estado global
-            const { reference, amountInCents, customerEmail } = PAGO_PENDIENTE;
-            const { publicKey, urlSuccess } = CONFIG;
-            
-            if (!publicKey || !urlSuccess) {
-                mostrarMensaje("🚫 Configuración de Wompi incompleta.", "error");
-                return;
-            }
-            
-            const paymentData = {
-                amountInCents: amountInCents,
-                currency: "COP",
-                reference: reference,
-                customerEmail: customerEmail,
-                publicKey: publicKey, 
-                redirectUrl: urlSuccess,
-            };
-
-            // 2. Inicializa el Widget usando el mecanismo de reintento
-            initializeWompiWithRetry(paymentData);
-        });
+    // 💰 Lógica del botón de Pago con Mercado Pago
+    if (mercadoPagoButton) {
+        // CAMBIO: Asignamos el nuevo flujo de pago al botón
+        mercadoPagoButton.addEventListener('click', startMercadoPagoFlow);
     }
 
     try {

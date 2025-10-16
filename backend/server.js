@@ -29,19 +29,19 @@ const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN || "TU_TOKEN_MP";
 const client = new MercadoPagoConfig({ accessToken: MP_ACCESS_TOKEN });
 const preference = new Preference(client);
 
-// ==================== MIDDLEWARES DE SEGURIDAD ====================
+// ==================== SEGURIDAD Y LIMITES ====================
 app.use((req, res, next) => {
   res.locals.nonce = crypto.randomBytes(16).toString("base64");
-  const nonce = `'nonce-${res.locals.nonce}'`;
 
   const csp = [
     `default-src 'self'`,
-    `script-src 'self' ${nonce} https://www.mercadopago.com https://sdk.mercadopago.com 'unsafe-eval'`,
+    // ⚠️ Se incluye 'unsafe-inline' temporalmente para permitir scripts inline
+    `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.mercadopago.com https://sdk.mercadopago.com`,
     `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net`,
     `font-src 'self' https://fonts.gstatic.com`,
     `img-src 'self' data: https://cdn-icons-png.flaticon.com https://www.mercadopago.com`,
     `connect-src 'self' https://api.mercadopago.com https://api.emailjs.com`,
-    `frame-src 'self' https://www.mercadopago.com https://sdk.mercadopago.com`,
+    `frame-src 'self' https://www.mercadopago.com https://sdk.mercadopago.com`
   ].join("; ");
 
   res.setHeader("Content-Security-Policy", csp);
@@ -86,9 +86,6 @@ app.use(
 );
 
 // ==================== CONEXIÓN BASE DE DATOS ====================
-import Ticket from "./models/Ticket.js";
-import Pendiente from "./models/Pendiente.js";
-
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("✅ Conectado a MongoDB"))
@@ -155,11 +152,13 @@ app.post("/api/admin/login", async (req, res) => {
   ) {
     req.session.isAdmin = true;
     console.log("✅ Autenticación exitosa.");
-    return res.json({ success: true }); // ✅ Respuesta limpia y finaliza aquí
+    return res.json({ success: true });
   }
 
   console.log("❌ Autenticación fallida.");
-  return res.status(401).json({ success: false, mensaje: "Credenciales inválidas" });
+  return res
+    .status(401)
+    .json({ success: false, mensaje: "Credenciales inválidas" });
 });
 
 // === LOGOUT ADMIN ===

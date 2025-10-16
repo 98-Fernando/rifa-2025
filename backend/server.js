@@ -157,7 +157,7 @@ app.post("/api/admin/login", async (req, res) => {
   ) {
     req.session.isAdmin = true;
     console.log("✅ Autenticación exitosa.");
-    return res.status(200).json({ success: true, redirect: "/admin.html" });
+    res.status(200).json({ success: true });
   }
 
   console.log("❌ Autenticación fallida.");

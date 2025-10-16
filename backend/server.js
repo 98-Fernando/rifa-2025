@@ -263,26 +263,25 @@ app.use('/api/admin', adminApiRouter);
 // 🔒 RUTAS DE ADMINISTRACIÓN Y VISTAS 🔒
 // ----------------------
 
-// ...
 // 1. Login Handler (Temporal - para manejar la autenticación)
 app.post('/api/admin/login', async (req, res) => {
     const { username, password } = req.body;
     
-    // 🛑 AGREGAR ESTO PARA DEBUGGING:
-    console.log('Intento de login. Usuario enviado:', username);
-    console.log('Usuario esperado (ENV):', process.env.ADMIN_USER);
-    // ⚠️ NO HAGAS console.log DE LA CONTRASEÑA REAL EN UN LOG PÚBLICO
+    // ... (logs de debug) ...
     
     if (username === process.env.ADMIN_USER && password === process.env.ADMIN_PASS) {
         req.session.isAdmin = true;
-        console.log('✅ Autenticación exitosa. Redirigiendo a dashboard.'); // Nuevo log de éxito
-        return res.redirect("/admin/dashboard");
+        console.log('✅ Autenticación exitosa. Respondiendo con 204.');
+        
+        // 🔑 CLAVE: Devolvemos 204 (No Content) o 200 (OK) en lugar de un redirect.
+        // El cliente (JavaScript) forzará la redirección.
+        return res.sendStatus(204); 
     }
     
-    console.log('❌ Autenticación fallida. Redirigiendo a login.'); // Nuevo log de falla
-    res.redirect("/admin?error=1");
+    console.log('❌ Autenticación fallida. Respondiendo con 401.');
+    // Devolvemos 401 (Unauthorized) para que JS muestre un error.
+    res.status(401).json({ exito: false, mensaje: "Credenciales inválidas" }); 
 });
-// ...
 
 // 2. Logout Handler
 app.post('/api/admin/logout', (req, res) => {

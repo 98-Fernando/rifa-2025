@@ -1,107 +1,92 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Administración Ejecutiva de Tickets 💼</title>
-
-  <link rel="stylesheet" href="styles.css"> 
-
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel Administrativo 💼</title>
   <style>
-    /* 🎨 PALETA CORPORATIVA: Azul marino, dorado, blanco */
     :root {
-      --color-primary: #0A192F; /* Azul Marino Oscuro */
-      --color-accent: #F4B400;  /* Dorado */
-      --color-secondary: #E5E5E5;
-      --color-background: #0E2A47;
-      --color-success: #2ECC71;
-      --color-warning: #F39C12;
-      --color-danger: #E74C3C;
-      --font-family: 'Segoe UI', sans-serif;
+      --color-primary: #0a1f44; /* Azul Marino */
+      --color-secondary: #142850;
+      --color-accent: #f4b400; /* Dorado */
+      --color-success: #00c853;
+      --color-warning: #ffab00;
+      --color-danger: #d32f2f;
+      --font-family: "Segoe UI", sans-serif;
     }
 
-    /* === FONDO CORPORATIVO === */
     body {
       margin: 0;
       font-family: var(--font-family);
-      background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-background) 100%);
-      color: var(--color-secondary);
+      background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+      color: #fff;
       min-height: 100vh;
       display: flex;
       justify-content: center;
       align-items: flex-start;
-      padding: 40px 20px;
+      padding: 30px 10px;
     }
 
-    /* === CONTENEDOR PRINCIPAL === */
     .container {
+      width: 100%;
+      max-width: 1300px;
       background: rgba(255, 255, 255, 0.05);
       backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 12px;
       box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-      padding: 30px;
-      max-width: 1400px;
-      width: 100%;
+      padding: 25px;
     }
 
     h1 {
+      font-size: 1.8rem;
       color: var(--color-accent);
-      margin-bottom: 25px;
-      font-size: 2em;
-      font-weight: 700;
+      text-align: center;
+      margin-bottom: 20px;
       letter-spacing: 0.5px;
     }
 
-    /* === CABECERA Y CONTROLES === */
     .header-controls {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 20px;
       flex-wrap: wrap;
-      gap: 15px;
+      gap: 10px;
+      margin-bottom: 15px;
     }
 
     #search {
       flex-grow: 1;
       max-width: 400px;
-      padding: 10px 15px;
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 8px 12px;
       border-radius: 6px;
-      font-size: 1em;
-      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
       background: rgba(255, 255, 255, 0.08);
+      color: #fff;
       outline: none;
-      transition: all 0.3s ease;
+      font-size: 0.95em;
     }
 
     #search::placeholder {
       color: #bbb;
     }
 
-    #search:focus {
-      border-color: var(--color-accent);
-      background: rgba(255, 255, 255, 0.12);
-    }
-
     .logout-btn {
       background: var(--color-danger);
-      color: #fff;
       border: none;
-      padding: 10px 20px;
+      color: #fff;
+      padding: 8px 18px;
       border-radius: 6px;
-      font-weight: 600;
       cursor: pointer;
+      font-weight: 600;
       transition: all 0.3s ease;
+      font-size: 0.95em;
     }
 
     .logout-btn:hover {
-      background: #c0392b;
-      transform: translateY(-2px);
+      background: #b71c1c;
+      transform: translateY(-1px);
     }
 
-    /* === TABLA === */
     .table-responsive {
       overflow-x: auto;
       border-radius: 8px;
@@ -110,62 +95,89 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      background: rgba(255, 255, 255, 0.03);
       color: #fff;
-    }
-
-    th, td {
-      padding: 12px 15px;
-      text-align: left;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      white-space: nowrap;
-    }
-
-    thead th {
-      background-color: rgba(255, 255, 255, 0.08);
-      color: var(--color-accent);
-      font-weight: 600;
-      text-transform: uppercase;
-      font-size: 0.85em;
-    }
-
-    tbody tr:hover {
-      background-color: rgba(255, 255, 255, 0.05);
-    }
-
-    .numeros-cell {
-      max-width: 150px;
-      word-break: break-all;
-      font-family: monospace;
+      background: rgba(255, 255, 255, 0.04);
       font-size: 0.9em;
     }
 
-    .monto-cell { color: var(--color-success); font-weight: 600; }
-    .fecha-cell { color: #aaa; font-size: 0.85em; }
+    th, td {
+      padding: 8px 10px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      vertical-align: middle;
+    }
 
-    /* === ESTADOS === */
-    .status-badge {
-      display: inline-block;
-      padding: 4px 8px;
-      border-radius: 12px;
-      font-weight: 700;
-      font-size: 0.75em;
+    thead th {
+      background-color: rgba(255, 255, 255, 0.1);
+      color: var(--color-accent);
       text-transform: uppercase;
+      font-size: 0.8em;
+      font-weight: 600;
+    }
+
+    tbody tr {
+      transition: background-color 0.2s ease;
+    }
+
+    tbody tr:hover {
+      background-color: rgba(255, 255, 255, 0.07);
+    }
+
+    td {
+      overflow: hidden;
+      text-overflow: ellipsis;
       white-space: nowrap;
     }
 
-    .status-pagado { background-color: rgba(46, 204, 113, 0.2); color: var(--color-success); }
-    .status-pendiente { background-color: rgba(243, 156, 18, 0.2); color: var(--color-warning); }
-    .status-nopagado { background-color: rgba(231, 76, 60, 0.2); color: var(--color-danger); }
+    .numeros-cell {
+      font-family: monospace;
+      font-size: 0.9em;
+      word-break: break-all;
+      white-space: normal;
+    }
+
+    .monto-cell {
+      color: var(--color-success);
+      font-weight: 600;
+    }
+
+    .fecha-cell {
+      color: #aaa;
+      font-size: 0.85em;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 8px;
+      font-size: 0.75em;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .status-pagado {
+      background: rgba(0, 200, 83, 0.2);
+      color: var(--color-success);
+    }
+
+    .status-pendiente {
+      background: rgba(255, 171, 0, 0.2);
+      color: var(--color-warning);
+    }
+
+    .status-nopagado {
+      background: rgba(211, 47, 47, 0.2);
+      color: var(--color-danger);
+    }
 
     .delete-btn {
       background: none;
       border: none;
       color: var(--color-danger);
-      font-size: 1.2em;
+      font-size: 1.1em;
       cursor: pointer;
       opacity: 0.8;
-      transition: 0.2s;
+      transition: all 0.2s;
     }
 
     .delete-btn:hover {
@@ -181,28 +193,29 @@
       <button class="logout-btn">🔒 Cerrar sesión</button>
     </div>
 
-    <input type="text" id="search" placeholder="🔍 Buscar por nombre, correo o referencia...">
+    <input type="text" id="search" placeholder="🔍 Buscar por nombre, correo o referencia..." />
 
     <div class="table-responsive">
       <table>
         <thead>
           <tr>
-            <th>NOMBRE CLIENTE</th>
-            <th>CORREO</th>
-            <th>TELÉFONO</th>
-            <th>NÚMEROS</th>
-            <th>MONTO</th>
-            <th>FECHA RESERVA</th>
-            <th>ESTADO PAGO</th>
-            <th>ACCIÓN</th>
+            <th>Nombre</th>
+            <th>Correo</th>
+            <th>Teléfono</th>
+            <th>Números</th>
+            <th>Monto</th>
+            <th>Fecha</th>
+            <th>Estado</th>
+            <th>Acción</th>
           </tr>
         </thead>
         <tbody id="tickets-table">
+          <!-- Datos cargados por admin.js -->
         </tbody>
       </table>
     </div>
   </div>
 
-  <script src="admin.js"></script> 
+  <script src="admin.js"></script>
 </body>
 </html>

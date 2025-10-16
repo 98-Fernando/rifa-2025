@@ -90,7 +90,10 @@ app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
 // CLAVE: Esto permite leer el body como JSON, necesario para el login asíncrono
 app.use(express.json()); 
 app.use(express.urlencoded({ extended: true }));
-app.use(cors({ origin: true }));
+app.use(cors({
+  origin: "https://rifa-2025.onrender.com",
+  credentials: true
+}));
 
 // ----------------------
 // Sessions

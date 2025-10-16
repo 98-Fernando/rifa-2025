@@ -12,21 +12,26 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = Object.fromEntries(formData); // {username: '...', password: '...'}
 
             try {
-                // Petición asíncrona al servidor
                 const res = await fetch('/api/admin/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: JSON.stringify(data)
+                    body: JSON.stringify({
+                        username: document.getElementById('username').value,
+                        password: document.getElementById('password').value
+    })
 });
 
 
                 // Si el servidor responde con un código de éxito (como 204)
-                if (res.ok) {
-                    // ¡Esto es lo que forzará la redirección a admin.html!
-                    window.location.href = "https://rifa-2025.onrender.com/admin/dashboard";
-                } else if (res.status === 401) {
-                    errorMessage.textContent = 'Usuario o contraseña incorrectos.';
+if (res.ok) {
+    const data = await res.json();
+    if (data.success) {
+        window.location.href = "https://rifa-2025.onrender.com/admin.html";
+    }
+} else {
+    alert("Usuario o contraseña incorrectos");
+}
                 } else {
                     errorMessage.textContent = 'Error interno del servidor. Intenta de nuevo.';
                 }

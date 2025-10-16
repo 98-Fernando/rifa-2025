@@ -16,8 +16,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const res = await fetch('/api/admin/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data) 
-                });
+                    credentials: 'include',
+                    body: JSON.stringify(data)
+});
+
 
                 // Si el servidor responde con un código de éxito (como 204)
                 if (res.ok) {

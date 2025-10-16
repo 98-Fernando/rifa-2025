@@ -4,68 +4,301 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rifa 2025 🎟️</title>
-    <link rel="stylesheet" href="styles.css">
-    <!-- NOTA: Si usabas estilos específicos para el widget de Wompi en styles.css, deberás revisarlos. -->
+    
+    <!-- Integración de todos tus estilos CSS aquí -->
+    <style>
+/* ===============================
+   🎨 Estilos Globales
+=============================== */
+body {
+    background: url('https://placehold.co/1920x1080/4CAF50/FFFFFF?text=Fondo+Rifa') no-repeat center center fixed;
+    background-size: cover;
+    color: #222;
+    font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    text-align: center;
+    padding: 20px;
+    margin: 0;
+}
+
+/* Fondo difuminado para contraste (USAMOS .container EN LUGAR DE APLICAR AL BODY) */
+.container {
+    position: relative;
+    z-index: 2;
+    max-width: 500px;
+    margin: 20px auto; /* Agregado margen superior/inferior para mejor vista */
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 16px;
+    padding: 25px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+    transition: transform 0.2s ease;
+}
+.container:hover {
+    transform: translateY(-2px);
+}
+
+/* ===============================
+   📌 Formularios y Botones
+=============================== */
+input,
+button {
+    display: block;
+    width: 100%;
+    margin: 12px 0;
+    padding: 14px 16px;
+    font-size: 15px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+}
+
+input:focus {
+    border-color: #1976d2;
+    box-shadow: 0 0 6px rgba(25, 118, 210, 0.4);
+    outline: none;
+}
+
+button {
+    background-color: #1976d2;
+    color: white;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    transition: background 0.3s ease, transform 0.2s ease;
+}
+button:hover {
+    background-color: #125a9c;
+    transform: translateY(-2px);
+}
+button:active {
+    transform: scale(0.98);
+}
+
+/* Estilo específico para el botón de Mercado Pago */
+#mercadopago-button {
+    background: #009ee3; /* Color de marca de Mercado Pago */
+    text-transform: uppercase;
+    font-size: 16px;
+    font-weight: 700;
+}
+#mercadopago-button:hover {
+    background: #0077c2;
+}
+
+/* ===============================
+   🎟️ Tickets y Numeración
+=============================== */
+/* Renombrado de .grid-numeros para coincidir con el CSS original */
+.grid-numeros {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(55px, 1fr));
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.numero-disponible {
+    background: #2e7d32;
+    color: white;
+    cursor: pointer; /* Añadido cursor: pointer para indicar interactividad */
+}
+.numero-ocupado {
+    background: #f44336;
+    color: white;
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+.numero-seleccionado {
+    background: #1976d2;
+    color: white;
+    cursor: not-allowed; /* Aunque está seleccionado, permite deseleccionar en la lógica JS */
+    box-shadow: 0 0 8px rgba(25, 118, 210, 0.8);
+    transform: scale(1.05);
+}
+.numero-disponible,
+.numero-ocupado,
+.numero-seleccionado {
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 15px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+.numero-disponible:hover {
+    background: #388e3c;
+}
+
+/* ===============================
+   📊 Barra de Progreso
+=============================== */
+/* Tu HTML usa la clase .progreso en la sección, pero el CSS usa .progreso-container */
+.progreso {
+    margin: 25px 0 15px;
+    text-align: center;
+}
+
+.barra {
+    width: 100%;
+    height: 22px;
+    background-color: #f0f0f0;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+.relleno {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #4caf50, #81c784);
+    transition: width 0.5s ease-in-out;
+    border-radius: 20px;
+    text-align: center;
+    color: white;
+    font-size: 13px;
+    line-height: 22px;
+    font-weight: bold;
+}
+
+/* ===============================
+   📌 Mensajes de éxito/error
+=============================== */
+.mensaje {
+    font-size: 15px;
+    margin-top: 15px;
+    padding: 12px;
+    border-radius: 8px;
+    font-weight: 500;
+    animation: fadeIn 0.4s ease;
+}
+
+.mensaje.exito {
+    background: #e8f5e9;
+    color: #2e7d32;
+    border-left: 5px solid #4caf50;
+}
+.mensaje.error {
+    background: #ffebee;
+    color: #c62828;
+    border-left: 5px solid #ef5350;
+}
+.hidden {
+    display: none;
+}
+.small-text {
+    font-size: 0.8em;
+    color: #666;
+    margin-top: 5px;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===============================
+   🔄 Loader (spinner)
+=============================== */
+/* Nota: Usando #spinner en el HTML, pero la clase .spinner en el CSS. Mejor usamos el ID o corregimos el HTML. Dejaremos la clase y ajustamos el HTML a continuación. */
+.spinner {
+    border: 4px solid #eee;
+    border-top: 4px solid #1976d2;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    margin: 15px auto;
+    animation: spin 1s linear infinite;
+    text-indent: -9999px; /* Oculta el texto "⏳ Procesando..." */
+}
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ===============================
+   📱 Responsive
+=============================== */
+@media screen and (max-width: 600px) {
+    body {
+        padding: 10px;
+    }
+    .container {
+        padding: 20px;
+        margin: 10px auto;
+    }
+    input, button {
+        font-size: 14px;
+        padding: 12px 14px;
+    }
+    .grid-numeros {
+        grid-template-columns: repeat(auto-fill, minmax(45px, 1fr));
+        gap: 8px;
+    }
+    .relleno {
+        font-size: 12px;
+    }
+    .mensaje {
+        font-size: 14px;
+    }
+}
+    </style>
 </head>
 <body>
-    <header>
-        <h1>🎉 Bienvenido a la Rifa 2025 🎉</h1>
-        <p>Selecciona tus números y participa por increíbles premios</p>
-    </header>
+    <!-- Añadimos el contenedor principal para aplicar el fondo difuminado de tu CSS -->
+    <div class="container"> 
+        <header>
+            <h1>🎉 Bienvenido a la Rifa 2025 🎉</h1>
+            <p>Selecciona tus números y participa por increíbles premios</p>
+        </header>
 
-    <!-- 🔹 Barra de progreso -->
-    <section class="progreso">
-        <div class="barra">
-            <div class="relleno"></div>
-        </div>
-        <p id="porcentaje">Cargando disponibilidad...</p>
-    </section>
+        <!-- 🔹 Barra de progreso -->
+        <!-- Usamos la clase .progreso que el CSS puede apuntar -->
+        <section class="progreso">
+            <div class="barra">
+                <div class="relleno"></div>
+            </div>
+            <p id="porcentaje">Cargando disponibilidad...</p>
+        </section>
 
-    <!-- 🔹 Números disponibles -->
-    <section>
-        <h2>Selecciona tus números 🎟️</h2>
-        <div id="numeros-container" class="grid-numeros"></div>
-    </section>
+        <!-- 🔹 Números disponibles -->
+        <section>
+            <h2>Selecciona tus números 🎟️</h2>
+            <!-- Usamos la clase .grid-numeros en lugar de .numeros-container para coincidir con el CSS -->
+            <div id="numeros-container" class="grid-numeros"></div> 
+        </section>
 
-    <!-- 🔹 Formulario para datos -->
-    <section>
-        <h2>Tus datos 📋</h2>
-        <form id="formulario">
-            <input type="text" id="nombre" placeholder="Tu nombre completo" required>
-            <input type="email" id="correo" placeholder="Tu correo electrónico" required>
-            <input type="tel" id="telefono" placeholder="Tu teléfono" required>
+        <!-- 🔹 Formulario para datos -->
+        <section>
+            <h2>Tus datos 📋</h2>
+            <form id="formulario">
+                <input type="text" id="nombre" placeholder="Tu nombre completo" required>
+                <input type="email" id="correo" placeholder="Tu correo electrónico" required>
+                <input type="tel" id="telefono" placeholder="Tu teléfono" required>
+                
+                <!-- Botón de Reserva -->
+                <button type="submit" id="btn-reservar">✅ Reservar y Pagar</button>
+            </form>
+            <p id="mensaje" class="mensaje"></p>
+        </section>
+
+        <!-- 🔹 Contenedor del Botón de Pago (Aparece después de reservar) -->
+        <section id="pago-box" class="hidden">
+            <h3>Paso Final: Pagar</h3>
             
-            <!-- Botón de Reserva -->
-            <button type="submit" id="btn-reservar">✅ Reservar y Pagar</button>
-        </form>
-        <p id="mensaje" class="mensaje"></p>
-    </section>
+            <button id="mercadopago-button">Pagar con Mercado Pago</button>
+            <p class="small-text">Serás redirigido a la pasarela segura de Mercado Pago.</p>
+        </section>
 
-    <!-- 🔹 Contenedor del Botón de Pago (Aparece después de reservar) -->
-    <section id="pago-box" class="hidden">
-        <h3>Paso Final: Pagar</h3>
-        
-        <!-- CAMBIO CRÍTICO: El ID del botón ahora es 'mercadopago-button' y el texto es Mercado Pago -->
-        <button id="mercadopago-button">Pagar con Mercado Pago </button>
-        <p class="small-text">Serás redirigido a la pasarela segura de Mercado Pago.</p>
-    </section>
+        <!-- 🔹 Ticket y estado (Mantenido para consistencia) -->
+        <section id="ticket-box" class="hidden">
+            <h3>🎟️ Tus números reservados</h3>
+            <p>En proceso de pago...</p>
+        </section>
 
-    <!-- 🔹 Ticket y estado (Mantenido para consistencia, aunque no se usa en este flujo) -->
-    <section id="ticket-box" class="hidden">
-        <h3>🎟️ Tus números reservados</h3>
-        <p>En proceso de pago...</p>
-    </section>
-
-    <!-- 🔹 Spinner de carga -->
-    <div id="spinner" class="hidden">⏳ Procesando...</div>
-
+        <!-- 🔹 Spinner de carga -->
+        <!-- Cambiamos la clase de "hidden" a "spinner hidden" para que aplique el estilo -->
+        <div id="spinner" class="spinner hidden">⏳ Procesando...</div>
+    </div>
+    
     <!-- ------------------------------------------------ -->
     <!-- 🔹 SCRIPTS CRÍTICOS -->
     <!-- ------------------------------------------------ -->
-    
-    <!-- CAMBIO CRÍTICO: Eliminamos el script del Widget de Wompi. -->
-    
-    <!-- Ahora solo cargamos nuestro script que usa la redirección de Mercado Pago -->
     <script src="app.js"></script> 
 
 </body>

@@ -6,64 +6,60 @@
   <title>Panel Administrativo 💼</title>
   <style>
     :root {
-      --color-primary: #0a1f44; /* Azul Marino */
-      --color-secondary: #142850;
-      --color-accent: #f4b400; /* Dorado */
+      --color-primary: #081b33;
+      --color-secondary: #0a2342;
+      --color-accent: #f4b400;
       --color-success: #00c853;
-      --color-warning: #ffab00;
-      --color-danger: #d32f2f;
-      --font-family: "Segoe UI", sans-serif;
+      --color-warning: #ffb300;
+      --color-danger: #e53935;
+      --font: "Segoe UI", sans-serif;
     }
 
     body {
       margin: 0;
-      font-family: var(--font-family);
+      font-family: var(--font);
       background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
       color: #fff;
       min-height: 100vh;
       display: flex;
       justify-content: center;
       align-items: flex-start;
-      padding: 30px 10px;
+      padding: 25px 10px;
     }
 
     .container {
       width: 100%;
-      max-width: 1300px;
+      max-width: 1250px;
       background: rgba(255, 255, 255, 0.05);
-      backdrop-filter: blur(10px);
       border-radius: 12px;
-      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
       padding: 25px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
     }
 
     h1 {
-      font-size: 1.8rem;
-      color: var(--color-accent);
       text-align: center;
+      color: var(--color-accent);
+      font-size: 1.8em;
       margin-bottom: 20px;
-      letter-spacing: 0.5px;
     }
 
     .header-controls {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      margin-bottom: 10px;
       flex-wrap: wrap;
-      gap: 10px;
-      margin-bottom: 15px;
     }
 
     #search {
       flex-grow: 1;
-      max-width: 400px;
-      padding: 8px 12px;
+      max-width: 350px;
+      padding: 7px 10px;
       border-radius: 6px;
       border: 1px solid rgba(255, 255, 255, 0.2);
       background: rgba(255, 255, 255, 0.08);
       color: #fff;
       outline: none;
-      font-size: 0.95em;
     }
 
     #search::placeholder {
@@ -73,67 +69,61 @@
     .logout-btn {
       background: var(--color-danger);
       border: none;
-      color: #fff;
-      padding: 8px 18px;
+      padding: 8px 16px;
       border-radius: 6px;
-      cursor: pointer;
+      color: #fff;
       font-weight: 600;
-      transition: all 0.3s ease;
-      font-size: 0.95em;
+      cursor: pointer;
+      transition: 0.3s;
     }
 
     .logout-btn:hover {
       background: #b71c1c;
-      transform: translateY(-1px);
     }
 
-    .table-responsive {
+    .table-container {
       overflow-x: auto;
       border-radius: 8px;
+      background: rgba(255, 255, 255, 0.03);
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      color: #fff;
-      background: rgba(255, 255, 255, 0.04);
       font-size: 0.9em;
+      text-align: left;
+    }
+
+    thead {
+      background-color: rgba(255, 255, 255, 0.1);
     }
 
     th, td {
-      padding: 8px 10px;
-      text-align: left;
+      padding: 6px 10px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.1);
       vertical-align: middle;
+      white-space: nowrap;
     }
 
-    thead th {
-      background-color: rgba(255, 255, 255, 0.1);
+    th {
       color: var(--color-accent);
       text-transform: uppercase;
-      font-size: 0.8em;
-      font-weight: 600;
-    }
-
-    tbody tr {
-      transition: background-color 0.2s ease;
+      font-size: 0.75em;
+      letter-spacing: 0.5px;
     }
 
     tbody tr:hover {
-      background-color: rgba(255, 255, 255, 0.07);
+      background-color: rgba(255, 255, 255, 0.08);
     }
 
     td {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      color: #e0e0e0;
     }
 
     .numeros-cell {
       font-family: monospace;
-      font-size: 0.9em;
-      word-break: break-all;
-      white-space: normal;
+      color: #fff;
+      font-size: 0.85em;
     }
 
     .monto-cell {
@@ -142,14 +132,14 @@
     }
 
     .fecha-cell {
-      color: #aaa;
+      color: #bbb;
       font-size: 0.85em;
     }
 
     .status-badge {
       display: inline-block;
-      padding: 3px 8px;
-      border-radius: 8px;
+      padding: 2px 7px;
+      border-radius: 6px;
       font-size: 0.75em;
       font-weight: 700;
       text-transform: uppercase;
@@ -161,12 +151,12 @@
     }
 
     .status-pendiente {
-      background: rgba(255, 171, 0, 0.2);
+      background: rgba(255, 179, 0, 0.2);
       color: var(--color-warning);
     }
 
     .status-nopagado {
-      background: rgba(211, 47, 47, 0.2);
+      background: rgba(229, 57, 53, 0.2);
       color: var(--color-danger);
     }
 
@@ -177,12 +167,21 @@
       font-size: 1.1em;
       cursor: pointer;
       opacity: 0.8;
-      transition: all 0.2s;
+      transition: 0.2s;
     }
 
     .delete-btn:hover {
       opacity: 1;
       transform: scale(1.1);
+    }
+
+    /* Encabezado fijo al hacer scroll */
+    thead th {
+      position: sticky;
+      top: 0;
+      background: rgba(10, 35, 66, 0.95);
+      backdrop-filter: blur(6px);
+      z-index: 5;
     }
   </style>
 </head>
@@ -195,7 +194,7 @@
 
     <input type="text" id="search" placeholder="🔍 Buscar por nombre, correo o referencia..." />
 
-    <div class="table-responsive">
+    <div class="table-container">
       <table>
         <thead>
           <tr>
@@ -210,7 +209,7 @@
           </tr>
         </thead>
         <tbody id="tickets-table">
-          <!-- Datos cargados por admin.js -->
+          <!-- Contenido dinámico cargado desde admin.js -->
         </tbody>
       </table>
     </div>

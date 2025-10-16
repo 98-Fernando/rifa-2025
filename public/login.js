@@ -4,41 +4,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (form) {
         form.addEventListener('submit', async (e) => {
-            e.preventDefault(); // Detiene el envío estándar del navegador
+            e.preventDefault(); // Evita que el formulario recargue la página
 
-            errorMessage.textContent = ''; // Limpiar errores
+            errorMessage.textContent = ''; // Limpia mensajes previos
 
-            const formData = new FormData(form);
-            const data = Object.fromEntries(formData); // {username: '...', password: '...'}
+            const username = document.querySelector('input[name="username"]').value.trim();
+            const password = document.querySelector('input[name="password"]').value.trim();
+
+            if (!username || !password) {
+                errorMessage.textContent = 'Por favor, completa todos los campos.';
+                return;
+            }
 
             try {
                 const res = await fetch('/api/admin/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: JSON.stringify({
-                        username: document.getElementById('username').value,
-                        password: document.getElementById('password').value
-    })
-});
+                    body: JSON.stringify({ username, password })
+                });
 
-
-                // Si el servidor responde con un código de éxito (como 204)
-if (res.ok) {
-    const data = await res.json();
-    if (data.success) {
-        window.location.href = "https://rifa-2025.onrender.com/admin.html";
-    }
-} else {
-    alert("Usuario o contraseña incorrectos");
-}
+                if (res.ok) {
+                    // El backend debe devolver { success: true }
+                    const data = await res.json();
+                    if (data.success) {
+                        // Redirige al panel de administración
+                        window.location.href = "https://rifa-2025.onrender.com/admin.html";
+                    } else {
+                        errorMessage.textContent = 'Error desconocido.';
+                    }
+                } else if (res.status === 401) {
+                    errorMessage.textContent = 'Usuario o contraseña incorrectos.';
                 } else {
                     errorMessage.textContent = 'Error interno del servidor. Intenta de nuevo.';
                 }
-
             } catch (error) {
                 console.error("Error de red/servidor:", error);
-                errorMessage.textContent = 'Error de conexión. Verifica la URL de tu servicio.';
+                errorMessage.textContent = 'Error de conexión. Verifica la URL del servidor.';
             }
         });
     }

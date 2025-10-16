@@ -13,6 +13,8 @@ import { config } from "dotenv";
 import { fileURLToPath } from "url";
 import { MercadoPagoConfig, Preference } from 'mercadopago';
 import { URL } from 'url';
+import ticketsRouter from "./routes/tickets.js"; // Maneja /numeros y /guardar-pendiente
+import consultaRouter from "./routes/consulta.js"; // Maneja /consulta
 
 // ----------------------
 // CONFIG
@@ -23,7 +25,6 @@ config({ path: path.join(__dirname, "..", ".env") });
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const TOTAL_NUMEROS = 1000; // 👈 DEFINIMOS EL RANGO MÁXIMO (000 a 999)
 
 // ----------------------
 // 💡 CONFIGURACIÓN MERCADO PAGO 💡
@@ -130,12 +131,10 @@ app.post("/api/mercadopago/preference", async (req, res) => {
             return res.status(400).json({ exito: false, mensaje: "Datos de pago incompletos." });
         }
 
-        // Determina la URL base para el Webhook. En Render, esto es vital.
         const host = req.get('host');
         const protocol = req.protocol;
         const notificationUrl = `${protocol}://${host}/api/mercadopago/webhook`;
         
-        // Define las back_urls usando el host actual como fallback
         const backUrls = {
             success: process.env.URL_SUCCESS || `${protocol}://${host}/success`,
             pending: process.env.URL_PENDING || `${protocol}://${host}/pending`,
@@ -182,71 +181,17 @@ app.post("/api/mercadopago/preference", async (req, res) => {
     }
 });
 
-
 // ----------------------
-// API - TICKETS y GUARDAR PENDIENTE (ACTUALIZADO RANGO 000-999)
+// 🔗 CONEXIÓN DE RUTAS MODULARES 🔗
 // ----------------------
 
-app.get("/api/tickets/numeros", async (req, res) => {
-    try {
-        const tickets = await Ticket.find({}, "numeros").lean();
-        // Los números ocupados son strings de 3 dígitos (ej: '005')
-        const ocupados = tickets.flatMap((t) => (t.numeros || []).map((n) => String(n).padStart(3, '0'))); 
-        
-        const total = TOTAL_NUMEROS; // 1000 números
-
-        const numeros = Array.from({ length: total }, (_, i) => {
-            // El número de la rifa es i, que va de 0 a 999
-            const numStr = String(i).padStart(3, '0'); // Formato '000', '001', ... '999'
-            return { 
-                numero: numStr, 
-                disponible: !ocupados.includes(numStr) 
-            };
-        });
-        res.json({ exito: true, numeros });
-    } catch (err) {
-        console.error("❌ Error cargando números:", err);
-        res.status(500).json({ exito: false, mensaje: "Error cargando números" });
-    }
-});
-
-app.get("/api/tickets/consulta", async (req, res) => {
-    try {
-        const vendidos = await Ticket.countDocuments();
-        const porcentaje = Math.min(100, Math.round((vendidos / TOTAL_NUMEROS) * 100)); // 👈 TOTAL_NUMEROS = 1000
-        res.json({ exito: true, vendidos, porcentaje });
-    } catch (err) {
-        console.error("❌ Error consulta:", err);
-        res.status(500).json({ exito: false, mensaje: "Error consultando" });
-    }
-});
-
-app.post("/api/tickets/guardar-pendiente", async (req, res) => {
-    try {
-        const { nombre, correo, telefono, numeros } = req.body; // 'numeros' son strings de 3 dígitos
-        if (!nombre || !correo || !telefono || !Array.isArray(numeros) || !numeros.length) {
-            return res.status(400).json({ exito: false, mensaje: "Datos incompletos" });
-        }
-        
-        const reference = `RIFA-${Date.now()}`;
-        await Pendiente.create({
-            nombre,
-            correo,
-            telefono,
-            // Guardamos los números como strings de 3 dígitos en la DB (para consistencia)
-            numeros: numeros, 
-            reference,
-        });
-        res.json({ exito: true, reference });
-    } catch (err) {
-        console.error("❌ Error guardando pendiente:", err);
-        res.status(500).json({ exito: false, mensaje: "Error guardando pendiente" });
-    }
-});
+// Conecta ticketsRouter (que contiene /numeros y /guardar-pendiente)
+app.use('/api/tickets', ticketsRouter);
+app.use('/api/tickets/consulta', consultaRouter);
 
 
 // ----------------------
-// WEBHOOK - MERCADO PAGO
+// WEBHOOK - MERCADO PAGO (Se mantiene aquí por simplicidad)
 // ----------------------
 const webhookRouter = express.Router();
 webhookRouter.post("/api/mercadopago/webhook", async (req, res) => {
@@ -259,7 +204,7 @@ webhookRouter.post("/api/mercadopago/webhook", async (req, res) => {
             const payment = await client.payment.get({ id: paymentId });
 
             const txStatus = payment.status;
-            const txReference = payment.external_reference; 
+            const txReference = payment.external_reference;
             
             if (txStatus === 'approved') {
                 const pendiente = await Pendiente.findOne({ reference: txReference });
@@ -270,7 +215,7 @@ webhookRouter.post("/api/mercadopago/webhook", async (req, res) => {
                         correo: payment.payer?.email || pendiente.correo,
                         nombre: payment.payer?.first_name || pendiente.nombre,
                         telefono: pendiente.telefono,
-                        numeros: pendiente.numeros, // Son strings de 3 dígitos
+                        numeros: pendiente.numeros,
                         estadoPago: "pagado",
                     });
                     await pendiente.deleteOne();

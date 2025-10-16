@@ -1,220 +1,247 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Panel Administrativo 💼</title>
-  <style>
-    :root {
-      --color-primary: #081b33;
-      --color-secondary: #0a2342;
-      --color-accent: #f4b400;
-      --color-success: #00c853;
-      --color-warning: #ffb300;
-      --color-danger: #e53935;
-      --font: "Segoe UI", sans-serif;
-    }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel Administrativo 💼</title>
+  <style>
+    :root {
+      --color-primary: #081b33; /* Fondo Oscuro Principal */
+      --color-secondary: #0a2342; /* Fondo Oscuro Secundario */
+      --color-accent: #f4b400; /* Dorado/Amarillo (Acento) */
+      --color-success: #00c853; /* Verde */
+      --color-warning: #ffb300; /* Ámbar/Naranja */
+      --color-danger: #e53935; /* Rojo */
+      --font: "Segoe UI", sans-serif;
+    }
 
-    body {
-      margin: 0;
-      font-family: var(--font);
-      background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
-      color: #fff;
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      padding: 25px 10px;
-    }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 25px 10px;
+    }
 
-    .container {
-      width: 100%;
-      max-width: 1250px;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 12px;
-      padding: 25px;
-      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
-    }
+    .container {
+      width: 100%;
+      max-width: 1400px; /* Aumentado el ancho máximo para dar más espacio a las columnas */
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 25px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    }
 
-    h1 {
-      text-align: center;
-      color: var(--color-accent);
-      font-size: 1.8em;
-      margin-bottom: 20px;
-    }
+    h1 {
+      text-align: center;
+      color: var(--color-accent);
+      font-size: 1.8em;
+      margin-bottom: 20px;
+    }
 
-    .header-controls {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 10px;
-      flex-wrap: wrap;
-    }
+    .header-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
 
-    #search {
-      flex-grow: 1;
-      max-width: 350px;
-      padding: 7px 10px;
-      border-radius: 6px;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      background: rgba(255, 255, 255, 0.08);
-      color: #fff;
-      outline: none;
-    }
+    #search {
+      flex-grow: 1;
+      max-width: 350px;
+      padding: 7px 10px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      outline: none;
+      margin-right: 15px;
+    }
 
-    #search::placeholder {
-      color: #bbb;
-    }
+    #search::placeholder {
+      color: #bbb;
+    }
 
-    .logout-btn {
-      background: var(--color-danger);
-      border: none;
-      padding: 8px 16px;
-      border-radius: 6px;
-      color: #fff;
-      font-weight: 600;
-      cursor: pointer;
-      transition: 0.3s;
-    }
+    .logout-btn {
+      background: var(--color-danger);
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.3s;
+      flex-shrink: 0;
+    }
 
-    .logout-btn:hover {
-      background: #b71c1c;
-    }
+    .logout-btn:hover {
+      background: #b71c1c;
+    }
 
-    .table-container {
-      overflow-x: auto;
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.03);
-    }
+    .table-container {
+      overflow-x: auto;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.03);
+    }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.9em;
-      text-align: left;
-    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9em;
+      text-align: left;
+      table-layout: fixed; /* CLAVE 1: Fuerza la distribución de columnas */
+    }
 
-    thead {
-      background-color: rgba(255, 255, 255, 0.1);
-    }
+    thead {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
 
-    th, td {
-      padding: 6px 10px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      vertical-align: middle;
-      white-space: nowrap;
-    }
+    /* CORRECCIÓN 2: Reducimos el padding vertical para comprimir filas */
+    th, td {
+      padding: 8px 10px; /* De 6px a 8px vertical; 10px horizontal */
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      vertical-align: middle;
+      white-space: nowrap; /* Mantiene el contenido en una línea (excepto donde se anula) */
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
 
-    th {
-      color: var(--color-accent);
-      text-transform: uppercase;
-      font-size: 0.75em;
-      letter-spacing: 0.5px;
-    }
+    th {
+      color: var(--color-accent);
+      text-transform: uppercase;
+      font-size: 0.75em;
+      letter-spacing: 0.5px;
+    }
 
-    tbody tr:hover {
-      background-color: rgba(255, 255, 255, 0.08);
-    }
+    tbody tr:hover {
+      background-color: rgba(255, 255, 255, 0.08);
+    }
 
-    td {
-      color: #e0e0e0;
-    }
+    td {
+      color: #e0e0e0;
+    }
 
-    .numeros-cell {
-      font-family: monospace;
-      color: #fff;
-      font-size: 0.85em;
-    }
+    /* CORRECCIÓN 3: Permitimos que los números se envuelvan para no desbordar */
+    .numeros-cell {
+      font-family: monospace;
+      color: #fff;
+      font-size: 0.85em;
+      white-space: normal; /* Permitir que el texto se envuelva */
+      word-break: break-all;
+    }
 
-    .monto-cell {
-      color: var(--color-success);
-      font-weight: 600;
-    }
+    .monto-cell {
+      color: var(--color-success);
+      font-weight: 600;
+    }
 
-    .fecha-cell {
-      color: #bbb;
-      font-size: 0.85em;
-    }
+    .fecha-cell {
+      color: #bbb;
+      font-size: 0.85em;
+    }
 
-    .status-badge {
-      display: inline-block;
-      padding: 2px 7px;
-      border-radius: 6px;
-      font-size: 0.75em;
-      font-weight: 700;
-      text-transform: uppercase;
-    }
+    .status-badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 6px;
+      font-size: 0.75em;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
 
-    .status-pagado {
-      background: rgba(0, 200, 83, 0.2);
-      color: var(--color-success);
-    }
+    .status-pagado {
+      background: rgba(0, 200, 83, 0.2);
+      color: var(--color-success);
+    }
 
-    .status-pendiente {
-      background: rgba(255, 179, 0, 0.2);
-      color: var(--color-warning);
-    }
+    .status-pendiente {
+      background: rgba(255, 179, 0, 0.2);
+      color: var(--color-warning);
+    }
 
-    .status-nopagado {
-      background: rgba(229, 57, 53, 0.2);
-      color: var(--color-danger);
-    }
+    .status-nopagado {
+      background: rgba(229, 57, 53, 0.2);
+      color: var(--color-danger);
+    }
 
-    .delete-btn {
-      background: none;
-      border: none;
-      color: var(--color-danger);
-      font-size: 1.1em;
-      cursor: pointer;
-      opacity: 0.8;
-      transition: 0.2s;
-    }
+    .delete-btn {
+      background: none;
+      border: none;
+      color: var(--color-danger);
+      font-size: 1.1em;
+      cursor: pointer;
+      opacity: 0.8;
+      transition: 0.2s;
+    }
 
-    .delete-btn:hover {
-      opacity: 1;
-      transform: scale(1.1);
-    }
+    .delete-btn:hover {
+      opacity: 1;
+      transform: scale(1.1);
+    }
 
-    /* Encabezado fijo al hacer scroll */
-    thead th {
-      position: sticky;
-      top: 0;
-      background: rgba(10, 35, 66, 0.95);
-      backdrop-filter: blur(6px);
-      z-index: 5;
+    /* Encabezado fijo al hacer scroll */
+    thead th {
+      position: sticky;
+      top: 0;
+      background: rgba(10, 35, 66, 0.95);
+      backdrop-filter: blur(6px);
+      z-index: 5;
+    }
+
+    /* Estilos para el contenedor de la tabla en pantallas pequeñas */
+    @media (max-width: 900px) {
+        .container {
+            padding: 15px;
+        }
+        th, td {
+            padding: 6px 8px;
+            font-size: 0.8em;
+        }
+        .header-controls {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .logout-btn {
+            margin-top: 10px;
+        }
     }
-  </style>
+  </style>
 </head>
 <body>
-  <div class="container">
-    <div class="header-controls">
-      <h1>💼 Panel Administrativo</h1>
-      <button class="logout-btn">🔒 Cerrar sesión</button>
-    </div>
+  <div class="container">
+    <div class="header-controls">
+      <h1>💼 Panel Administrativo</h1>
+      <button class="logout-btn">🔒 Cerrar sesión</button>
+    </div>
 
-    <input type="text" id="search" placeholder="🔍 Buscar por nombre, correo o referencia..." />
+    <input type="text" id="search" placeholder="🔍 Buscar por nombre, correo o referencia..." />
 
-    <div class="table-container">
-      <table>
-        <thead>
-          <tr>
-            <th>Nombre</th>
-            <th>Correo</th>
-            <th>Teléfono</th>
-            <th>Números</th>
-            <th>Monto</th>
-            <th>Fecha</th>
-            <th>Estado</th>
-            <th>Acción</th>
-          </tr>
-        </thead>
-        <tbody id="tickets-table">
-          <!-- Contenido dinámico cargado desde admin.js -->
-        </tbody>
-      </table>
-    </div>
-  </div>
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 15%;">Nombre</th>
+            <th style="width: 18%;">Correo</th>
+            <th style="width: 10%;">Teléfono</th>
+            <th style="width: 25%;">Números</th>
+            <th style="width: 8%;">Monto</th>
+            <th style="width: 10%;">Fecha</th>
+            <th style="width: 10%;">Estado</th>
+            <th style="width: 4%;">Acción</th>
+          </tr>
+        </thead>
+        <tbody id="tickets-table">
+          <!-- Contenido dinámico cargado desde admin.js -->
+        </tbody>
+      </table>
+    </div>
+  </div>
 
-  <script src="admin.js"></script>
+  <script src="admin.js"></script>
 </body>
 </html>

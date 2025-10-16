@@ -4,7 +4,8 @@
 const form = document.getElementById("formulario");
 const mensaje = document.getElementById("mensaje");
 const spinner = document.getElementById("spinner");
-const barraProgreso = document.querySelector(".relleno");
+const barraProgresoRelleno = document.querySelector(".relleno");
+const barraProgresoTexto = document.getElementById("porcentaje");
 const numerosContainer = document.getElementById("numeros-container");
 
 // Nuevos elementos del frontend para el flujo de pago
@@ -41,6 +42,93 @@ async function cargarConfig() {
     }
 }
 
+// ===============================
+// ✅ Funciones utilitarias
+// ===============================
+
+function obtenerNumerosSeleccionados() {
+    // Obtenemos el texto y lo aseguramos como string de 3 dígitos (ej: '007')
+    return Array.from(document.querySelectorAll(".numero.seleccionado"))
+        .map((btn) => String(btn.textContent).padStart(3, '0'));
+}
+
+function mostrarMensaje(texto, tipo = "exito") {
+    if (!mensaje) return;
+    mensaje.textContent = texto;
+    mensaje.className = `mensaje ${tipo}`;
+}
+
+function actualizarBarra(vendidos, porcentaje) {
+    if (!barraProgresoRelleno) return;
+
+    barraProgresoRelleno.style.width = `${porcentaje}%`;
+
+    // Actualizamos el color según el porcentaje
+    if (porcentaje < 50) barraProgresoRelleno.style.background = "linear-gradient(90deg, #f44336, #ef5350)";
+    else if (porcentaje < 90) barraProgresoRelleno.style.background = "linear-gradient(90deg, #ff9800, #ffb300)";
+    else barraProgresoRelleno.style.background = "linear-gradient(90deg, #4caf50, #81c784)";
+
+    if (barraProgresoTexto) barraProgresoTexto.textContent = `Progreso: ${porcentaje}% vendido (${vendidos} de 1000)`;
+}
+
+/** Habilita/Deshabilita el formulario y la selección de números */
+function toggleUI(disabled) {
+    form.querySelector('button[type="submit"]').disabled = disabled;
+    numerosContainer.querySelectorAll('button').forEach(btn => btn.disabled = disabled || btn.classList.contains("ocupado"));
+}
+
+
+// ===============================
+// 🔄 FUNCIÓN DE ACTUALIZACIÓN CENTRAL
+// ===============================
+
+/** Carga números disponibles y actualiza la barra de progreso */
+async function actualizarEstadoGlobal() {
+    try {
+        // Cargar números disponibles
+        const resNumeros = await fetch("/api/tickets/numeros");
+        if (!resNumeros.ok) throw new Error("No se pudieron cargar los números");
+
+        const dataNumeros = await resNumeros.json();
+        if (!dataNumeros.exito) throw new Error("Respuesta inválida de números");
+
+        // Renderizar números
+        numerosContainer.innerHTML = "";
+        dataNumeros.numeros.forEach((item) => {
+            const btn = document.createElement("button");
+            
+            btn.textContent = String(item.numero).padStart(3, '0');
+            btn.className = item.disponible ? "numero disponible" : "numero ocupado";
+            btn.disabled = !item.disponible;
+
+            if (item.disponible) {
+                // Al hacer clic, simplemente alternamos la clase 'seleccionado'
+                btn.addEventListener("click", () => {
+                    btn.classList.toggle("seleccionado");
+                });
+            }
+
+            numerosContainer.appendChild(btn);
+        });
+        
+        console.log("🎟️ Números cargados y renderizados.");
+
+        // Cargar progreso
+        const resConsulta = await fetch("/api/tickets/consulta");
+        if (!resConsulta.ok) throw new Error("No se pudo cargar la consulta");
+        const dataConsulta = await resConsulta.json();
+        
+        if (dataConsulta.exito) {
+            actualizarBarra(dataConsulta.total, dataConsulta.porcentaje);
+            console.log("📊 Progreso actualizado.");
+        }
+
+    } catch (err) {
+        console.error("❌ Error en la actualización global:", err);
+        mostrarMensaje("🚫 Error al sincronizar el estado del juego.", "error");
+    }
+}
+
 
 // ===============================
 // 📥 Envío de formulario (RESERVAR)
@@ -53,29 +141,28 @@ if (form) {
         const correo = document.getElementById("correo")?.value.trim();
         const telefono = document.getElementById("telefono")?.value.trim();
         
-        // 🚨 IMPORTANTE: Obtenemos los números como strings '007', '123', etc.
         const numerosSeleccionados = obtenerNumerosSeleccionados(); 
 
-        // ✅ Validaciones
+        // Validaciones
         if (!nombre || !correo || !telefono) {
             mostrarMensaje("⚠️ Completa todos los campos.", "error");
             return;
         }
-        if (numerosSeleccionados.length < 1 || numerosSeleccionados.length > 20) {
-            mostrarMensaje("⚠️ Debes seleccionar entre 1 y 20 números.", "error");
+        if (numerosSeleccionados.length < 1) {
+            mostrarMensaje("⚠️ Debes seleccionar al menos un número.", "error");
             return;
         }
 
         spinner?.classList.remove("hidden");
         mensaje.textContent = "";
         pagoBox?.classList.add("hidden");
+        toggleUI(true); // Deshabilitar UI durante la reserva
 
         try {
             // 1️⃣ Guardar pendiente en el backend
             const res = await fetch("/api/tickets/guardar-pendiente", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                // Enviamos los números como strings de 3 dígitos (ej: ['001', '010'])
                 body: JSON.stringify({ nombre, correo, telefono, numeros: numerosSeleccionados }), 
             });
 
@@ -96,16 +183,18 @@ if (form) {
 
             console.log("💾 Pendiente guardado. Referencia:", data.reference);
 
-            // 3️⃣ Mostrar botón de pago y deshabilitar formulario
+            // 3️⃣ Mostrar botón de pago y mantener formulario y números deshabilitados
             pagoBox?.classList.remove("hidden");
-            form.querySelector('button[type="submit"]').disabled = true;
-            numerosContainer.querySelectorAll('button').forEach(btn => btn.disabled = true);
-
-            mostrarMensaje(`✅ Números reservados. Presiona 'Pagar con Mercado Pago'.`, "exito");
+            mostrarMensaje(`✅ Números reservados por 15 minutos. Total a pagar: $${totalAmount.toLocaleString('es-CO')}. Presiona 'Pagar con Mercado Pago'.`, "exito");
+            
+            // Re-sincronizar el estado de la UI (solo los números ocupados por la reserva)
+            await actualizarEstadoGlobal();
+            toggleUI(true); // Asegurar que todo siga deshabilitado hasta el pago
 
         } catch (error) {
             console.error("❌ Error en flujo de reserva:", error);
             mostrarMensaje("🚫 Error al reservar: " + (error.message || "Intenta más tarde"), "error");
+            toggleUI(false); // Re-habilitar UI en caso de error
         } finally {
             spinner?.classList.add("hidden");
         }
@@ -114,78 +203,12 @@ if (form) {
 
 
 // ===============================
-// 🔹 Renderizar números disponibles (CORREGIDO PARA COLOR)
-// ===============================
-async function cargarNumeros() {
-    try {
-        const res = await fetch("/api/tickets/numeros");
-        if (!res.ok) throw new Error("No se pudieron cargar los números");
-
-        const data = await res.json();
-        if (!data.exito) throw new Error("Respuesta inválida");
-
-        numerosContainer.innerHTML = "";
-        data.numeros.forEach((item) => {
-            const btn = document.createElement("button");
-            
-            // ✅ CORRECCIÓN 1: Aseguramos que el contenido sea un string de 3 dígitos.
-            // (El backend debería enviarlo así, pero es bueno ser consistente).
-            btn.textContent = String(item.numero).padStart(3, '0');
-            
-            // ✅ CORRECCIÓN 2: Usamos la clase base 'numero' y 'disponible' u 'ocupado'
-            btn.className = item.disponible ? "numero disponible" : "numero ocupado";
-            btn.disabled = !item.disponible;
-
-            if (item.disponible) {
-                btn.addEventListener("click", () => {
-                    // ✅ CORRECCIÓN 3: Alternar la clase 'seleccionado'. 
-                    // El CSS ya tiene la alta prioridad para que el color cambie.
-                    btn.classList.toggle("seleccionado"); 
-                });
-            }
-
-            numerosContainer.appendChild(btn);
-        });
-
-        console.log("🎟️ Números cargados:", data.numeros);
-    } catch (err) {
-        console.error("❌ Error cargando números:", err);
-        mostrarMensaje("🚫 No se pudieron cargar los números.", "error");
-    }
-}
-
-// ===============================
-// ✅ Funciones utilitarias (CORREGIDO PARA RANGO 000-999)
-// ===============================
-
-function obtenerNumerosSeleccionados() {
-    // ✅ CORRECCIÓN: Obtenemos el texto y lo aseguramos como string de 3 dígitos (ej: '007')
-    return Array.from(document.querySelectorAll(".numero.seleccionado"))
-        .map((btn) => String(btn.textContent).padStart(3, '0'));
-}
-
-function mostrarMensaje(texto, tipo = "exito") {
-    if (!mensaje) return;
-    mensaje.textContent = texto;
-    mensaje.className = `mensaje ${tipo}`;
-}
-
-function actualizarBarra(porcentaje) {
-    if (!barraProgreso) return;
-
-    barraProgreso.style.width = `${porcentaje}%`;
-
-    if (porcentaje < 50) barraProgreso.style.backgroundColor = "#f44336";
-    else if (porcentaje < 90) barraProgreso.style.backgroundColor = "#ff9800";
-    else barraProgreso.style.backgroundColor = "#4caf50";
-
-    const porcentajeTxt = document.getElementById("porcentaje");
-    if (porcentajeTxt) porcentajeTxt.textContent = `Progreso: ${porcentaje}% vendido`;
-}
-
-// ===============================
 // 🚀 INICIO DE PAGO CON MERCADO PAGO
 // ===============================
+if (mercadoPagoButton) {
+    mercadoPagoButton.addEventListener('click', startMercadoPagoFlow);
+}
+
 async function startMercadoPagoFlow() {
     const { reference, amount, correo, nombre, telefono } = PAGO_PENDIENTE;
 
@@ -196,10 +219,10 @@ async function startMercadoPagoFlow() {
 
     mercadoPagoButton.disabled = true;
     spinner?.classList.remove("hidden");
-    mostrarMensaje("⏳ Creando orden de pago...", "info");
+    mostrarMensaje("⏳ Creando orden de pago...", "exito"); // Cambiado a exito/info para no alarmar
 
     try {
-        // 1. Llamar al NUEVO endpoint del backend para crear la preferencia
+        // 1. Llamar al endpoint del backend para crear la preferencia
         const res = await fetch("/api/mercadopago/preference", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -218,13 +241,11 @@ async function startMercadoPagoFlow() {
             throw new Error(data.mensaje || "Error al generar la preferencia de pago.");
         }
 
-        const { init_point } = data; // La URL de redirección (Checkout Pro)
+        const { init_point } = data; 
 
         if (init_point) {
             // 2. Redirigir al usuario a la URL de Mercado Pago
             window.location.href = init_point;
-
-            // NOTA: El control regresa cuando Mercado Pago redirige a success/failure/pending URL.
         } else {
             throw new Error("El backend no devolvió la URL de pago.");
         }
@@ -233,6 +254,7 @@ async function startMercadoPagoFlow() {
         console.error("❌ Error en flujo de pago:", error);
         mostrarMensaje("🚫 Error al iniciar el pago: " + (error.message || "Intenta más tarde"), "error");
         mercadoPagoButton.disabled = false;
+        toggleUI(false); // Re-habilitar UI si falla el inicio de pago
     } finally {
         spinner?.classList.add("hidden");
     }
@@ -244,19 +266,6 @@ async function startMercadoPagoFlow() {
 // ===============================
 document.addEventListener("DOMContentLoaded", async () => {
     await cargarConfig();
-    await cargarNumeros();
-
-    // 💰 Lógica del botón de Pago con Mercado Pago
-    if (mercadoPagoButton) {
-        mercadoPagoButton.addEventListener('click', startMercadoPagoFlow);
-    }
-
-    try {
-        const res = await fetch("/api/tickets/consulta");
-        if (!res.ok) throw new Error("No se pudo cargar los datos");
-        const data = await res.json();
-        if (data.exito) actualizarBarra(data.porcentaje);
-    } catch (error) {
-        console.error("❌ Error cargando porcentaje:", error);
-    }
+    // 💡 Usamos la función de actualización central al inicio
+    await actualizarEstadoGlobal(); 
 });

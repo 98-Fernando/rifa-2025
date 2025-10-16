@@ -3,273 +3,206 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Panel Ejecutivo de Rifa 2025 💼</title>
-  <link rel="stylesheet" href="styles.css">
+  <title>Administración Ejecutiva de Tickets 💼</title>
+
+  <link rel="stylesheet" href="styles.css"> 
 
   <style>
-    /* === PALETA === */
+    /* 🎨 PALETA CORPORATIVA: Azul marino, dorado, blanco */
     :root {
-      --color-primary: #003459; /* Azul marino */
-      --color-accent: #007EA7;  /* Azul medio */
-      --color-light: #F4F7F9;
-      --color-text: #2C3E50;
-      --color-success: #27AE60;
+      --color-primary: #0A192F; /* Azul Marino Oscuro */
+      --color-accent: #F4B400;  /* Dorado */
+      --color-secondary: #E5E5E5;
+      --color-background: #0E2A47;
+      --color-success: #2ECC71;
       --color-warning: #F39C12;
       --color-danger: #E74C3C;
-      --radius: 10px;
+      --font-family: 'Segoe UI', sans-serif;
     }
 
-    /* === BASE === */
+    /* === FONDO CORPORATIVO === */
     body {
       margin: 0;
-      font-family: "Segoe UI", Arial, sans-serif;
-      background: url("https://static.vecteezy.com/system/resources/previews/024/438/217/non_2x/american-dollars-money-seamless-pattern-background-free-vector.jpg") center/cover no-repeat fixed;
-      backdrop-filter: blur(6px);
+      font-family: var(--font-family);
+      background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-background) 100%);
+      color: var(--color-secondary);
       min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      color: var(--color-text);
-    }
-
-    /* === ENCABEZADO SUPERIOR === */
-    header {
-      background: rgba(0, 52, 89, 0.95);
-      color: white;
-      padding: 15px 30px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      position: sticky;
-      top: 0;
-      z-index: 1000;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-    }
-
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .logo img {
-      height: 40px;
-      width: 40px;
-      border-radius: 50%;
-    }
-
-    .logo h1 {
-      font-size: 1.5em;
-      margin: 0;
-      color: #f8f9fa;
-    }
-
-    .header-info {
-      display: flex;
-      align-items: center;
-      gap: 25px;
-      font-weight: 500;
-    }
-
-    #datetime {
-      font-size: 0.9em;
-      opacity: 0.9;
-    }
-
-    .logout-btn {
-      background-color: var(--color-danger);
-      color: #fff;
-      border: none;
-      padding: 8px 18px;
-      border-radius: var(--radius);
-      cursor: pointer;
-      font-weight: 600;
-      transition: 0.3s;
-    }
-    .logout-btn:hover {
-      background-color: #c0392b;
-    }
-
-    /* === CONTENIDO PRINCIPAL === */
-    main {
-      flex-grow: 1;
       display: flex;
       justify-content: center;
       align-items: flex-start;
-      padding: 30px;
+      padding: 40px 20px;
     }
 
+    /* === CONTENEDOR PRINCIPAL === */
     .container {
-      width: 95%;
-      max-width: 1400px;
-      background: rgba(255, 255, 255, 0.96);
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
       padding: 30px;
-      border-radius: var(--radius);
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-      overflow: hidden;
+      max-width: 1400px;
+      width: 100%;
     }
 
-    /* === BARRA DE BÚSQUEDA === */
-    #search {
-      width: 100%;
-      padding: 12px 15px;
-      border: 1px solid #ccc;
-      border-radius: var(--radius);
-      font-size: 1em;
+    h1 {
+      color: var(--color-accent);
+      margin-bottom: 25px;
+      font-size: 2em;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    /* === CABECERA Y CONTROLES === */
+    .header-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+
+    #search {
+      flex-grow: 1;
+      max-width: 400px;
+      padding: 10px 15px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 6px;
+      font-size: 1em;
+      color: #fff;
+      background: rgba(255, 255, 255, 0.08);
+      outline: none;
+      transition: all 0.3s ease;
+    }
+
+    #search::placeholder {
+      color: #bbb;
+    }
+
+    #search:focus {
+      border-color: var(--color-accent);
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .logout-btn {
+      background: var(--color-danger);
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .logout-btn:hover {
+      background: #c0392b;
+      transform: translateY(-2px);
     }
 
     /* === TABLA === */
     .table-responsive {
       overflow-x: auto;
-      max-height: 70vh;
-      overflow-y: auto;
+      border-radius: 8px;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      background: white;
+      background: rgba(255, 255, 255, 0.03);
+      color: #fff;
     }
 
     th, td {
       padding: 12px 15px;
       text-align: left;
-      border-bottom: 1px solid #e0e0e0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      white-space: nowrap;
     }
 
-    thead {
-      background: var(--color-primary);
-      color: #fff;
-      position: sticky;
-      top: 0;
-      z-index: 10;
+    thead th {
+      background-color: rgba(255, 255, 255, 0.08);
+      color: var(--color-accent);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.85em;
     }
 
-    tbody tr:nth-child(even) {
-      background-color: #f8f9fa;
-    }
     tbody tr:hover {
-      background-color: #ecf0f1;
+      background-color: rgba(255, 255, 255, 0.05);
     }
 
     .numeros-cell {
-      word-wrap: break-word;
+      max-width: 150px;
+      word-break: break-all;
       font-family: monospace;
-      font-size: 0.95em;
+      font-size: 0.9em;
     }
 
-    .status-pagado {
-      color: var(--color-success);
-      font-weight: bold;
+    .monto-cell { color: var(--color-success); font-weight: 600; }
+    .fecha-cell { color: #aaa; font-size: 0.85em; }
+
+    /* === ESTADOS === */
+    .status-badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 0.75em;
+      text-transform: uppercase;
+      white-space: nowrap;
     }
-    .status-pendiente {
-      color: var(--color-warning);
-      font-weight: bold;
-    }
-    .status-nopagado {
-      color: var(--color-danger);
-      font-weight: bold;
-    }
+
+    .status-pagado { background-color: rgba(46, 204, 113, 0.2); color: var(--color-success); }
+    .status-pendiente { background-color: rgba(243, 156, 18, 0.2); color: var(--color-warning); }
+    .status-nopagado { background-color: rgba(231, 76, 60, 0.2); color: var(--color-danger); }
 
     .delete-btn {
       background: none;
       border: none;
       color: var(--color-danger);
+      font-size: 1.2em;
       cursor: pointer;
-      font-size: 1.3em;
+      opacity: 0.8;
       transition: 0.2s;
     }
+
     .delete-btn:hover {
+      opacity: 1;
       transform: scale(1.1);
-    }
-
-    /* === SCROLL === */
-    ::-webkit-scrollbar {
-      height: 8px;
-      width: 8px;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: var(--color-primary);
-      border-radius: 4px;
-    }
-    ::-webkit-scrollbar-track {
-      background: #eee;
-    }
-
-    /* === RESPONSIVO === */
-    @media (max-width: 768px) {
-      th, td {
-        font-size: 0.85em;
-        padding: 8px;
-      }
-      .logo h1 {
-        font-size: 1.2em;
-      }
-      .logout-btn {
-        padding: 6px 12px;
-      }
     }
   </style>
 </head>
 <body>
-  <!-- ENCABEZADO SUPERIOR -->
-  <header>
-    <div class="logo">
-      <img src="https://cdn-icons-png.flaticon.com/512/3418/3418886.png" alt="Logo">
-      <h1>Rifa 2025 - Panel Ejecutivo</h1>
-    </div>
-
-    <div class="header-info">
-      <div id="datetime">Cargando...</div>
+  <div class="container">
+    <div class="header-controls">
+      <h1>💼 Panel Administrativo</h1>
       <button class="logout-btn">🔒 Cerrar sesión</button>
     </div>
-  </header>
 
-  <!-- CONTENIDO PRINCIPAL -->
-  <main>
-    <div class="container">
-      <input type="text" id="search" placeholder="🔍 Buscar por nombre, correo o teléfono...">
+    <input type="text" id="search" placeholder="🔍 Buscar por nombre, correo o referencia...">
 
-      <div class="table-responsive">
-        <table>
-          <thead>
-            <tr>
-              <th>NOMBRE CLIENTE</th>
-              <th>CORREO</th>
-              <th>TELÉFONO</th>
-              <th>NÚMEROS (000–999)</th>
-              <th>MONTO</th>
-              <th>FECHA RESERVA</th>
-              <th>ESTADO PAGO</th>
-              <th>ACCIÓN</th>
-            </tr>
-          </thead>
-          <tbody id="tickets-table">
-            <!-- Se llena dinámicamente con admin.js -->
-          </tbody>
-        </table>
-      </div>
+    <div class="table-responsive">
+      <table>
+        <thead>
+          <tr>
+            <th>NOMBRE CLIENTE</th>
+            <th>CORREO</th>
+            <th>TELÉFONO</th>
+            <th>NÚMEROS</th>
+            <th>MONTO</th>
+            <th>FECHA RESERVA</th>
+            <th>ESTADO PAGO</th>
+            <th>ACCIÓN</th>
+          </tr>
+        </thead>
+        <tbody id="tickets-table">
+        </tbody>
+      </table>
     </div>
-  </main>
+  </div>
 
-  <script src="admin.js"></script>
-
-  <script>
-    // Mostrar fecha y hora dinámica
-    function updateDateTime() {
-      const now = new Date();
-      const options = { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric', 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      };
-      document.getElementById('datetime').textContent = now.toLocaleDateString('es-ES', options);
-    }
-    updateDateTime();
-    setInterval(updateDateTime, 60000);
-  </script>
+  <script src="admin.js"></script> 
 </body>
 </html>

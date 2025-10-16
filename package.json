@@ -1,32 +1,32 @@
 {
-        "name": "rifa-project",
-        "version": "1.0.0",
-        "description": "Aplicación de rifa con integración de pagos",
-        "main": "index.js",
-        "type": "module",
-        
-        "scripts": {
-          "start": "node index.js",
-          "dev": "nodemon index.js"
-        },
-"dependencies": {
-  "express": "^4.19.2",
-  "mongoose": "^8.4.1",
-  "dotenv": "^16.4.5",
-  "helmet": "^7.0.0", 
-  "cors": "^2.8.5",
-  "express-session": "^1.18.0",
-  "connect-mongo": "^5.1.0",
-  "express-rate-limit": "^7.2.0",
-  "node-fetch": "^3.3.2" 
-},
-        "devDependencies": {
-          "nodemon": "^2.0.7"
-        },
-        "engines": {
-          "node": ">=14.0.0"
-        },
-        "author": "Víctor Fernando Gómez Potosí",
-        "license": "ISC"
-      }
-      
+    "name": "rifa-project",
+    "version": "1.0.0",
+    "description": "Aplicación de rifa con integración de pagos",
+    "main": "index.js",
+    "type": "module",
+    
+    "scripts": {
+      "start": "node index.js",
+      "dev": "nodemon index.js"
+    },
+    "dependencies": {
+        "express": "^4.19.2",
+        "mongoose": "^8.4.1",
+        "dotenv": "^16.4.5",
+        "helmet": "^7.0.0", 
+        "cors": "^2.8.5",
+        "express-session": "^1.18.0",
+        "connect-mongo": "^5.1.0",
+        "express-rate-limit": "^7.2.0",
+        "node-fetch": "^3.3.2",
+        "mercadopago": "^2.0.0"
+    },
+    "devDependencies": {
+        "nodemon": "^2.0.7"
+    },
+    "engines": {
+        "node": ">=14.0.0"
+    },
+    "author": "Víctor Fernando Gómez Potosí",
+    "license": "ISC"
+}

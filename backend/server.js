@@ -11,8 +11,8 @@ import rateLimit from "express-rate-limit";
 import crypto from "crypto";
 import { config } from "dotenv";
 import { fileURLToPath } from "url";
-import { MercadoPagoConfig, Preference } from 'mercadopago'; // 👈 NUEVO: SDK de Mercado Pago
-import { URL } from 'url'; // 👈 NUEVO: Para manejar URLs
+import { MercadoPagoConfig, Preference } from 'mercadopago';
+import { URL } from 'url';
 
 // ----------------------
 // CONFIG
@@ -23,26 +23,24 @@ config({ path: path.join(__dirname, "..", ".env") });
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const TOTAL_NUMEROS = 1000; // 👈 DEFINIMOS EL RANGO MÁXIMO (000 a 999)
 
 // ----------------------
 // 💡 CONFIGURACIÓN MERCADO PAGO 💡
 // ----------------------
-// Usaremos el Access Token. Lo cargamos desde las variables de entorno para seguridad.
 const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN || "APP_USR-6749171446158778-101616-33c0332a1284adf8101f059e5538dcf3-2926318204";
 
 const client = new MercadoPagoConfig({ accessToken: MP_ACCESS_TOKEN });
 const preference = new Preference(client);
 
 // ----------------------
-// NONCE + CSP header (Simplificado para Mercado Pago)
-// Eliminamos todas las referencias a Wompi.
+// NONCE + CSP header
 // ----------------------
 app.use((req, res, next) => {
     res.locals.nonce = crypto.randomBytes(16).toString("base64");
     const nonce = `'nonce-${res.locals.nonce}'`;
     const csp = [
         `default-src 'self'`,
-        // Añadimos dominios de Mercado Pago a script y frame-src
         `script-src 'self' ${nonce} https://www.mercadopago.com https://http2.mlstatic.com https://sdk.mercadopago.com`,
         `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net`,
         `font-src 'self' https://fonts.gstatic.com`,
@@ -55,7 +53,7 @@ app.use((req, res, next) => {
 });
 
 // ----------------------
-// Helmet (no CSP, lo manejamos arriba)
+// Helmet
 // ----------------------
 app.use(
     helmet({
@@ -111,8 +109,7 @@ mongoose
     .catch((err) => console.error("❌ Error MongoDB:", err));
 
 // ----------------------
-// API - CONFIG (Solo devuelve el precio y nonce)
-// Se eliminan las credenciales de Wompi.
+// API - CONFIG
 // ----------------------
 app.get("/api/config", (req, res) => {
     res.json({
@@ -123,17 +120,27 @@ app.get("/api/config", (req, res) => {
 });
 
 // ----------------------
-// API - MERCADO PAGO (Genera la Preferencia) 👈 NUEVO ENDPOINT
+// API - MERCADO PAGO (Genera la Preferencia)
 // ----------------------
 app.post("/api/mercadopago/preference", async (req, res) => {
     try {
-        const { reference, nombre, correo, telefono, monto } = req.body; // monto debe estar en COP, no en centavos
+        const { reference, nombre, correo, telefono, monto } = req.body;
 
         if (!reference || !monto || !nombre) {
             return res.status(400).json({ exito: false, mensaje: "Datos de pago incompletos." });
         }
 
-        const notificationUrl = new URL(`/api/mercadopago/webhook`, req.protocol + '://' + req.get('host')).toString();
+        // Determina la URL base para el Webhook. En Render, esto es vital.
+        const host = req.get('host');
+        const protocol = req.protocol;
+        const notificationUrl = `${protocol}://${host}/api/mercadopago/webhook`;
+        
+        // Define las back_urls usando el host actual como fallback
+        const backUrls = {
+            success: process.env.URL_SUCCESS || `${protocol}://${host}/success`,
+            pending: process.env.URL_PENDING || `${protocol}://${host}/pending`,
+            failure: process.env.URL_FAILURE || `${protocol}://${host}/failure`,
+        };
 
         const preferenceBody = {
             items: [{
@@ -141,7 +148,7 @@ app.post("/api/mercadopago/preference", async (req, res) => {
                 title: `Tickets de Rifa - Ref: ${reference}`,
                 quantity: 1,
                 unit_price: Number(monto),
-                currency_id: "COP" // Asumiendo que es Colombia
+                currency_id: "COP"
             }],
             payer: {
                 name: nombre,
@@ -151,13 +158,9 @@ app.post("/api/mercadopago/preference", async (req, res) => {
                     number: telefono,
                 },
             },
-            external_reference: reference, // Usamos la referencia del ticket pendiente
-            back_urls: {
-                success: process.env.URL_SUCCESS || `${req.protocol}://${req.get('host')}/success`,
-                pending: process.env.URL_PENDING || `${req.protocol}://${req.get('host')}/pending`,
-                failure: process.env.URL_FAILURE || `${req.protocol}://${req.get('host')}/failure`,
-            },
-            notification_url: notificationUrl, // Webhook para notificaciones de pago
+            external_reference: reference,
+            back_urls: backUrls,
+            notification_url: notificationUrl,
             auto_return: "approved",
             metadata: {
                 nombre_cliente: nombre,
@@ -169,8 +172,7 @@ app.post("/api/mercadopago/preference", async (req, res) => {
 
         res.json({
             exito: true,
-            // El init_point es la URL a la que la app debe redirigir al usuario (Checkout Pro)
-            init_point: result.init_point, 
+            init_point: result.init_point,
             reference: reference,
         });
 
@@ -182,19 +184,24 @@ app.post("/api/mercadopago/preference", async (req, res) => {
 
 
 // ----------------------
-// API - TICKETS y GUARDAR PENDIENTE (SIN CAMBIOS)
+// API - TICKETS y GUARDAR PENDIENTE (ACTUALIZADO RANGO 000-999)
 // ----------------------
-
-// ... (El código de app.get("/api/tickets/numeros"), app.get("/api/tickets/consulta"), y app.post("/api/tickets/guardar-pendiente") va aquí sin cambios) ...
 
 app.get("/api/tickets/numeros", async (req, res) => {
     try {
         const tickets = await Ticket.find({}, "numeros").lean();
-        const ocupados = tickets.flatMap((t) => (t.numeros || []).map((n) => Number(n)));
-        const total = 100;
+        // Los números ocupados son strings de 3 dígitos (ej: '005')
+        const ocupados = tickets.flatMap((t) => (t.numeros || []).map((n) => String(n).padStart(3, '0'))); 
+        
+        const total = TOTAL_NUMEROS; // 1000 números
+
         const numeros = Array.from({ length: total }, (_, i) => {
-            const num = i + 1;
-            return { numero: num, disponible: !ocupados.includes(num) };
+            // El número de la rifa es i, que va de 0 a 999
+            const numStr = String(i).padStart(3, '0'); // Formato '000', '001', ... '999'
+            return { 
+                numero: numStr, 
+                disponible: !ocupados.includes(numStr) 
+            };
         });
         res.json({ exito: true, numeros });
     } catch (err) {
@@ -206,7 +213,7 @@ app.get("/api/tickets/numeros", async (req, res) => {
 app.get("/api/tickets/consulta", async (req, res) => {
     try {
         const vendidos = await Ticket.countDocuments();
-        const porcentaje = Math.min(100, Math.round((vendidos / 100) * 100));
+        const porcentaje = Math.min(100, Math.round((vendidos / TOTAL_NUMEROS) * 100)); // 👈 TOTAL_NUMEROS = 1000
         res.json({ exito: true, vendidos, porcentaje });
     } catch (err) {
         console.error("❌ Error consulta:", err);
@@ -216,16 +223,18 @@ app.get("/api/tickets/consulta", async (req, res) => {
 
 app.post("/api/tickets/guardar-pendiente", async (req, res) => {
     try {
-        const { nombre, correo, telefono, numeros } = req.body;
+        const { nombre, correo, telefono, numeros } = req.body; // 'numeros' son strings de 3 dígitos
         if (!nombre || !correo || !telefono || !Array.isArray(numeros) || !numeros.length) {
             return res.status(400).json({ exito: false, mensaje: "Datos incompletos" });
         }
+        
         const reference = `RIFA-${Date.now()}`;
         await Pendiente.create({
             nombre,
             correo,
             telefono,
-            numeros: numeros.map((n) => Number(n)),
+            // Guardamos los números como strings de 3 dígitos en la DB (para consistencia)
+            numeros: numeros, 
             reference,
         });
         res.json({ exito: true, reference });
@@ -237,24 +246,21 @@ app.post("/api/tickets/guardar-pendiente", async (req, res) => {
 
 
 // ----------------------
-// WEBHOOK - MERCADO PAGO 👈 NUEVO WEBHOOK
+// WEBHOOK - MERCADO PAGO
 // ----------------------
 const webhookRouter = express.Router();
 webhookRouter.post("/api/mercadopago/webhook", async (req, res) => {
     try {
         const { type, data } = req.body;
         
-        // Mercado Pago puede enviar notificaciones de 'payment' o 'merchant_order'
         if (type === 'payment' && data?.id) {
             const paymentId = data.id;
 
-            // 1. Obtener detalles del pago desde la API de MP (para verificar estado)
             const payment = await client.payment.get({ id: paymentId });
 
             const txStatus = payment.status;
-            const txReference = payment.external_reference; // Usamos la referencia externa
+            const txReference = payment.external_reference; 
             
-            // 2. Procesar el pago APROBADO
             if (txStatus === 'approved') {
                 const pendiente = await Pendiente.findOne({ reference: txReference });
                 
@@ -264,7 +270,7 @@ webhookRouter.post("/api/mercadopago/webhook", async (req, res) => {
                         correo: payment.payer?.email || pendiente.correo,
                         nombre: payment.payer?.first_name || pendiente.nombre,
                         telefono: pendiente.telefono,
-                        numeros: pendiente.numeros,
+                        numeros: pendiente.numeros, // Son strings de 3 dígitos
                         estadoPago: "pagado",
                     });
                     await pendiente.deleteOne();
@@ -276,12 +282,10 @@ webhookRouter.post("/api/mercadopago/webhook", async (req, res) => {
                 console.log(`⏳ Transacción pendiente (MP): ${txReference}`);
             } else if (txStatus === 'rejected' || txStatus === 'cancelled') {
                  console.log(`❌ Transacción rechazada (MP): ${txReference}`);
-                 // Opcional: Podrías eliminar el pendiente aquí o marcarlo como fallido.
             }
         }
         
-        // Siempre respondemos 200 para que Mercado Pago no reintente.
-        res.sendStatus(200); 
+        res.sendStatus(200);
     } catch (err) {
         console.error("❌ Webhook Mercado Pago error:", err);
         res.sendStatus(500);

@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Administración de Tickets 💼</title>
+  <title>Administración Ejecutiva de Tickets 💼</title>
   
-        <link rel="stylesheet" href="styles.css"> 
+    <link rel="stylesheet" href="styles.css"> 
   
   <style>
     /* Paleta de Colores: Azul marino, Gris carbón, Blanco puro, Detalles dorados/verdes */
@@ -27,13 +27,16 @@
         color: var(--color-secondary);
         padding: 20px;
         line-height: 1.6;
+        /* 🛑 SOLUCIÓN VISIBILIDAD: Eliminamos cualquier background-image que esté aquí */
+        background-image: none !important;
     }
     .container {
         background: #FFFFFF;
         padding: 30px;
         border-radius: 8px;
-        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08); /* Sombra sutil */
+        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.08);
         max-width: 1400px;
+        width: 100%; /* Aseguramos que ocupe todo el espacio disponible */
         margin: 0 auto;
     }
     h1 {
@@ -60,6 +63,7 @@
         font-weight: 600;
         letter-spacing: 0.5px;
         transition: background-color 0.3s, transform 0.1s;
+        flex-shrink: 0; /* Evita que el botón se encoja */
     }
     .logout-btn:hover {
         background-color: #C0392B;
@@ -77,54 +81,73 @@
 
     /* === TABLA === */
     table {
-        width: 100%;
+        width: 100%; /* CLAVE: La tabla debe usar el 100% de su contenedor */
+        table-layout: fixed; /* Ayuda a que las columnas se comporten mejor */
         border-collapse: collapse;
         margin-top: 20px;
         border: 1px solid var(--color-border);
     }
     th, td {
-        padding: 12px 18px;
+        padding: 12px 10px; /* Reducimos padding horizontal para ganar espacio */
         text-align: left;
         border-bottom: 1px solid #ECF0F1;
+        overflow: hidden; /* Evita que el contenido desborde las celdas */
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
     thead th {
         background-color: var(--color-primary);
         color: white;
         font-weight: 600;
         text-transform: uppercase;
-        font-size: 0.85em;
-        border-bottom: 3px solid #003657; /* Separador más fuerte */
+        font-size: 0.8em; /* Reducimos el tamaño de la fuente para que quepa */
+        border-bottom: 3px solid #003657;
     }
     tbody tr:nth-child(even) {
-        background-color: #F8F9FA; /* Rayado sutil */
+        background-color: #F8F9FA;
     }
     tbody tr:hover {
         background-color: #EFEFEF;
     }
-    /* Columnas específicas para mejor lectura */
-    .numeros-cell { max-width: 200px; overflow-wrap: break-word; font-family: monospace; font-size: 0.95em; }
-    .monto-cell { font-weight: 600; color: #1E8449; } /* Color para montos */
-    .fecha-cell { font-size: 0.9em; color: #7F8C8D; }
+    /* 🛑 Solución para que los números no rompan el layout, permitiendo que se envuelvan */
+    .numeros-cell { 
+        max-width: 150px; 
+        white-space: normal; 
+        word-break: break-all;
+        font-family: monospace; 
+        font-size: 0.9em; 
+    }
+    .monto-cell { font-weight: 600; color: #1E8449; } 
+    .fecha-cell { font-size: 0.85em; color: #7F8C8D; white-space: normal; max-width: 120px; }
+    .email-cell { max-width: 200px; }
+
+
+    /* === ENVOLTURA PARA RESPONSIVIDAD === */
+    .table-responsive {
+        overflow-x: auto; /* Muestra scroll horizontal si la tabla es demasiado ancha */
+        width: 100%;
+    }
     
     /* === ESTILOS DE ESTADO (Badges/Etiquetas) === */
     .status-badge {
         display: inline-block;
-        padding: 4px 10px;
+        padding: 4px 8px;
         border-radius: 12px;
         font-weight: 700;
-        font-size: 0.8em;
+        font-size: 0.75em;
         text-transform: uppercase;
+        white-space: nowrap;
     }
     .status-pagado { 
-        background-color: #E8F5E9; /* Fondo verde claro */
+        background-color: #E8F5E9;
         color: var(--color-success); 
     }
     .status-pendiente { 
-        background-color: #FFF3E0; /* Fondo naranja claro */
+        background-color: #FFF3E0;
         color: var(--color-warning); 
     }
     .status-nopagado { 
-        background-color: #FFEBEE; /* Fondo rojo claro */
+        background-color: #FFEBEE;
         color: var(--color-danger); 
     }
 
@@ -156,18 +179,18 @@
     
     <input type="text" id="search" placeholder="🔍 Buscar por nombre, correo, o referencia...">
 
-    <div style="overflow-x: auto;">
+        <div class="table-responsive"> 
         <table>
           <thead>
             <tr>
-              <th>NOMBRE CLIENTE</th>
-              <th>CORREO</th>
-              <th>TELÉFONO</th>
-              <th>NÚMEROS (000-999)</th>
-              <th class="monto-cell">MONTO</th>
-              <th class="fecha-cell">FECHA RESERVA</th>
-              <th>ESTADO PAGO</th>
-              <th>ACCIÓN</th>
+              <th style="width: 15%;">NOMBRE CLIENTE</th>
+              <th class="email-cell" style="width: 15%;">CORREO</th>
+              <th style="width: 10%;">TELÉFONO</th>
+              <th class="numeros-cell" style="width: 25%;">NÚMEROS (000-999)</th>
+              <th class="monto-cell" style="width: 10%;">MONTO</th>
+              <th class="fecha-cell" style="width: 10%;">FECHA RESERVA</th>
+              <th style="width: 10%;">ESTADO PAGO</th>
+              <th style="width: 5%;">ACCIÓN</th>
             </tr>
           </thead>
           <tbody id="tickets-table">
@@ -176,6 +199,6 @@
     </div>
   </div>
  
-        <script src="admin.js"></script> 
+    <script src="admin.js"></script> 
 </body>
 </html>

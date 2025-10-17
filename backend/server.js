@@ -11,6 +11,8 @@ import crypto from "crypto";
 import { config } from "dotenv";
 import { fileURLToPath } from "url";
 import { MercadoPagoConfig, Preference } from "mercadopago";
+
+// Rutas
 import ticketsRouter from "./routes/tickets.js";
 import adminApiRouter from "./routes/admin.js";
 
@@ -42,7 +44,7 @@ app.use((req, res, next) => {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: https://cdn-icons-png.flaticon.com https://www.mercadopago.com",
-    "connect-src 'self' https://api.mercadopago.com",
+    "connect-src 'self' https://api.mercadopago.com https://rifa-2025.onrender.com",
     "frame-src 'self' https://www.mercadopago.com https://sdk.mercadopago.com",
   ].join("; ");
   res.setHeader("Content-Security-Policy", csp);
@@ -63,8 +65,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use(
   cors({
     origin: [
-      "https://rifa-2025.onrender.com", // producción
-      "http://localhost:5000", // local
+      "https://rifa-2025.onrender.com",
+      "http://localhost:5000",
+      "http://localhost:3000",
     ],
     credentials: true,
     methods: ["GET", "POST", "DELETE", "PUT", "OPTIONS"],
@@ -85,8 +88,8 @@ app.use(
     }),
     cookie: {
       httpOnly: true,
-      secure: true,
-      sameSite: "none",
+      secure: process.env.NODE_ENV === "production", // ✅ seguro solo en producción
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: 1000 * 60 * 60 * 24,
     },
   })
@@ -104,7 +107,7 @@ const isAdmin = (req, res, next) => {
   res.redirect("/login.html");
 };
 
-// ==================== RUTA CONFIGURACIÓN BASE ====================
+// ==================== CONFIG BASE ====================
 app.get("/api/config", (req, res) => {
   res.json({
     exito: true,
@@ -142,9 +145,9 @@ app.post("/api/mercadopago/preference", async (req, res) => {
       external_reference: reference,
       auto_return: "approved",
       back_urls: {
-        success: "https://rifa-2025.onrender.com/success.html",
-        failure: "https://rifa-2025.onrender.com/failure.html",
-        pending: "https://rifa-2025.onrender.com/pending.html",
+        success: `${process.env.URL_SUCCESS}.html`,
+        failure: `${process.env.URL_FAILURE}.html`,
+        pending: `${process.env.URL_PENDING}.html`,
       },
     };
 

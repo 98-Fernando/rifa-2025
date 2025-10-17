@@ -5,13 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Rifa 2025 🎟️ (000 - 999)</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
-  <script src="https://sdk.mercadopago.com/js/v2" nonce="NONCE_PLACEHOLDER"></script>
+  <script src="https://sdk.mercadopago.com/js/v2"></script>
 
   <style>
     body {
       background-color: #f0f4f8;
       color: #34495e;
-      font-family: 'Inter', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font-family: 'Inter', sans-serif;
       text-align: center;
       padding: 20px;
       margin: 0;
@@ -19,7 +19,6 @@
 
     .container {
       position: relative;
-      z-index: 2;
       max-width: 550px;
       margin: 30px auto;
       background: #ffffff;
@@ -27,11 +26,7 @@
       padding: 30px;
       box-shadow: 0 10px 30px rgba(44, 62, 80, 0.1);
       transition: transform 0.3s ease;
-    }
-
-    .container:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 15px 35px rgba(44, 62, 80, 0.15);
+      z-index: 1;
     }
 
     h1 {
@@ -48,8 +43,7 @@
       margin-top: 30px;
     }
 
-    input,
-    button {
+    input, button {
       display: block;
       width: 100%;
       margin: 15px 0;
@@ -62,7 +56,7 @@
 
     input:focus {
       border-color: #2980b9;
-      box-shadow: 0 0 8px rgba(41, 128, 185, 0.3);
+      box-shadow: 0 0 8px rgba(41,128,185,0.3);
       outline: none;
     }
 
@@ -73,13 +67,13 @@
       border: none;
       cursor: pointer;
       transition: background 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
-      box-shadow: 0 4px 10px rgba(44, 62, 80, 0.2);
+      box-shadow: 0 4px 10px rgba(44,62,80,0.2);
     }
 
     button:hover {
       background-color: #34495e;
       transform: translateY(-2px);
-      box-shadow: 0 6px 15px rgba(44, 62, 80, 0.3);
+      box-shadow: 0 6px 15px rgba(44,62,80,0.3);
     }
 
     #mercadopago-button {
@@ -93,11 +87,26 @@
       background: #0077c2;
     }
 
+    /* ===============================
+       🎟️ Números en grid
+    =============================== */
     .grid-numeros {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+      grid-template-columns: repeat(auto-fill, minmax(65px, 1fr));
       gap: 8px;
       margin: 25px 0;
+      max-height: 400px;
+      overflow-y: auto;
+      padding-right: 8px;
+    }
+
+    .grid-numeros::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .grid-numeros::-webkit-scrollbar-thumb {
+      background-color: #95a5a6;
+      border-radius: 10px;
     }
 
     .numero {
@@ -105,30 +114,36 @@
       padding: 8px;
       font-size: 16px;
       font-weight: bold;
-      min-width: 60px;
-      height: 40px;
+      height: 45px;
       margin: 0;
+      border: none;
     }
 
     .numero.disponible {
       background: #27ae60;
       color: white;
       cursor: pointer;
-      box-shadow: 0 2px 4px rgba(39, 174, 96, 0.3);
+      box-shadow: 0 2px 4px rgba(39,174,96,0.3);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .numero.disponible:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 10px rgba(39,174,96,0.5);
     }
 
     .numero.ocupado {
       background: #e74c3c;
       color: white;
       cursor: not-allowed;
-      opacity: 0.5;
+      opacity: 0.6;
     }
 
     .numero.seleccionado {
       background: #2980b9;
       color: white;
-      box-shadow: 0 0 10px rgba(41, 128, 185, 0.7);
       transform: scale(1.1);
+      box-shadow: 0 0 10px rgba(41,128,185,0.7);
     }
 
     .progreso {
@@ -149,7 +164,6 @@
       background-color: #ecf0f1;
       border-radius: 10px;
       overflow: hidden;
-      box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
     }
 
     .relleno {
@@ -157,7 +171,6 @@
       width: 0%;
       background: linear-gradient(90deg, #27ae60, #2ecc71);
       transition: width 0.7s ease-in-out;
-      border-radius: 10px;
       text-align: center;
       color: white;
       font-size: 12px;
@@ -190,7 +203,9 @@
       display: none;
     }
 
-    /* =============================== 💡 Modal =============================== */
+    /* ===============================
+       💡 Modal
+    =============================== */
     .modal {
       position: fixed;
       top: 0;
@@ -215,11 +230,15 @@
     .modal-content {
       background: #fff;
       width: 90%;
-      max-width: 600px;
+      max-width: 700px;
       border-radius: 15px;
       padding: 25px;
       color: #2c3e50;
       box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+      display: flex;
+      flex-direction: column;
+      max-height: 80vh;
+      overflow: hidden;
     }
 
     .modal-header {
@@ -228,15 +247,27 @@
       align-items: center;
       border-bottom: 2px solid #eee;
       padding-bottom: 10px;
+      margin-bottom: 10px;
     }
 
     .close-modal {
       background: none;
       border: none;
-      font-size: 1.5em;
+      font-size: 1.8em;
       cursor: pointer;
       color: #e74c3c;
       font-weight: bold;
+    }
+
+    .confirmar-numeros {
+      background: #27ae60;
+      color: #fff;
+      font-weight: bold;
+      margin-top: 15px;
+    }
+
+    .confirmar-numeros:hover {
+      background: #219150;
     }
   </style>
 </head>
@@ -276,11 +307,6 @@
       <button id="mercadopago-button">Pagar con Mercado Pago</button>
       <p class="small-text">Serás redirigido a la pasarela segura de Mercado Pago.</p>
     </section>
-
-    <section id="ticket-box" class="hidden">
-      <h3>🎟️ Tus números reservados</h3>
-      <p>En proceso de pago...</p>
-    </section>
   </div>
 
   <!-- 🪟 Modal con los números -->
@@ -291,28 +317,47 @@
         <button class="close-modal">&times;</button>
       </div>
       <div id="listaDisponibles" class="grid-numeros"></div>
+      <button id="btnConfirmar" class="confirmar-numeros">Confirmar selección</button>
     </div>
   </div>
 
-  <script src="app.js" nonce="NONCE_PLACEHOLDER"></script>
+  <script src="app.js"></script>
 
   <script>
     const modal = document.getElementById("modalDisponibles");
     const btnVer = document.getElementById("verDisponibles");
     const btnCerrar = document.querySelector(".close-modal");
     const listaDisponibles = document.getElementById("listaDisponibles");
+    const btnConfirmar = document.getElementById("btnConfirmar");
 
-    // Cargar y mostrar los números solo dentro del modal
+    let numerosSeleccionados = [];
+
+    // Abrir modal y cargar números
     btnVer.addEventListener("click", () => {
       modal.classList.add("active");
-      if (typeof cargarNumeros === "function") {
-        cargarNumeros(listaDisponibles); // función definida en app.js
+      if (typeof actualizarEstadoGlobal === "function") {
+        actualizarEstadoGlobal(listaDisponibles);
       }
     });
 
+    // Cerrar modal
     btnCerrar.addEventListener("click", () => modal.classList.remove("active"));
     modal.addEventListener("click", e => {
       if (e.target === modal) modal.classList.remove("active");
+    });
+
+    // Confirmar selección
+    btnConfirmar.addEventListener("click", () => {
+      numerosSeleccionados = Array.from(listaDisponibles.querySelectorAll(".seleccionado"))
+        .map(b => b.textContent.trim());
+
+      if (numerosSeleccionados.length === 0) {
+        alert("Por favor selecciona al menos un número antes de continuar.");
+        return;
+      }
+
+      modal.classList.remove("active");
+      alert("Has seleccionado: " + numerosSeleccionados.join(", "));
     });
   </script>
 </body>

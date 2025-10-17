@@ -96,35 +96,28 @@
       width: 100%;
       border-collapse: collapse;
       text-align: left;
-      table-layout: fixed;
       font-size: 0.9em;
+      table-layout: fixed; /* Mantiene columnas alineadas */
     }
 
     thead {
       background: rgba(255, 255, 255, 0.1);
     }
 
+    th, td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      word-wrap: break-word;
+      vertical-align: middle;
+    }
+
     th {
-      padding: 10px;
       text-transform: uppercase;
       font-size: 0.8em;
       letter-spacing: 0.4px;
       color: var(--color-accent);
       border-bottom: 2px solid rgba(255, 255, 255, 0.15);
-      text-align: left;
-    }
-
-    td {
-      padding: 8px 10px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-      color: #e0e0e0;
-      text-align: left;
-      vertical-align: middle;
-      word-wrap: break-word;
-    }
-
-    tbody tr {
-      line-height: 1.3;
     }
 
     tbody tr:hover {
@@ -133,9 +126,8 @@
 
     .numeros-cell {
       font-family: monospace;
-      white-space: normal;
-      word-break: break-word;
       font-size: 0.85em;
+      white-space: normal;
     }
 
     .monto-cell {
@@ -150,7 +142,7 @@
 
     .status-badge {
       display: inline-block;
-      padding: 3px 8px;
+      padding: 4px 8px;
       border-radius: 5px;
       font-size: 0.75em;
       font-weight: 600;
@@ -186,6 +178,16 @@
       transform: scale(1.1);
     }
 
+    /* Anchos exactos de columnas */
+    th:nth-child(1), td:nth-child(1) { width: 14%; }
+    th:nth-child(2), td:nth-child(2) { width: 18%; }
+    th:nth-child(3), td:nth-child(3) { width: 12%; }
+    th:nth-child(4), td:nth-child(4) { width: 20%; }
+    th:nth-child(5), td:nth-child(5) { width: 8%; }
+    th:nth-child(6), td:nth-child(6) { width: 10%; }
+    th:nth-child(7), td:nth-child(7) { width: 10%; }
+    th:nth-child(8), td:nth-child(8) { width: 5%; text-align: center; }
+
     thead th {
       position: sticky;
       top: 0;
@@ -193,19 +195,9 @@
       z-index: 2;
     }
 
-    /* Proporciones exactas por columna */
-    th:nth-child(1), td:nth-child(1) { width: 15%; text-align: left; }
-    th:nth-child(2), td:nth-child(2) { width: 18%; text-align: left; }
-    th:nth-child(3), td:nth-child(3) { width: 12%; text-align: left; }
-    th:nth-child(4), td:nth-child(4) { width: 25%; text-align: left; }
-    th:nth-child(5), td:nth-child(5) { width: 8%; text-align: left; }
-    th:nth-child(6), td:nth-child(6) { width: 10%; text-align: left; }
-    th:nth-child(7), td:nth-child(7) { width: 8%; text-align: left; }
-    th:nth-child(8), td:nth-child(8) { width: 4%; text-align: center; }
-
     @media (max-width: 900px) {
       th, td {
-        padding: 5px 8px;
+        padding: 5px 6px;
         font-size: 0.8em;
       }
       h1 {
@@ -243,6 +235,16 @@
         </thead>
         <tbody id="tickets-table">
           <tr>
+            <td>Fernando Gómez</td>
+            <td>fer91023@gmail.com</td>
+            <td>3216220062</td>
+            <td class="numeros-cell">8, 9, 2, 3</td>
+            <td class="monto-cell">$20.000</td>
+            <td class="fecha-cell">25/09/2025, 20:17:27</td>
+            <td><span class="status-badge status-pendiente">Pendiente</span></td>
+            <td><button class="delete-btn">🗑️</button></td>
+          </tr>
+          <tr>
             <td>Juan Pérez</td>
             <td>juanperez@email.com</td>
             <td>3001234567</td>
@@ -266,7 +268,5 @@
       </table>
     </div>
   </div>
-
-  <script src="admin.js"></script>
 </body>
 </html>

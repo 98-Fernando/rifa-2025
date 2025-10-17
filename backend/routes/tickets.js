@@ -5,11 +5,20 @@ import Pendiente from "../models/Pendiente.js";
 const router = Router();
 const TOTAL_NUMEROS = 1000;
 
-// ─── Función auxiliar ─────────────────────────────
-/** Obtiene un Set de todos los números ocupados (pagados) */
+// ─── FUNCIÓN AUXILIAR ─────────────────────────────
+// Obtiene todos los números ocupados (pagados) de la BD
 async function obtenerNumerosOcupados() {
   const boletos = await Ticket.find({}, "numeros -_id").lean();
-  return new Set(boletos.flatMap((t) => t.numeros));
+  const ocupados = new Set();
+
+  for (const b of boletos) {
+    for (const n of b.numeros || []) {
+      // Normalizamos a 3 dígitos: 1 → "001"
+      ocupados.add(n.toString().padStart(3, "0"));
+    }
+  }
+
+  return ocupados;
 }
 
 // ─── RUTA: GET /api/tickets ────────────────────────
@@ -26,15 +35,20 @@ router.get("/", async (req, res) => {
 });
 
 // ─── RUTA: GET /api/tickets/numeros ────────────────
+// Devuelve todos los números del 000 al 999 y marca ocupados los que estén en la BD
 router.get("/numeros", async (req, res) => {
   try {
     const usados = await obtenerNumerosOcupados();
+
     const numeros = Array.from({ length: TOTAL_NUMEROS }, (_, i) => {
       const numero = i.toString().padStart(3, "0");
-      return { numero, disponible: !usados.has(numero) };
+      return {
+        numero,
+        disponible: !usados.has(numero),
+      };
     });
 
-    res.json(numeros); // ← devolvemos directamente el array
+    res.json(numeros);
   } catch (error) {
     console.error("❌ Error obteniendo números:", error);
     res
@@ -84,7 +98,9 @@ router.post("/guardar-pendiente", async (req, res) => {
 
   try {
     const usados = await obtenerNumerosOcupados();
-    const repetidos = numeros.filter((n) => usados.has(n));
+    const repetidos = numeros.filter(
+      (n) => usados.has(n.toString().padStart(3, "0"))
+    );
 
     if (repetidos.length) {
       return res.status(409).json({

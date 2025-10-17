@@ -7,12 +7,12 @@
 
   <style>
     :root {
-      --color-bg: #0b1830;
-      --color-panel: #13294b;
+      --color-bg: #0b152b;
+      --color-panel: #16294d;
       --color-accent: #f4b400;
-      --color-success: #00c853;
+      --color-success: #00e676;
       --color-warning: #ffb300;
-      --color-danger: #e53935;
+      --color-danger: #ef5350;
       --font: "Segoe UI", sans-serif;
     }
 
@@ -28,44 +28,45 @@
     }
 
     .container {
-      width: 100%;
-      min-height: 100vh;
+      width: 95%;
+      max-width: 1400px;
+      margin-top: 40px;
       background: var(--color-panel);
-      padding: 30px 40px;
-      box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.4);
+      border-radius: 10px;
+      padding: 30px 35px;
+      box-shadow: 0 0 30px rgba(0, 0, 0, 0.4);
     }
 
     h1 {
       color: var(--color-accent);
-      font-size: 1.9em;
+      font-size: 1.8em;
       text-align: center;
       margin-bottom: 25px;
-      font-weight: 700;
     }
 
     .header-controls {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 15px;
       flex-wrap: wrap;
+      margin-bottom: 15px;
       gap: 10px;
     }
 
     #search {
       flex: 1;
       max-width: 400px;
-      padding: 9px 12px;
+      padding: 8px 12px;
       border-radius: 6px;
       border: 1px solid rgba(255, 255, 255, 0.2);
       background: rgba(255, 255, 255, 0.1);
       color: #fff;
-      outline: none;
       font-size: 0.95em;
+      outline: none;
     }
 
     #search::placeholder {
-      color: #bbb;
+      color: #ccc;
     }
 
     .logout-btn {
@@ -81,22 +82,20 @@
     }
 
     .logout-btn:hover {
-      background: #b71c1c;
+      background: #c62828;
     }
 
     .table-container {
-      margin-top: 20px;
+      margin-top: 15px;
       overflow-x: auto;
       border-radius: 8px;
-      background: rgba(255, 255, 255, 0.03);
-      padding: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 8px;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      text-align: left;
-      table-layout: fixed;
       font-size: 0.9em;
     }
 
@@ -104,23 +103,17 @@
       background: rgba(255, 255, 255, 0.1);
     }
 
-    th {
-      padding: 10px;
-      text-transform: uppercase;
-      font-size: 0.8em;
-      letter-spacing: 0.4px;
-      color: var(--color-accent);
-      border-bottom: 2px solid rgba(255, 255, 255, 0.15);
+    th, td {
+      padding: 10px 12px;
       text-align: left;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     }
 
-    td {
-      padding: 8px 10px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-      color: #e0e0e0;
-      text-align: left;
-      vertical-align: middle;
-      word-wrap: break-word;
+    th {
+      color: var(--color-accent);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.8em;
     }
 
     tbody tr:hover {
@@ -140,8 +133,8 @@
     }
 
     .fecha-cell {
-      font-size: 0.85em;
       color: #bbb;
+      font-size: 0.85em;
     }
 
     .status-badge {
@@ -151,12 +144,22 @@
       font-size: 0.75em;
       font-weight: 600;
       text-transform: uppercase;
-      text-align: center;
     }
 
-    .status-pagado { background: rgba(0, 200, 83, 0.2); color: var(--color-success); }
-    .status-pendiente { background: rgba(255, 179, 0, 0.2); color: var(--color-warning); }
-    .status-nopagado { background: rgba(229, 57, 53, 0.2); color: var(--color-danger); }
+    .status-pagado {
+      background: rgba(0, 230, 118, 0.15);
+      color: var(--color-success);
+    }
+
+    .status-pendiente {
+      background: rgba(255, 179, 0, 0.15);
+      color: var(--color-warning);
+    }
+
+    .status-nopagado {
+      background: rgba(239, 83, 80, 0.15);
+      color: var(--color-danger);
+    }
 
     .delete-btn {
       background: none;
@@ -171,26 +174,19 @@
       transform: scale(1.1);
     }
 
-    thead th {
-      position: sticky;
-      top: 0;
-      background: #142a52;
-      z-index: 2;
-    }
-
-    th:nth-child(1), td:nth-child(1) { width: 15%; }
-    th:nth-child(2), td:nth-child(2) { width: 18%; }
+    th:nth-child(1), td:nth-child(1) { width: 14%; }
+    th:nth-child(2), td:nth-child(2) { width: 17%; }
     th:nth-child(3), td:nth-child(3) { width: 12%; }
-    th:nth-child(4), td:nth-child(4) { width: 25%; }
-    th:nth-child(5), td:nth-child(5) { width: 8%; }
-    th:nth-child(6), td:nth-child(6) { width: 10%; }
-    th:nth-child(7), td:nth-child(7) { width: 8%; }
+    th:nth-child(4), td:nth-child(4) { width: 20%; }
+    th:nth-child(5), td:nth-child(5) { width: 9%; text-align: right; }
+    th:nth-child(6), td:nth-child(6) { width: 12%; }
+    th:nth-child(7), td:nth-child(7) { width: 8%; text-align: center; }
     th:nth-child(8), td:nth-child(8) { width: 4%; text-align: center; }
 
     @media (max-width: 900px) {
-      th, td { padding: 5px 8px; font-size: 0.8em; }
-      h1 { font-size: 1.5em; }
-      .container { padding: 20px 10px; }
+      th, td { padding: 6px 8px; font-size: 0.8em; }
+      h1 { font-size: 1.4em; }
+      .container { padding: 20px; }
     }
   </style>
 </head>
@@ -199,10 +195,10 @@
   <div class="container">
     <div class="header-controls">
       <h1>💼 Panel Administrativo</h1>
-      <button class="logout-btn">🔒 Cerrar sesión</button>
+      <button class="logout-btn" id="logout">🔒 Cerrar sesión</button>
     </div>
 
-    <input type="text" id="search" placeholder="🔍 Buscar por nombre, correo o referencia..." />
+    <input type="text" id="search" placeholder="🔍 Buscar por nombre, correo o número..." />
 
     <div class="table-container">
       <table>
@@ -219,7 +215,7 @@
           </tr>
         </thead>
         <tbody id="tickets-table">
-          <!-- Los datos se cargan automáticamente desde la base de datos -->
+          <tr><td colspan="8" style="text-align:center;color:#ccc;">Cargando datos...</td></tr>
         </tbody>
       </table>
     </div>
@@ -228,52 +224,89 @@
   <script>
   document.addEventListener("DOMContentLoaded", async () => {
     const tabla = document.getElementById("tickets-table");
+    const search = document.getElementById("search");
+    const logoutBtn = document.getElementById("logout");
+    let tickets = [];
 
-    try {
-      // 🔗 Llamar a tu API backend que trae los datos desde la BD
-      const res = await fetch("/api/clientes");
-      const data = await res.json();
+    // 🔹 Cerrar sesión
+    logoutBtn.addEventListener("click", async () => {
+      await fetch("/api/admin/logout", { method: "POST", credentials: "include" });
+      window.location.href = "/login.html";
+    });
 
-      tabla.innerHTML = ""; // limpiar contenido previo
+    // 🔹 Cargar datos desde la API
+    async function cargarTickets() {
+      try {
+        const res = await fetch("/api/admin/tickets", { credentials: "include" });
 
-      data.forEach((item) => {
-        const fila = document.createElement("tr");
-        fila.innerHTML = `
-          <td>${item.nombre}</td>
-          <td>${item.correo}</td>
-          <td>${item.telefono}</td>
-          <td class="numeros-cell">${item.numeros}</td>
-          <td class="monto-cell">$${Number(item.monto).toLocaleString()}</td>
-          <td class="fecha-cell">${new Date(item.fecha).toLocaleString()}</td>
+        if (!res.ok) {
+          if (res.status === 403 || res.status === 401) {
+            return (window.location.href = "/login.html");
+          }
+          throw new Error("Error de servidor");
+        }
+
+        const data = await res.json();
+        tickets = data.tickets || [];
+        mostrarTabla(tickets);
+      } catch (err) {
+        console.error("Error al cargar datos:", err);
+        tabla.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#ff6666;">Error al cargar datos</td></tr>`;
+      }
+    }
+
+    // 🔹 Mostrar tabla
+    function mostrarTabla(lista) {
+      if (!lista.length) {
+        tabla.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#ccc;">No hay registros</td></tr>`;
+        return;
+      }
+
+      tabla.innerHTML = lista.map(item => `
+        <tr>
+          <td>${item.nombre || "-"}</td>
+          <td>${item.correo || "-"}</td>
+          <td>${item.telefono || "-"}</td>
+          <td class="numeros-cell">${item.numeros?.join(", ") || "-"}</td>
+          <td class="monto-cell">$${Number(item.monto || 0).toLocaleString()}</td>
+          <td class="fecha-cell">${new Date(item.createdAt).toLocaleString()}</td>
           <td>
             <span class="status-badge ${
-              item.estado === "Pagado"
-                ? "status-pagado"
-                : item.estado === "Pendiente"
-                ? "status-pendiente"
-                : "status-nopagado"
-            }">${item.estado}</span>
+              item.estadoPago === "Pagado" ? "status-pagado"
+              : item.estadoPago === "Pendiente" ? "status-pendiente"
+              : "status-nopagado"
+            }">${item.estadoPago}</span>
           </td>
-          <td><button class="delete-btn" data-id="${item.id}">🗑️</button></td>
-        `;
-        tabla.appendChild(fila);
-      });
+          <td><button class="delete-btn" data-id="${item._id}">🗑️</button></td>
+        </tr>
+      `).join("");
 
-      // 🗑️ eliminar
-      document.querySelectorAll(".delete-btn").forEach((btn) => {
-        btn.addEventListener("click", async (e) => {
+      // Asignar evento eliminar
+      document.querySelectorAll(".delete-btn").forEach(btn => {
+        btn.addEventListener("click", async e => {
           const id = e.target.dataset.id;
           if (confirm("¿Seguro que deseas eliminar este registro?")) {
-            await fetch(`/api/clientes/${id}`, { method: "DELETE" });
+            await fetch(`/api/admin/tickets/${id}`, { method: "DELETE", credentials: "include" });
             e.target.closest("tr").remove();
           }
         });
       });
-
-    } catch (err) {
-      console.error("Error al cargar datos:", err);
-      tabla.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#ff6666;">Error al cargar datos</td></tr>`;
     }
+
+    // 🔹 Buscar en la tabla
+    search.addEventListener("input", e => {
+      const term = e.target.value.toLowerCase();
+      const filtrados = tickets.filter(t =>
+        t.nombre?.toLowerCase().includes(term) ||
+        t.correo?.toLowerCase().includes(term) ||
+        t.telefono?.toLowerCase().includes(term) ||
+        t.numeros?.join(",").toLowerCase().includes(term)
+      );
+      mostrarTabla(filtrados);
+    });
+
+    // Iniciar carga
+    cargarTickets();
   });
   </script>
 </body>

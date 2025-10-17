@@ -9,7 +9,7 @@
 
   <style>
     body {
-      background-color: #f0f4f8;
+      background: linear-gradient(135deg, #e3f2fd, #f0f4f8);
       color: #34495e;
       font-family: 'Inter', sans-serif;
       text-align: center;
@@ -232,6 +232,52 @@
     }
 
     .confirmar-numeros:hover { background: #219150; }
+
+    /* 🎟️ Ticket de selección */
+    .ticket {
+      background: #f8f9fa;
+      border-left: 5px solid #2980b9;
+      border-radius: 12px;
+      padding: 15px;
+      margin-top: 15px;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+      text-align: left;
+      animation: fadeIn 0.4s ease;
+    }
+
+    .ticket h4 {
+      margin: 0 0 10px;
+      color: #2c3e50;
+    }
+
+    .ticket span {
+      display: inline-block;
+      background: #2980b9;
+      color: white;
+      border-radius: 6px;
+      padding: 5px 8px;
+      margin: 3px;
+      font-weight: 600;
+    }
+
+    .ticket .total {
+      font-weight: bold;
+      color: #27ae60;
+      margin-top: 10px;
+      display: block;
+    }
+
+    .ticket button {
+      margin-top: 10px;
+      background: #e74c3c;
+      font-size: 14px;
+      padding: 10px;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
   </style>
 </head>
 
@@ -264,6 +310,9 @@
     <section>
       <h2>Selecciona tus números 🎟️</h2>
       <button id="verDisponibles">🔍 Ver y Elegir Números Disponibles</button>
+
+      <!-- Ticket dinámico -->
+      <div id="ticketSeleccion" class="ticket hidden"></div>
     </section>
 
     <!-- 🪟 Modal con los números -->
@@ -299,6 +348,8 @@
     const btnCerrar = document.querySelector(".close-modal");
     const listaDisponibles = document.getElementById("listaDisponibles");
     const btnConfirmar = document.getElementById("btnConfirmar");
+    const ticketBox = document.getElementById("ticketSeleccion");
+    const PRECIO_BOLETO = 5000;
     let numerosSeleccionados = [];
 
     btnVer.addEventListener("click", () => {
@@ -314,12 +365,27 @@
     btnConfirmar.addEventListener("click", () => {
       numerosSeleccionados = Array.from(listaDisponibles.querySelectorAll(".seleccionado"))
         .map(b => b.textContent.trim());
+
       if (numerosSeleccionados.length === 0) {
         alert("Por favor selecciona al menos un número antes de continuar.");
         return;
       }
+
+      const total = numerosSeleccionados.length * PRECIO_BOLETO;
       modal.classList.remove("active");
-      alert("Has seleccionado: " + numerosSeleccionados.join(", "));
+
+      ticketBox.innerHTML = `
+        <h4>🎫 Números Seleccionados:</h4>
+        <div>${numerosSeleccionados.map(n => `<span>${n}</span>`).join('')}</div>
+        <span class="total">💰 Total a pagar: $${total.toLocaleString('es-CO')}</span>
+        <button id="btnBorrarSeleccion">Borrar selección</button>
+      `;
+      ticketBox.classList.remove("hidden");
+
+      document.getElementById("btnBorrarSeleccion").addEventListener("click", () => {
+        numerosSeleccionados = [];
+        ticketBox.classList.add("hidden");
+      });
     });
   </script>
 </body>

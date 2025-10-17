@@ -1,63 +1,80 @@
 /* ===============================
-   🎨 Estilos Globales
+   🌟 Estilos Globales Optimizado
 =============================== */
 body {
-  background: url('/fondo.jpg') no-repeat center center fixed;
-  background-size: cover;
+  background: linear-gradient(135deg, #0d47a1, #1976d2, #42a5f5);
+  background-size: 400% 400%;
+  animation: bgGradient 12s ease infinite;
   color: #222;
-  font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: 'Poppins', 'Segoe UI', Roboto, Arial, sans-serif;
   text-align: center;
-  padding: 20px;
+  padding: 25px;
   margin: 0;
 }
 
-/* Fondo difuminado para contraste */
+@keyframes bgGradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Fondo principal */
 .container {
   position: relative;
   z-index: 2;
-  max-width: 500px;
+  max-width: 520px;
   margin: 0 auto;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 16px;
-  padding: 25px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
-  transition: transform 0.2s ease;
+  background: rgba(255, 255, 255, 0.97);
+  border-radius: 18px;
+  padding: 30px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
 }
 .container:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
+}
+
+/* Títulos */
+h1, h2, h3 {
+  color: #0d47a1;
+  font-weight: 700;
+  margin-bottom: 15px;
+  letter-spacing: 0.5px;
 }
 
 /* ===============================
-   📌 Formularios y Botones
+   🧾 Formularios y Botones
 =============================== */
 input,
 button {
-  display: block;
   width: 100%;
   margin: 12px 0;
   padding: 14px 16px;
   font-size: 15px;
-  border: 1px solid #ddd;
   border-radius: 10px;
+  border: 1px solid #ccc;
   transition: all 0.3s ease;
 }
 
 input:focus {
   border-color: #1976d2;
-  box-shadow: 0 0 6px rgba(25, 118, 210, 0.4);
+  box-shadow: 0 0 8px rgba(25, 118, 210, 0.5);
   outline: none;
 }
 
 button {
-  background-color: #1976d2;
+  background: linear-gradient(90deg, #1976d2, #0d47a1);
   color: white;
   font-weight: 600;
   border: none;
   cursor: pointer;
-  transition: background 0.3s ease, transform 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.3s ease-in-out;
 }
 button:hover {
-  background-color: #125a9c;
+  background: linear-gradient(90deg, #1565c0, #002171);
   transform: translateY(-2px);
 }
 button:active {
@@ -65,81 +82,85 @@ button:active {
 }
 
 /* ===============================
-   🎟️ Tickets y Numeración
+   🎟️ Numeración / Tickets
 =============================== */
 .numeros-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(55px, 1fr));
   gap: 10px;
-  margin: 20px 0;
+  margin: 25px 0;
 }
 
-.numero-disponible {
-  background: #2e7d32;
-  color: white;
-}
-.numero-ocupado {
-  background: #f44336;
-  color: white;
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-.numero-seleccionado {
-  background: #1976d2;
-  color: white;
-  cursor: not-allowed;
-}
 .numero-disponible,
 .numero-ocupado,
 .numero-seleccionado {
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 10px;
   font-size: 15px;
   font-weight: bold;
   transition: all 0.3s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.numero-disponible {
+  background: linear-gradient(90deg, #43a047, #66bb6a);
+  color: white;
 }
 .numero-disponible:hover {
-  background: #388e3c;
+  background: linear-gradient(90deg, #2e7d32, #4caf50);
+}
+
+.numero-ocupado {
+  background: linear-gradient(90deg, #e53935, #ef5350);
+  color: white;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.numero-seleccionado {
+  background: linear-gradient(90deg, #1565c0, #42a5f5);
+  color: white;
+  cursor: not-allowed;
 }
 
 /* ===============================
    📊 Barra de Progreso
 =============================== */
 .progreso-container {
-  margin: 25px 0 15px;
+  margin: 30px 0 20px;
   text-align: center;
 }
 
 .barra {
   width: 100%;
-  height: 22px;
+  height: 24px;
   background-color: #f0f0f0;
   border-radius: 20px;
   overflow: hidden;
-  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.15);
+  box-shadow: inset 0 1px 5px rgba(0, 0, 0, 0.15);
 }
 
 .relleno {
   height: 100%;
   width: 0%;
-  background: linear-gradient(90deg, #4caf50, #81c784);
+  background: linear-gradient(90deg, #43a047, #81c784);
   transition: width 0.5s ease-in-out;
   border-radius: 20px;
   text-align: center;
   color: white;
   font-size: 13px;
-  line-height: 22px;
+  line-height: 24px;
   font-weight: bold;
 }
 
 /* ===============================
-   📌 Mensajes de éxito/error
+   💬 Mensajes de Alerta
 =============================== */
 .mensaje {
   font-size: 15px;
   margin-top: 15px;
-  padding: 12px;
-  border-radius: 8px;
+  padding: 14px;
+  border-radius: 10px;
   font-weight: 500;
   animation: fadeIn 0.4s ease;
 }
@@ -147,12 +168,12 @@ button:active {
 .mensaje.exito {
   background: #e8f5e9;
   color: #2e7d32;
-  border-left: 5px solid #4caf50;
+  border-left: 6px solid #43a047;
 }
 .mensaje.error {
   background: #ffebee;
   color: #c62828;
-  border-left: 5px solid #ef5350;
+  border-left: 6px solid #ef5350;
 }
 
 @keyframes fadeIn {
@@ -167,9 +188,9 @@ button:active {
   border: 4px solid #eee;
   border-top: 4px solid #1976d2;
   border-radius: 50%;
-  width: 30px;
-  height: 30px;
-  margin: 15px auto;
+  width: 35px;
+  height: 35px;
+  margin: 20px auto;
   animation: spin 1s linear infinite;
 }
 @keyframes spin {
@@ -180,12 +201,8 @@ button:active {
    📱 Responsive
 =============================== */
 @media screen and (max-width: 600px) {
-  body {
-    padding: 10px;
-  }
-  .container {
-    padding: 20px;
-  }
+  body { padding: 10px; }
+  .container { padding: 20px; }
   input, button {
     font-size: 14px;
     padding: 12px 14px;
@@ -194,10 +211,6 @@ button:active {
     grid-template-columns: repeat(auto-fill, minmax(45px, 1fr));
     gap: 8px;
   }
-  .relleno {
-    font-size: 12px;
-  }
-  .mensaje {
-    font-size: 14px;
-  }
+  .relleno { font-size: 12px; }
+  .mensaje { font-size: 14px; }
 }

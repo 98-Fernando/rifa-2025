@@ -6,41 +6,61 @@ const router = Router();
 
 // ==================== MIDDLEWARE DE AUTENTICACIÓN ====================
 const isAdmin = (req, res, next) => {
-  if (req.session && req.session.isAdmin) {
+  if (req.session?.isAdmin) {
     return next();
   }
-  return res.status(401).json({ exito: false, mensaje: "No autorizado" });
+
+  // Si es una API, respondemos JSON (evita el error "Unexpected token '<'")
+  if (req.originalUrl.startsWith("/api/")) {
+    return res.status(403).json({ exito: false, mensaje: "No autorizado" });
+  }
+
+  // Si viene del navegador (no fetch), redirigimos
+  return res.redirect("/login.html");
 };
 
 // ==================== OBTENER TODOS LOS TICKETS ====================
 // GET /api/admin/tickets
 router.get("/tickets", isAdmin, async (req, res) => {
   try {
-    // Tickets pagados
     const ticketsPagados = await Ticket.find({}).lean();
-
-    // Tickets pendientes
     const ticketsPendientes = await Pendiente.find({}).lean();
 
-    // Normalizamos los pendientes para que tengan el mismo formato
     const precioBoleto = Number(process.env.PRECIO_BOLETO) || 5000;
+
     const ticketsPendientesMapeados = ticketsPendientes.map((p) => ({
-      ...p,
-      estadoPago: "pendiente",
+      _id: p._id,
+      nombre: p.nombre,
+      correo: p.correo,
+      telefono: p.telefono,
+      numeros: p.numeros,
       monto: p.numeros?.length ? p.numeros.length * precioBoleto : precioBoleto,
+      createdAt: p.createdAt,
+      estadoPago: "Pendiente",
     }));
 
-    // Combinamos y ordenamos (más recientes primero)
-    const todos = [...ticketsPagados, ...ticketsPendientesMapeados].sort(
+    const ticketsPagadosMapeados = ticketsPagados.map((t) => ({
+      _id: t._id,
+      nombre: t.nombre,
+      correo: t.correo,
+      telefono: t.telefono,
+      numeros: t.numeros,
+      monto: t.monto,
+      createdAt: t.createdAt,
+      estadoPago: "Pagado",
+    }));
+
+    const todos = [...ticketsPagadosMapeados, ...ticketsPendientesMapeados].sort(
       (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
     );
 
     res.json({ exito: true, tickets: todos });
   } catch (error) {
     console.error("❌ Error al obtener tickets del admin:", error);
-    res
-      .status(500)
-      .json({ exito: false, mensaje: "Error interno al obtener los tickets." });
+    res.status(500).json({
+      exito: false,
+      mensaje: "Error interno al obtener los tickets.",
+    });
   }
 });
 
@@ -50,20 +70,23 @@ router.delete("/tickets/:id", isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Intentamos eliminar de ambas colecciones
-    let result = await Ticket.findByIdAndDelete(id);
-    if (!result) {
-      result = await Pendiente.findByIdAndDelete(id);
+    let eliminado = await Ticket.findByIdAndDelete(id);
+    if (!eliminado) {
+      eliminado = await Pendiente.findByIdAndDelete(id);
     }
 
-    if (result) {
-      res.json({ exito: true, mensaje: "Registro eliminado correctamente." });
-    } else {
-      res.status(404).json({ exito: false, mensaje: "Registro no encontrado." });
+    if (!eliminado) {
+      return res
+        .status(404)
+        .json({ exito: false, mensaje: "Registro no encontrado." });
     }
+
+    res.json({ exito: true, mensaje: "Registro eliminado correctamente." });
   } catch (error) {
     console.error("❌ Error al eliminar registro:", error);
-    res.status(500).json({ exito: false, mensaje: "Error al eliminar registro." });
+    res
+      .status(500)
+      .json({ exito: false, mensaje: "Error al eliminar registro." });
   }
 });
 

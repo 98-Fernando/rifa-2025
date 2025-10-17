@@ -125,33 +125,36 @@ if (!reference || !monto || !nombre) {
     .json({ exito: false, mensaje: "Faltan datos para generar el pago" });
 }
 
-const result = await mpPreference.create({
-  body: {
-    items: [
-      {
-        id: reference,
-        title: `Tickets de Rifa - Ref: ${reference}`,
-        quantity: 1,
-        unit_price: Number(monto),
-        currency_id: "COP",
-      },
-    ],
-    payer: {
-      name: nombre,
-      email: correo,
-      phone: { number: telefono },
+const preference = {
+  items: [
+    {
+      id: reference,
+      title: `Tickets de Rifa - Ref: ${reference}`,
+      quantity: 1,
+      unit_price: Number(monto),
+      currency_id: "COP",
     },
-    external_reference: reference,
-    auto_return: "approved",
-    back_urls: {
-      success: "https://rifa-2025.onrender.com/success.html",
-      failure: "https://rifa-2025.onrender.com/failure.html",
-      pending: "https://rifa-2025.onrender.com/pending.html",
-    },
+  ],
+  payer: {
+    name: nombre,
+    email: correo,
+    phone: { number: telefono },
   },
-});
+  external_reference: reference,
+  auto_return: "approved",
+  back_urls: {
+    success: "https://rifa-2025.onrender.com/success.html",
+    failure: "https://rifa-2025.onrender.com/failure.html",
+    pending: "https://rifa-2025.onrender.com/pending.html",
+  },
+};
 
-return res.json({ exito: true, init_point: result.init_point });
+const result = await mpPreference.create({ body: preference });
+
+return res.json({
+  exito: true,
+  init_point: result.init_point,
+});
 ```
 
 } catch (err) {

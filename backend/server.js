@@ -129,7 +129,7 @@ const preference = {
   items: [
     {
       id: reference,
-      title: `Tickets de Rifa - Ref: ${reference}`,
+      title: "Tickets de Rifa - Ref: " + reference,
       quantity: 1,
       unit_price: Number(monto),
       currency_id: "COP",

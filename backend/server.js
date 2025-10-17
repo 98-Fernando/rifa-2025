@@ -196,7 +196,7 @@ app.get("/admin.html", isAdmin, (req, res) => {
 
 // ==================== ENLACE DE RUTAS ====================
 app.use("/api/tickets", ticketsRouter);
-app.use("/api/tickets/consulta", consultaRouter);
+app.use("/api", consultaRouter);
 app.use("/api/admin", adminApiRouter);
 
 // ==================== ARCHIVOS ESTÁTICOS ====================

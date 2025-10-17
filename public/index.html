@@ -110,10 +110,31 @@
     align-items: center; margin-bottom: 10px;
     border-bottom: 2px solid #eee; padding-bottom: 10px;
   }
-  .close-modal {
-    background: none; border: none; font-size: 1.8em;
-    color: #e74c3c; cursor: pointer;
-  }
+/* --- BOTÓN DE CERRAR MODAL PEQUEÑO Y FIJO --- */
+.close-modal {
+  position: fixed;         /* Fijo aunque se haga scroll */
+  top: 20px;               /* Separación desde arriba */
+  right: 25px;             /* Separación desde el borde derecho */
+  background: #e74c3c;
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  z-index: 9999;           /* Encima de todo */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.25s ease;
+}
+
+.close-modal:hover {
+  background: #c0392b;
+  transform: scale(1.1);
+}
 
   /* --- GRID DE NÚMEROS --- */
   .grid-numeros {

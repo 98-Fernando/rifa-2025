@@ -197,7 +197,7 @@
     // 🧩 Cargar y renderizar números disponibles
     async function cargarNumeros() {
       try {
-        const res = await fetch("/api/numeros");
+        const res = await fetch('/api/tickets/numeros');
         const data = await res.json();
         disponibles = data;
         listaDisponibles.innerHTML = "";

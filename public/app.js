@@ -97,7 +97,7 @@ async function actualizarEstadoGlobal() {
 }
 
 // ===============================
-// 💳 FLUJO DE PAGO CON MERCADO PAGO
+// 💳 Evento: Reservar y Pagar
 // ===============================
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -105,54 +105,53 @@ form.addEventListener("submit", async (e) => {
   const nombre = form.nombre.value.trim();
   const correo = form.correo.value.trim();
   const telefono = form.telefono.value.trim();
-  const seleccionados = obtenerNumerosSeleccionados();
+  const numeros = obtenerNumerosSeleccionados();
 
-  if (!nombre || !correo || !telefono) {
-    mostrarMensaje("⚠️ Debes completar todos los campos.", "error");
-    return;
+  if (!nombre || !correo || numeros.length === 0) {
+    return mostrarMensaje("⚠️ Completa tus datos y selecciona al menos un número.", "error");
   }
 
-  if (seleccionados.length === 0) {
-    mostrarMensaje("⚠️ Debes seleccionar al menos un número.", "error");
-    return;
-  }
-
+  mostrarMensaje("Procesando reserva...", "info");
   spinner.style.display = "block";
-  mostrarMensaje("Procesando tu reserva, por favor espera...", "info");
 
   try {
-    const res = await fetch("/api/pago/crear", {
+    // 1️⃣ Enviar datos al backend para crear preferencia
+    const referencia = `RIFA-${Date.now()}`;
+    const monto = (CONFIG.precio || 5000) * numeros.length;
+
+    const res = await fetch("/api/mercadopago/preference", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nombre, correo, telefono, numeros: seleccionados }),
+      body: JSON.stringify({
+        reference: referencia,
+        nombre,
+        correo,
+        telefono,
+        monto
+      }),
     });
 
     const data = await res.json();
-    if (!data.exito) throw new Error(data.mensaje || "Error al crear el pago.");
+    spinner.style.display = "none";
 
-    PAGO_PENDIENTE = {
-      nombre,
-      correo,
-      telefono,
-      reference: data.preference_id,
-      amount: data.monto,
-    };
-
-    mostrarMensaje("✅ Redirigiendo a Mercado Pago...", "exito");
-
-    // Redirigir al checkout de Mercado Pago
-    if (data.init_point) {
-      window.location.href = data.init_point;
-    } else {
-      throw new Error("No se recibió enlace de pago.");
+    // 2️⃣ Validar respuesta
+    if (!data.exito || !data.init_point) {
+      console.error("❌ Error de respuesta Mercado Pago:", data);
+      return mostrarMensaje("🚫 No se pudo generar el enlace de pago.", "error");
     }
+
+    mostrarMensaje("✅ Redirigiendo a Mercado Pago...");
+    
+    // 3️⃣ Redirigir al checkout de Mercado Pago
+    window.location.href = data.init_point;
+
   } catch (err) {
     console.error("❌ Error en el flujo de pago:", err);
-    mostrarMensaje("🚫 Error al procesar el pago. Intenta nuevamente.", "error");
-  } finally {
     spinner.style.display = "none";
+    mostrarMensaje("🚫 Error al iniciar el pago. Intenta nuevamente.", "error");
   }
 });
+
 
 // ===============================
 // 🚀 INICIALIZACIÓN

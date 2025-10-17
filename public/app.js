@@ -1,5 +1,5 @@
 // ===============================
-// 📌 Variables globales y elementos DOM
+// 📌 VARIABLES GLOBALES Y ELEMENTOS DOM
 // ===============================
 const form = document.getElementById("formulario");
 const mensaje = document.getElementById("mensaje");
@@ -7,286 +7,241 @@ const spinner = document.getElementById("spinner");
 const barraProgresoRelleno = document.querySelector(".relleno");
 const barraProgresoTexto = document.getElementById("porcentaje");
 const contenedorNumeros = document.getElementById("listaDisponibles");
-
-// Nuevos elementos del frontend para el flujo de pago
 const pagoBox = document.getElementById("pago-box");
 const mercadoPagoButton = document.getElementById("mercadopago-button");
 
 let CONFIG = {};
 let PAGO_PENDIENTE = {
-    nombre: null,
-    correo: null,
-    telefono: null,
-    reference: null,
-    amount: 0, // Usaremos el monto en COP (no en centavos)
+  nombre: null,
+  correo: null,
+  telefono: null,
+  reference: null,
+  amount: 0,
 };
 
-
 // ===============================
-// 🔹 Cargar configuración del backend
+// ⚙️ CARGAR CONFIGURACIÓN DEL BACKEND
 // ===============================
 async function cargarConfig() {
-    try {
-        const res = await fetch("/api/config");
-        if (!res.ok) throw new Error("No se pudo cargar la configuración");
+  try {
+    const res = await fetch("/api/config");
+    if (!res.ok) throw new Error("No se pudo cargar la configuración");
 
-        const data = await res.json();
-        if (!data.exito) throw new Error("Config inválida");
+    const data = await res.json();
+    if (!data.exito) throw new Error("Config inválida");
 
-        CONFIG = data;
-        console.log("⚙️ Config cargada:", CONFIG);
-
-    } catch (err) {
-        console.error("❌ Error cargando configuración:", err);
-        mostrarMensaje("🚫 No se pudo cargar la configuración. Intenta más tarde.", "error");
-    }
+    CONFIG = data;
+    console.log("⚙️ Config cargada:", CONFIG);
+  } catch (err) {
+    console.error("❌ Error cargando configuración:", err);
+    mostrarMensaje("🚫 No se pudo cargar la configuración. Intenta más tarde.", "error");
+  }
 }
 
 // ===============================
-// ✅ Funciones utilitarias
+// 🧩 FUNCIONES UTILITARIAS
 // ===============================
-
 function obtenerNumerosSeleccionados() {
-    // Obtenemos el texto y lo aseguramos como string de 3 dígitos (ej: '007')
-    return Array.from(document.querySelectorAll(".numero.seleccionado"))
-        .map((btn) => String(btn.textContent).padStart(3, '0'));
+  return Array.from(document.querySelectorAll(".numero.seleccionado"))
+    .map((btn) => String(btn.textContent).padStart(3, "0"));
 }
 
 function mostrarMensaje(texto, tipo = "exito") {
-    if (!mensaje) return;
-    mensaje.textContent = texto;
-    mensaje.className = `mensaje ${tipo}`;
+  if (!mensaje) return;
+  mensaje.textContent = texto;
+  mensaje.className = `mensaje ${tipo}`;
 }
 
-function actualizarBarra(vendidos, porcentaje) {
-    if (!barraProgresoRelleno) return;
+function actualizarBarra(vendidos, porcentaje, totalBoletos = 1000) {
+  if (!barraProgresoRelleno) return;
 
-    barraProgresoRelleno.style.width = `${porcentaje}%`;
+  barraProgresoRelleno.style.width = `${porcentaje}%`;
 
-    // Actualizamos el color según el porcentaje usando los nuevos colores
-    let startColor, endColor;
+  // 🎨 Colores dinámicos según progreso
+  let startColor, endColor;
+  if (porcentaje < 50) {
+    startColor = "#E74C3C";
+    endColor = "#C0392B";
+  } else if (porcentaje < 90) {
+    startColor = "#F39C12";
+    endColor = "#E67E22";
+  } else {
+    startColor = "#27AE60";
+    endColor = "#2ECC71";
+  }
 
-    if (porcentaje < 50) {
-        // Rojo (Bajo Progreso)
-        startColor = "#E74C3C"; 
-        endColor = "#C0392B"; 
-    } else if (porcentaje < 90) {
-        // Amarillo/Naranja (Medio Progreso)
-        startColor = "#F39C12"; 
-        endColor = "#E67E22";
-    } else {
-        // Verde (Alto Progreso)
-        startColor = "#27AE60"; 
-        endColor = "#2ECC71";
-    }
-
-    barraProgresoRelleno.style.background = `linear-gradient(90deg, ${startColor}, ${endColor})`;
-
-    if (barraProgresoTexto) barraProgresoTexto.textContent = `Progreso: ${porcentaje}% vendido (${vendidos} de 1000)`;
+  barraProgresoRelleno.style.background = `linear-gradient(90deg, ${startColor}, ${endColor})`;
+  barraProgresoTexto.textContent = `Progreso: ${porcentaje}% vendido (${vendidos} de ${totalBoletos})`;
 }
 
-/** Habilita/Deshabilita el formulario y la selección de números */
 function toggleUI(disabled) {
-    form.querySelector('button[type="submit"]').disabled = disabled;
-    numerosContainer.querySelectorAll('button').forEach(btn => btn.disabled = disabled || btn.classList.contains("ocupado"));
+  form.querySelector('button[type="submit"]').disabled = disabled;
+  contenedorNumeros.querySelectorAll("button").forEach((btn) => {
+    btn.disabled = disabled || btn.classList.contains("ocupado");
+  });
 }
 
-
 // ===============================
-// 🔄 FUNCIÓN DE ACTUALIZACIÓN CENTRAL
+// 🔄 FUNCIÓN CENTRAL DE SINCRONIZACIÓN
 // ===============================
-
-/** Carga números disponibles y actualiza la barra de progreso */
 async function actualizarEstadoGlobal() {
-    try {
-        // Contenedor actualizado: solo existe el del modal
-        const numerosContainer = document.getElementById("listaDisponibles");
-        if (!numerosContainer) {
-            console.warn("⚠️ No se encontró el contenedor de números (#listaDisponibles).");
-            return;
-        }
+  try {
+    const numerosContainer = document.getElementById("listaDisponibles");
+    if (!numerosContainer) return;
 
-        // Cargar números disponibles
-        const resNumeros = await fetch("/api/tickets/numeros");
-        if (!resNumeros.ok) throw new Error("No se pudieron cargar los números");
+    // 🎟️ Cargar números
+    const resNumeros = await fetch("/api/tickets/numeros");
+    if (!resNumeros.ok) throw new Error("No se pudieron cargar los números");
 
-        const dataNumeros = await resNumeros.json();
-        if (!dataNumeros.exito) throw new Error("Respuesta inválida de números");
+    const dataNumeros = await resNumeros.json();
+    if (!dataNumeros.exito) throw new Error("Respuesta inválida de números");
 
-        // Renderizar números en el modal
-        numerosContainer.innerHTML = "";
-        dataNumeros.numeros.forEach((item) => {
-            const btn = document.createElement("button");
-            btn.textContent = String(item.numero).padStart(3, '0');
-            btn.className = item.disponible ? "numero disponible" : "numero ocupado";
-            btn.disabled = !item.disponible;
+    numerosContainer.innerHTML = "";
+    dataNumeros.numeros.forEach((item) => {
+      const btn = document.createElement("button");
+      btn.textContent = String(item.numero).padStart(3, "0");
+      btn.className = item.disponible ? "numero disponible" : "numero ocupado";
+      btn.disabled = !item.disponible;
 
-            if (item.disponible) {
-                // Permitir selección visual
-                btn.addEventListener("click", () => {
-                    btn.classList.toggle("seleccionado");
-                });
-            }
+      if (item.disponible) {
+        btn.addEventListener("click", () => btn.classList.toggle("seleccionado"));
+      }
 
-            numerosContainer.appendChild(btn);
-        });
+      numerosContainer.appendChild(btn);
+    });
 
-        console.log("🎟️ Números cargados y renderizados en el modal.");
+    console.log("🎟️ Números cargados correctamente.");
 
-        // Cargar progreso
-        const resConsulta = await fetch("/api/tickets/consulta");
-        if (!resConsulta.ok) throw new Error("No se pudo cargar la consulta");
-        const dataConsulta = await resConsulta.json();
+    // 📊 Cargar progreso
+    const resConsulta = await fetch("/api/tickets/consulta");
+    if (!resConsulta.ok) throw new Error("No se pudo cargar la consulta");
 
-        if (dataConsulta.exito) {
-            actualizarBarra(dataConsulta.total, dataConsulta.porcentaje);
-            console.log("📊 Progreso actualizado correctamente.");
-        }
+    const dataConsulta = await resConsulta.json();
+    if (dataConsulta.exito) {
+      const totalVendidos = dataConsulta.total || 0;
+      const totalBoletos = dataConsulta.totalBoletos || 1000;
+      const porcentaje = ((totalVendidos / totalBoletos) * 100).toFixed(1);
 
-    } catch (err) {
-        console.error("❌ Error en la actualización global:", err);
-        mostrarMensaje("🚫 Error al sincronizar el estado del juego.", "error");
+      actualizarBarra(totalVendidos, porcentaje, totalBoletos);
+      console.log("📊 Barra de progreso actualizada.");
     }
+  } catch (err) {
+    console.error("❌ Error en actualización global:", err);
+    mostrarMensaje("🚫 Error al sincronizar el estado del juego.", "error");
+  }
 }
 
-
-
 // ===============================
-// 📥 Envío de formulario (RESERVAR)
+// 📥 ENVÍO DEL FORMULARIO (RESERVAR)
 // ===============================
 if (form) {
-    form.addEventListener("submit", async (e) => {
-        e.preventDefault();
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
 
-        const nombre = document.getElementById("nombre")?.value.trim();
-        const correo = document.getElementById("correo")?.value.trim();
-        const telefono = document.getElementById("telefono")?.value.trim();
-        
-        const numerosSeleccionados = obtenerNumerosSeleccionados(); 
+    const nombre = document.getElementById("nombre")?.value.trim();
+    const correo = document.getElementById("correo")?.value.trim();
+    const telefono = document.getElementById("telefono")?.value.trim();
+    const numerosSeleccionados = obtenerNumerosSeleccionados();
 
-        // Validaciones
-        if (!nombre || !correo || !telefono) {
-            mostrarMensaje("⚠️ Completa todos los campos.", "error");
-            return;
-        }
-        if (numerosSeleccionados.length < 1) {
-            mostrarMensaje("⚠️ Debes seleccionar al menos un número.", "error");
-            return;
-        }
+    if (!nombre || !correo || !telefono) {
+      mostrarMensaje("⚠️ Completa todos los campos.", "error");
+      return;
+    }
+    if (numerosSeleccionados.length < 1) {
+      mostrarMensaje("⚠️ Debes seleccionar al menos un número.", "error");
+      return;
+    }
 
-        spinner?.classList.remove("hidden");
-        mensaje.textContent = "";
-        pagoBox?.classList.add("hidden");
-        toggleUI(true); // Deshabilitar UI durante la reserva
+    spinner?.classList.remove("hidden");
+    mensaje.textContent = "";
+    pagoBox?.classList.add("hidden");
+    toggleUI(true);
 
-        try {
-            // 1️⃣ Guardar pendiente en el backend
-            const res = await fetch("/api/tickets/guardar-pendiente", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ nombre, correo, telefono, numeros: numerosSeleccionados }), 
-            });
+    try {
+      const res = await fetch("/api/tickets/guardar-pendiente", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre, correo, telefono, numeros: numerosSeleccionados }),
+      });
 
-            const data = await res.json();
-            if (!res.ok || !data.exito) throw new Error(data.mensaje || "Error guardando pendiente");
+      const data = await res.json();
+      if (!res.ok || !data.exito) throw new Error(data.mensaje || "Error guardando pendiente");
 
-            const precio = CONFIG.precio || 5000;
-            const totalAmount = precio * numerosSeleccionados.length;
+      const precio = CONFIG.precio || 5000;
+      const totalAmount = precio * numerosSeleccionados.length;
 
-            // 2️⃣ Almacenar datos completos para el pago
-            PAGO_PENDIENTE = {
-                nombre: nombre,
-                correo: correo,
-                telefono: telefono,
-                reference: data.reference,
-                amount: totalAmount, // Monto total en COP
-            };
+      PAGO_PENDIENTE = { nombre, correo, telefono, reference: data.reference, amount: totalAmount };
 
-            console.log("💾 Pendiente guardado. Referencia:", data.reference);
+      console.log("💾 Pendiente guardado. Ref:", data.reference);
 
-            // 3️⃣ Mostrar botón de pago y mantener formulario y números deshabilitados
-            pagoBox?.classList.remove("hidden");
-            mostrarMensaje(`✅ Números reservados por 15 minutos. Total a pagar: $${totalAmount.toLocaleString('es-CO')}. Presiona 'Pagar con Mercado Pago'.`, "exito");
-            
-            // Re-sincronizar el estado de la UI (solo los números ocupados por la reserva)
-            await actualizarEstadoGlobal();
-            toggleUI(true); // Asegurar que todo siga deshabilitado hasta el pago
+      pagoBox?.classList.remove("hidden");
+      mostrarMensaje(
+        `✅ Números reservados por 15 minutos. Total a pagar: $${totalAmount.toLocaleString(
+          "es-CO"
+        )}. Presiona 'Pagar con Mercado Pago'.`,
+        "exito"
+      );
 
-        } catch (error) {
-            console.error("❌ Error en flujo de reserva:", error);
-            mostrarMensaje("🚫 Error al reservar: " + (error.message || "Intenta más tarde"), "error");
-            toggleUI(false); // Re-habilitar UI en caso de error
-        } finally {
-            spinner?.classList.add("hidden");
-        }
-    });
+      await actualizarEstadoGlobal();
+      toggleUI(true);
+    } catch (error) {
+      console.error("❌ Error en reserva:", error);
+      mostrarMensaje("🚫 Error al reservar: " + (error.message || "Intenta más tarde"), "error");
+      toggleUI(false);
+    } finally {
+      spinner?.classList.add("hidden");
+    }
+  });
 }
 
-
 // ===============================
-// 🚀 INICIO DE PAGO CON MERCADO PAGO
+// 💳 INICIO DE PAGO CON MERCADO PAGO
 // ===============================
 if (mercadoPagoButton) {
-    mercadoPagoButton.addEventListener('click', startMercadoPagoFlow);
+  mercadoPagoButton.addEventListener("click", startMercadoPagoFlow);
 }
 
 async function startMercadoPagoFlow() {
-    const { reference, amount, correo, nombre, telefono } = PAGO_PENDIENTE;
+  const { reference, amount, correo, nombre, telefono } = PAGO_PENDIENTE;
 
-    if (!reference || amount === 0) {
-        mostrarMensaje("⚠️ Primero debes reservar tus números.", "error");
-        return;
+  if (!reference || amount === 0) {
+    mostrarMensaje("⚠️ Primero debes reservar tus números.", "error");
+    return;
+  }
+
+  mercadoPagoButton.disabled = true;
+  spinner?.classList.remove("hidden");
+  mostrarMensaje("⏳ Creando orden de pago...", "exito");
+
+  try {
+    const res = await fetch("/api/mercadopago/preference", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reference, monto: amount, nombre, correo, telefono }),
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.exito) throw new Error(data.mensaje || "Error al generar la preferencia.");
+
+    if (data.init_point) {
+      window.location.href = data.init_point;
+    } else {
+      throw new Error("El backend no devolvió la URL de pago.");
     }
-
-    mercadoPagoButton.disabled = true;
-    spinner?.classList.remove("hidden");
-    mostrarMensaje("⏳ Creando orden de pago...", "exito"); // Cambiado a exito/info para no alarmar
-
-    try {
-        // 1. Llamar al endpoint del backend para crear la preferencia
-        const res = await fetch("/api/mercadopago/preference", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                reference,
-                monto: amount,
-                nombre,
-                correo,
-                telefono,
-            }),
-        });
-
-        const data = await res.json();
-
-        if (!res.ok || !data.exito) {
-            throw new Error(data.mensaje || "Error al generar la preferencia de pago.");
-        }
-
-        const { init_point } = data; 
-
-        if (init_point) {
-            // 2. Redirigir al usuario a la URL de Mercado Pago
-            window.location.href = init_point;
-        } else {
-            throw new Error("El backend no devolvió la URL de pago.");
-        }
-
-    } catch (error) {
-        console.error("❌ Error en flujo de pago:", error);
-        mostrarMensaje("🚫 Error al iniciar el pago: " + (error.message || "Intenta más tarde"), "error");
-        mercadoPagoButton.disabled = false;
-        toggleUI(false); // Re-habilitar UI si falla el inicio de pago
-    } finally {
-        spinner?.classList.add("hidden");
-    }
+  } catch (error) {
+    console.error("❌ Error en flujo de pago:", error);
+    mostrarMensaje("🚫 Error al iniciar el pago: " + (error.message || "Intenta más tarde"), "error");
+    mercadoPagoButton.disabled = false;
+    toggleUI(false);
+  } finally {
+    spinner?.classList.add("hidden");
+  }
 }
 
-
 // ===============================
-// 🚀 Al iniciar (Lógica sincronizada)
+// 🚀 INICIO
 // ===============================
 document.addEventListener("DOMContentLoaded", async () => {
-    await cargarConfig();
-    // 💡 Usamos la función de actualización central al inicio
-    await actualizarEstadoGlobal(); 
+  await cargarConfig();
+  await actualizarEstadoGlobal();
 });

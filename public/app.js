@@ -6,7 +6,7 @@ const mensaje = document.getElementById("mensaje");
 const spinner = document.getElementById("spinner");
 const barraProgresoRelleno = document.querySelector(".relleno");
 const barraProgresoTexto = document.getElementById("porcentaje");
-const numerosContainer = document.getElementById("numeros-container");
+const contenedorNumeros = document.getElementById("listaDisponibles");
 
 // Nuevos elementos del frontend para el flujo de pago
 const pagoBox = document.getElementById("pago-box");
@@ -99,6 +99,13 @@ function toggleUI(disabled) {
 /** Carga números disponibles y actualiza la barra de progreso */
 async function actualizarEstadoGlobal() {
     try {
+        // Contenedor actualizado: solo existe el del modal
+        const numerosContainer = document.getElementById("listaDisponibles");
+        if (!numerosContainer) {
+            console.warn("⚠️ No se encontró el contenedor de números (#listaDisponibles).");
+            return;
+        }
+
         // Cargar números disponibles
         const resNumeros = await fetch("/api/tickets/numeros");
         if (!resNumeros.ok) throw new Error("No se pudieron cargar los números");
@@ -106,17 +113,16 @@ async function actualizarEstadoGlobal() {
         const dataNumeros = await resNumeros.json();
         if (!dataNumeros.exito) throw new Error("Respuesta inválida de números");
 
-        // Renderizar números
+        // Renderizar números en el modal
         numerosContainer.innerHTML = "";
         dataNumeros.numeros.forEach((item) => {
             const btn = document.createElement("button");
-            
             btn.textContent = String(item.numero).padStart(3, '0');
             btn.className = item.disponible ? "numero disponible" : "numero ocupado";
             btn.disabled = !item.disponible;
 
             if (item.disponible) {
-                // Al hacer clic, simplemente alternamos la clase 'seleccionado'
+                // Permitir selección visual
                 btn.addEventListener("click", () => {
                     btn.classList.toggle("seleccionado");
                 });
@@ -124,17 +130,17 @@ async function actualizarEstadoGlobal() {
 
             numerosContainer.appendChild(btn);
         });
-        
-        console.log("🎟️ Números cargados y renderizados.");
+
+        console.log("🎟️ Números cargados y renderizados en el modal.");
 
         // Cargar progreso
         const resConsulta = await fetch("/api/tickets/consulta");
         if (!resConsulta.ok) throw new Error("No se pudo cargar la consulta");
         const dataConsulta = await resConsulta.json();
-        
+
         if (dataConsulta.exito) {
             actualizarBarra(dataConsulta.total, dataConsulta.porcentaje);
-            console.log("📊 Progreso actualizado.");
+            console.log("📊 Progreso actualizado correctamente.");
         }
 
     } catch (err) {
@@ -142,6 +148,7 @@ async function actualizarEstadoGlobal() {
         mostrarMensaje("🚫 Error al sincronizar el estado del juego.", "error");
     }
 }
+
 
 
 // ===============================

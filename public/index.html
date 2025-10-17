@@ -291,6 +291,19 @@
       <button id="verDisponibles">🔍 Ver y Elegir Números Disponibles</button>
     </section>
 
+
+  <!-- 🪟 Modal con los números -->
+  <div id="modalDisponibles" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>🎟️ Números Disponibles</h3>
+        <button class="close-modal">&times;</button>
+      </div>
+      <div id="listaDisponibles" class="grid-numeros"></div>
+      <button id="btnConfirmar" class="confirmar-numeros">Confirmar selección</button>
+    </div>
+  </div>
+
     <section>
       <h2>Tus datos 📋</h2>
       <form id="formulario">
@@ -308,19 +321,6 @@
       <p class="small-text">Serás redirigido a la pasarela segura de Mercado Pago.</p>
     </section>
   </div>
-
-  <!-- 🪟 Modal con los números -->
-  <div id="modalDisponibles" class="modal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>🎟️ Números Disponibles</h3>
-        <button class="close-modal">&times;</button>
-      </div>
-      <div id="listaDisponibles" class="grid-numeros"></div>
-      <button id="btnConfirmar" class="confirmar-numeros">Confirmar selección</button>
-    </div>
-  </div>
-
   <script src="app.js"></script>
 
   <script>

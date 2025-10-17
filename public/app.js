@@ -81,7 +81,7 @@ async function actualizarEstadoGlobal() {
     const numerosContainer = document.getElementById("listaDisponibles");
     if (!numerosContainer) return;
 
-    // Números
+    // Números disponibles
     const resNumeros = await fetch("/api/tickets/numeros");
     const dataNumeros = await resNumeros.json();
     if (!dataNumeros.exito) throw new Error("Error al obtener números");
@@ -98,15 +98,26 @@ async function actualizarEstadoGlobal() {
       numerosContainer.appendChild(btn);
     });
 
-    // Progreso
+    // Consulta de progreso
     const resConsulta = await fetch("/api/tickets/consulta");
     const dataConsulta = await resConsulta.json();
+
     if (dataConsulta.exito) {
-      actualizarBarra(dataConsulta.total, dataConsulta.porcentaje);
+      // Si no llega el número total, lo calculamos a partir del porcentaje
+      let vendidos = dataConsulta.total;
+      let porcentaje = parseFloat(dataConsulta.porcentaje) || 0;
+
+      if ((vendidos === undefined || vendidos === null) && porcentaje > 0) {
+        vendidos = Math.round((porcentaje / 100) * 1000);
+      }
+
+      actualizarBarra(vendidos, porcentaje);
+      console.log(`📊 Barra actualizada: ${vendidos} vendidos (${porcentaje}%)`);
     }
+
   } catch (err) {
-    console.error("❌ Error actualizando:", err);
-    mostrarMensaje("🚫 Error al cargar los datos.", "error");
+    console.error("❌ Error actualizando estado global:", err);
+    mostrarMensaje("🚫 Error al cargar los datos de la rifa.", "error");
   }
 }
 

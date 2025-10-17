@@ -6,19 +6,24 @@ const router = Router();
 const TOTAL_NUMEROS = 1000;
 
 // ─── FUNCIÓN AUXILIAR ─────────────────────────────
-// Obtiene todos los números ocupados (pagados) de la BD
-async function obtenerNumerosOcupados() {
-  const boletos = await Ticket.find({}, "numeros -_id").lean();
-  const ocupados = new Set();
+/** Obtiene todos los números ocupados (pagados) y pendientes de la BD */
+async function obtenerNumerosEstado() {
+  const boletosPagados = await Ticket.find({}, "numeros -_id").lean();
+  const boletosPendientes = await Pendiente.find({}, "numeros -_id").lean();
 
-  for (const b of boletos) {
-    for (const n of b.numeros || []) {
-      // Normalizamos a 3 dígitos: 1 → "001"
-      ocupados.add(n.toString().padStart(3, "0"));
-    }
-  }
+  const pagados = new Set();
+  const pendientes = new Set();
 
-  return ocupados;
+  // Normalizamos formato: 1 → "001"
+  boletosPagados.forEach((b) =>
+    b.numeros?.forEach((n) => pagados.add(n.toString().padStart(3, "0")))
+  );
+
+  boletosPendientes.forEach((b) =>
+    b.numeros?.forEach((n) => pendientes.add(n.toString().padStart(3, "0")))
+  );
+
+  return { pagados, pendientes };
 }
 
 // ─── RUTA: GET /api/tickets ────────────────────────
@@ -28,32 +33,33 @@ router.get("/", async (req, res) => {
     res.json({ exito: true, tickets });
   } catch (error) {
     console.error("❌ Error obteniendo tickets:", error);
-    res
-      .status(500)
-      .json({ exito: false, mensaje: "Error interno al obtener tickets." });
+    res.status(500).json({
+      exito: false,
+      mensaje: "Error interno al obtener tickets.",
+    });
   }
 });
 
 // ─── RUTA: GET /api/tickets/numeros ────────────────
-// Devuelve todos los números del 000 al 999 y marca ocupados los que estén en la BD
 router.get("/numeros", async (req, res) => {
   try {
-    const usados = await obtenerNumerosOcupados();
+    const { pagados, pendientes } = await obtenerNumerosEstado();
 
     const numeros = Array.from({ length: TOTAL_NUMEROS }, (_, i) => {
       const numero = i.toString().padStart(3, "0");
-      return {
-        numero,
-        disponible: !usados.has(numero),
-      };
+
+      if (pagados.has(numero)) return { numero, estado: "ocupado" };
+      if (pendientes.has(numero)) return { numero, estado: "pendiente" };
+      return { numero, estado: "disponible" };
     });
 
     res.json(numeros);
   } catch (error) {
     console.error("❌ Error obteniendo números:", error);
-    res
-      .status(500)
-      .json({ exito: false, mensaje: "Error interno al obtener números." });
+    res.status(500).json({
+      exito: false,
+      mensaje: "Error interno al obtener números.",
+    });
   }
 });
 
@@ -73,9 +79,10 @@ router.get("/consulta", async (req, res) => {
     res.json({ exito: true, vendidos, porcentaje });
   } catch (error) {
     console.error("❌ Error en /consulta:", error);
-    res
-      .status(500)
-      .json({ exito: false, mensaje: "Error interno al consultar progreso." });
+    res.status(500).json({
+      exito: false,
+      mensaje: "Error interno al consultar progreso.",
+    });
   }
 });
 
@@ -97,15 +104,16 @@ router.post("/guardar-pendiente", async (req, res) => {
   }
 
   try {
-    const usados = await obtenerNumerosOcupados();
-    const repetidos = numeros.filter(
-      (n) => usados.has(n.toString().padStart(3, "0"))
-    );
+    const { pagados, pendientes } = await obtenerNumerosEstado();
+    const repetidos = numeros.filter((n) => {
+      const normalizado = n.toString().padStart(3, "0");
+      return pagados.has(normalizado) || pendientes.has(normalizado);
+    });
 
     if (repetidos.length) {
       return res.status(409).json({
         exito: false,
-        mensaje: `Los números ${repetidos.join(", ")} ya están ocupados.`,
+        mensaje: `Los números ${repetidos.join(", ")} ya están ocupados o pendientes.`,
       });
     }
 
@@ -115,20 +123,21 @@ router.post("/guardar-pendiente", async (req, res) => {
       nombre,
       correo,
       telefono,
-      numeros,
+      numeros: numeros.map((n) => n.toString().padStart(3, "0")),
       reference: transaction_reference,
     });
 
     res.json({
       exito: true,
-      mensaje: "Números reservados. Procede al pago con Mercado Pago.",
+      mensaje: "Números reservados temporalmente. Procede al pago.",
       reference: transaction_reference,
     });
   } catch (error) {
     console.error("❌ Error guardando pendiente:", error);
-    res
-      .status(500)
-      .json({ exito: false, mensaje: "Error interno al guardar la reserva." });
+    res.status(500).json({
+      exito: false,
+      mensaje: "Error interno al guardar la reserva.",
+    });
   }
 });
 
@@ -137,17 +146,3 @@ router.delete("/:id", async (req, res) => {
   try {
     const eliminado = await Ticket.findByIdAndDelete(req.params.id);
     if (!eliminado) {
-      return res
-        .status(404)
-        .json({ exito: false, mensaje: "Ticket no encontrado." });
-    }
-    res.json({ exito: true, mensaje: "🗑️ Ticket eliminado correctamente." });
-  } catch (error) {
-    console.error("❌ Error eliminando ticket:", error);
-    res
-      .status(500)
-      .json({ exito: false, mensaje: "Error interno al eliminar ticket." });
-  }
-});
-
-export default router;

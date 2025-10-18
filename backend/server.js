@@ -145,9 +145,9 @@ app.post("/api/mercadopago/preference", async (req, res) => {
       external_reference: reference,
       auto_return: "approved",
       back_urls: {
-        success: `${process.env.URL_SUCCESS}.html`,
-        failure: `${process.env.URL_FAILURE}.html`,
-        pending: `${process.env.URL_PENDING}.html`,
+        success: process.env.URL_SUCCESS,
+        failure: process.env.URL_FAILURE,
+        pending: process.env.URL_PENDING,
       },
     };
 

@@ -26,7 +26,7 @@ router.get("/tickets", isAdmin, async (req, res) => {
     const ticketsPagados = await Ticket.find({}).lean();
     const ticketsPendientes = await Pendiente.find({}).lean();
 
-    const precioBoleto = Number(process.env.PRECIO_BOLETO) || 5000;
+    const precioBoleto = Number(process.env.PRECIO_BOLETO) || 26400;
 
     const ticketsPendientesMapeados = ticketsPendientes.map((p) => ({
       _id: p._id,

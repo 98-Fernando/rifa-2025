@@ -1,12 +1,36 @@
 import { Router } from "express";
 import Ticket from "../models/Ticket.js";
 import Pendiente from "../models/Pendiente.js";
+import nodemailer from "nodemailer";
 
 const router = Router();
 const TOTAL_NUMEROS = 1000;
 
+// ─── CONFIGURAR TRANSPORTE DE CORREO ───────────────
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: "rifasysorteospop@gmail.com", 
+    pass: "ipps awpx whhd muke", 
+  },
+});
+
+// ─── FUNCIÓN: Enviar correo ─────────────────────────
+async function enviarCorreo(destinatario, asunto, html) {
+  try {
+    await transporter.sendMail({
+      from: '"Rifa Solidaria 🎟️" <tu_correo@gmail.com>',
+      to: destinatario,
+      subject: asunto,
+      html,
+    });
+    console.log(`✅ Correo enviado a ${destinatario}`);
+  } catch (error) {
+    console.error("❌ Error enviando correo:", error);
+  }
+}
+
 // ─── FUNCIÓN AUXILIAR ─────────────────────────────
-/** Obtiene todos los números ocupados (pagados) y pendientes de la BD */
 async function obtenerNumerosEstado() {
   const boletosPagados = await Ticket.find({}, "numeros -_id").lean();
   const boletosPendientes = await Pendiente.find({}, "numeros -_id").lean();
@@ -14,7 +38,6 @@ async function obtenerNumerosEstado() {
   const pagados = new Set();
   const pendientes = new Set();
 
-  // Normalizamos formato: 1 → "001"
   boletosPagados.forEach((b) =>
     b.numeros?.forEach((n) => pagados.add(n.toString().padStart(3, "0")))
   );
@@ -26,21 +49,18 @@ async function obtenerNumerosEstado() {
   return { pagados, pendientes };
 }
 
-// ─── RUTA: GET /api/tickets ────────────────────────
+// ─── GET: /api/tickets ─────────────────────────────
 router.get("/", async (req, res) => {
   try {
     const tickets = await Ticket.find().sort({ createdAt: -1 });
     res.json({ exito: true, tickets });
   } catch (error) {
     console.error("❌ Error obteniendo tickets:", error);
-    res.status(500).json({
-      exito: false,
-      mensaje: "Error interno al obtener tickets.",
-    });
+    res.status(500).json({ exito: false, mensaje: "Error interno al obtener tickets." });
   }
 });
 
-// ─── RUTA: GET /api/tickets/numeros ────────────────
+// ─── GET: /api/tickets/numeros ─────────────────────
 router.get("/numeros", async (req, res) => {
   try {
     const { pagados, pendientes } = await obtenerNumerosEstado();
@@ -56,47 +76,29 @@ router.get("/numeros", async (req, res) => {
     res.json(numeros);
   } catch (error) {
     console.error("❌ Error obteniendo números:", error);
-    res.status(500).json({
-      exito: false,
-      mensaje: "Error interno al obtener números.",
-    });
+    res.status(500).json({ exito: false, mensaje: "Error interno al obtener números." });
   }
 });
 
-// ─── RUTA: GET /api/tickets/consulta ───────────────
+// ─── GET: /api/tickets/consulta ────────────────────
 router.get("/consulta", async (req, res) => {
   try {
     const tickets = await Ticket.find({}, "numeros").lean();
-    const vendidos = tickets.reduce(
-      (sum, t) => sum + (t.numeros?.length || 0),
-      0
-    );
-    const porcentaje = Math.min(
-      100,
-      Math.floor((vendidos / TOTAL_NUMEROS) * 100)
-    );
+    const vendidos = tickets.reduce((sum, t) => sum + (t.numeros?.length || 0), 0);
+    const porcentaje = Math.min(100, Math.floor((vendidos / TOTAL_NUMEROS) * 100));
 
     res.json({ exito: true, vendidos, porcentaje });
   } catch (error) {
     console.error("❌ Error en /consulta:", error);
-    res.status(500).json({
-      exito: false,
-      mensaje: "Error interno al consultar progreso.",
-    });
+    res.status(500).json({ exito: false, mensaje: "Error interno al consultar progreso." });
   }
 });
 
-// ─── RUTA: POST /api/tickets/guardar-pendiente ─────
+// ─── POST: /api/tickets/guardar-pendiente ──────────
 router.post("/guardar-pendiente", async (req, res) => {
   const { nombre, correo, telefono, numeros } = req.body;
 
-  if (
-    !nombre ||
-    !correo ||
-    !telefono ||
-    !Array.isArray(numeros) ||
-    numeros.length === 0
-  ) {
+  if (!nombre || !correo || !telefono || !Array.isArray(numeros) || numeros.length === 0) {
     return res.status(400).json({
       exito: false,
       mensaje: "Datos incompletos o sin números seleccionados.",
@@ -118,49 +120,97 @@ router.post("/guardar-pendiente", async (req, res) => {
     }
 
     const transaction_reference = `RIFA-${Date.now()}`;
+    const numerosFormateados = numeros.map((n) => n.toString().padStart(3, "0"));
 
     await Pendiente.create({
       nombre,
       correo,
       telefono,
-      numeros: numeros.map((n) => n.toString().padStart(3, "0")),
+      numeros: numerosFormateados,
       reference: transaction_reference,
     });
 
+    // ✉️ Enviar correo de confirmación de reserva
+    await enviarCorreo(
+      correo,
+      "🎟️ Reserva pendiente - Rifa Solidaria",
+      `
+      <h2>Hola ${nombre},</h2>
+      <p>Has reservado temporalmente los siguientes números:</p>
+      <h3>${numerosFormateados.join(", ")}</h3>
+      <p>Por favor, realiza el pago lo antes posible para confirmar tu participación.</p>
+      <p><b>Referencia de reserva:</b> ${transaction_reference}</p>
+      <p>Gracias por apoyar nuestra causa 💛</p>
+      `
+    );
+
     res.json({
       exito: true,
-      mensaje: "Números reservados temporalmente. Procede al pago.",
+      mensaje: "Números reservados temporalmente. Se envió correo de confirmación.",
       reference: transaction_reference,
     });
   } catch (error) {
     console.error("❌ Error guardando pendiente:", error);
-    res.status(500).json({
-      exito: false,
-      mensaje: "Error interno al guardar la reserva.",
-    });
+    res.status(500).json({ exito: false, mensaje: "Error interno al guardar la reserva." });
   }
 });
 
-// ─── RUTA: DELETE /api/tickets/:id ─────────────────
+// ─── POST: /api/tickets/confirmar-pago ─────────────
+// (Usar esta ruta cuando se marque como pagado y se mueva a Tickets)
+router.post("/confirmar-pago", async (req, res) => {
+  const { idPendiente } = req.body;
+
+  try {
+    const pendiente = await Pendiente.findById(idPendiente);
+    if (!pendiente) {
+      return res.status(404).json({ exito: false, mensaje: "Reserva no encontrada." });
+    }
+
+    const nuevoTicket = await Ticket.create({
+      nombre: pendiente.nombre,
+      correo: pendiente.correo,
+      telefono: pendiente.telefono,
+      numeros: pendiente.numeros,
+      reference: pendiente.reference,
+    });
+
+    await Pendiente.findByIdAndDelete(idPendiente);
+
+    // ✉️ Enviar correo de confirmación de pago
+    await enviarCorreo(
+      pendiente.correo,
+      "✅ Pago confirmado - Rifa Solidaria",
+      `
+      <h2>¡Gracias ${pendiente.nombre}! 🎉</h2>
+      <p>Tu pago ha sido confirmado y tus números ya están activos:</p>
+      <h3>${pendiente.numeros.join(", ")}</h3>
+      <p><b>Referencia:</b> ${pendiente.reference}</p>
+      <p>Mucha suerte 🍀 y gracias por participar en nuestra rifa solidaria.</p>
+      `
+    );
+
+    res.json({
+      exito: true,
+      mensaje: "Pago confirmado y correo enviado al participante.",
+      ticket: nuevoTicket,
+    });
+  } catch (error) {
+    console.error("❌ Error confirmando pago:", error);
+    res.status(500).json({ exito: false, mensaje: "Error al confirmar el pago." });
+  }
+});
+
+// ─── DELETE: /api/tickets/:id ──────────────────────
 router.delete("/:id", async (req, res) => {
   try {
     const eliminado = await Ticket.findByIdAndDelete(req.params.id);
     if (!eliminado) {
-      return res.status(404).json({
-        exito: false,
-        mensaje: "Ticket no encontrado.",
-      });
+      return res.status(404).json({ exito: false, mensaje: "Ticket no encontrado." });
     }
-    res.json({
-      exito: true,
-      mensaje: "🗑️ Ticket eliminado correctamente.",
-    });
+    res.json({ exito: true, mensaje: "🗑️ Ticket eliminado correctamente." });
   } catch (error) {
     console.error("❌ Error eliminando ticket:", error);
-    res.status(500).json({
-      exito: false,
-      mensaje: "Error interno al eliminar ticket.",
-    });
+    res.status(500).json({ exito: false, mensaje: "Error interno al eliminar ticket." });
   }
 });
 

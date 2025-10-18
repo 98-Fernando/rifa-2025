@@ -136,7 +136,7 @@ const dataPendiente = await resPendiente.json();
 if (!dataPendiente.exito) throw new Error(dataPendiente.mensaje || "Error al guardar pendiente");
 
 const referencia = dataPendiente.reference;
-const monto = (CONFIG.precio || 5000) * numeros.length;
+const monto = (CONFIG.precio || 26400) * numeros.length;
 
 // 2️⃣ Crear preferencia de pago
 const resPago = await fetch("/api/mercadopago/preference", {

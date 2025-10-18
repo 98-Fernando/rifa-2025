@@ -111,7 +111,7 @@ const isAdmin = (req, res, next) => {
 app.get("/api/config", (req, res) => {
   res.json({
     exito: true,
-    precio: Number(process.env.PRECIO_BOLETO) || 5000,
+    precio: Number(process.env.PRECIO_BOLETO) || 26400,
     nonce: res.locals.nonce,
   });
 });

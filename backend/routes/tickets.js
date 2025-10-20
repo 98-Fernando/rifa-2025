@@ -10,10 +10,9 @@ const TOTAL_NUMEROS = 1000;
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "rifasysorteospop@gmail.com", 
-    pass: "ipps awpx whhd muke", 
-  },
-});
+  user: process.env.EMAIL_USER,
+  pass: process.env.EMAIL_PASS,
+},
 
 // ─── FUNCIÓN: Enviar correo ─────────────────────────
 async function enviarCorreo(destinatario, asunto, html) {

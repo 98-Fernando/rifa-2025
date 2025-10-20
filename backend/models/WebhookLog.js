@@ -6,10 +6,12 @@ const WebhookLogSchema = new mongoose.Schema(
     reference: { type: String },
     status: { type: String },
     type: { type: String },
-    rawBody: { type: Object }, // Guarda el JSON completo que llega
-    fecha: { type: Date, default: Date.now },
+    rawBody: { type: Object },
   },
   { timestamps: true }
 );
+
+// Índice para ordenar y buscar rápido por tipo o referencia
+WebhookLogSchema.index({ createdAt: -1, type: 1 });
 
 export default mongoose.model("WebhookLog", WebhookLogSchema);

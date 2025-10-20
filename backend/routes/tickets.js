@@ -10,8 +10,8 @@ const TOTAL_NUMEROS = 1000;
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-  user: process.env.EMAIL_USER,
-  pass: process.env.EMAIL_PASS,
+  user: process.env.CORREO_APP,
+  pass: process.env.CLAVE.APP,
 },
 
 // ─── FUNCIÓN: Enviar correo ─────────────────────────

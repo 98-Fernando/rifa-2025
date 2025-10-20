@@ -99,21 +99,6 @@ router.post("/guardar-pendiente", async (req, res) => {
       numeros: numerosFormateados,
       reference: transaction_reference,
     });
-
-    // ✉️ Enviar correo de confirmación
-    await enviarCorreo(
-      correo,
-      "🎟️ Reserva pendiente - Rifa ",
-      `
-        <h2>Hola ${nombre},</h2>
-        <p>Has reservado temporalmente los siguientes números:</p>
-        <h3>${numerosFormateados.join(", ")}</h3>
-        <p>Por favor, realiza el pago lo antes posible para confirmar tu participación.</p>
-        <p><b>Referencia de reserva:</b> ${transaction_reference}</p>
-        <p>Gracias por apoyar nuestra causa 💛</p>
-      `
-    );
-
     res.json({
       exito: true,
       mensaje: "Números reservados temporalmente. Se envió correo de confirmación.",

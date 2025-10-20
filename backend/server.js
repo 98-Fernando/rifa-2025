@@ -10,11 +10,12 @@ import rateLimit from "express-rate-limit";
 import crypto from "crypto";
 import { config } from "dotenv";
 import { fileURLToPath } from "url";
-import { MercadoPagoConfig, Preference } from "mercadopago";
+import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
 
 // Rutas
 import ticketsRouter from "./routes/tickets.js";
 import adminApiRouter from "./routes/admin.js";
+import Ticket from "./models/Ticket.js"; // ✅ asegúrate que exista este modelo
 
 // ==================== CONFIGURACIÓN BASE ====================
 const __filename = fileURLToPath(import.meta.url);
@@ -34,6 +35,7 @@ if (!MP_ACCESS_TOKEN) {
 
 const mpClient = new MercadoPagoConfig({ accessToken: MP_ACCESS_TOKEN });
 const mpPreference = new Preference(mpClient);
+const mpPayment = new Payment(mpClient);
 
 // ==================== SEGURIDAD ====================
 app.use((req, res, next) => {
@@ -88,7 +90,7 @@ app.use(
     }),
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // ✅ seguro solo en producción
+      secure: process.env.NODE_ENV === "production",
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: 1000 * 60 * 60 * 24,
     },
@@ -116,7 +118,7 @@ app.get("/api/config", (req, res) => {
   });
 });
 
-// ==================== MERCADO PAGO - CREAR PREFERENCIA ====================
+// ==================== CREAR PREFERENCIA DE PAGO ====================
 app.post("/api/mercadopago/preference", async (req, res) => {
   try {
     const { reference, nombre, correo, telefono, monto } = req.body;
@@ -149,6 +151,7 @@ app.post("/api/mercadopago/preference", async (req, res) => {
         failure: process.env.URL_FAILURE,
         pending: process.env.URL_PENDING,
       },
+      notification_url: "https://rifa-2025.onrender.com/api/mercadopago/webhook", // ✅ Webhook automático
     };
 
     const result = await mpPreference.create({ body: preference });
@@ -165,10 +168,44 @@ app.post("/api/mercadopago/preference", async (req, res) => {
   }
 });
 
+// ==================== WEBHOOK MERCADO PAGO ====================
+app.post("/api/mercadopago/webhook", async (req, res) => {
+  try {
+    const { type, data } = req.body;
+    if (type !== "payment") return res.sendStatus(200);
+
+    const paymentId = data.id;
+    const payment = await mpPayment.get({ id: paymentId });
+
+    if (!payment || !payment.external_reference) {
+      console.warn("⚠️ Pago sin referencia externa:", paymentId);
+      return res.sendStatus(200);
+    }
+
+    const reference = payment.external_reference;
+    const status = payment.status;
+
+    let nuevoEstado = "pendiente";
+    if (status === "approved") nuevoEstado = "pagado";
+    else if (status === "rejected") nuevoEstado = "rechazado";
+
+    await Ticket.findOneAndUpdate(
+      { reference },
+      { estadoPago: nuevoEstado },
+      { new: true }
+    );
+
+    console.log(`✅ Ticket ${reference} actualizado a ${nuevoEstado}`);
+    res.sendStatus(200);
+  } catch (err) {
+    console.error("❌ Error en webhook:", err);
+    res.sendStatus(500);
+  }
+});
+
 // ==================== LOGIN ADMIN ====================
 app.post("/api/admin/login", async (req, res) => {
   const { username, password } = req.body;
-
   if (
     username === process.env.ADMIN_USER &&
     password === process.env.ADMIN_PASS
@@ -176,7 +213,6 @@ app.post("/api/admin/login", async (req, res) => {
     req.session.isAdmin = true;
     return res.json({ success: true });
   }
-
   return res
     .status(401)
     .json({ success: false, mensaje: "Credenciales inválidas" });
@@ -198,7 +234,7 @@ app.get("/admin.html", isAdmin, (req, res) => {
   res.sendFile(path.join(PUBLIC_PATH, "admin.html"));
 });
 
-// ==================== ENLACE DE RUTAS PRINCIPALES ====================
+// ==================== RUTAS PRINCIPALES ====================
 app.use("/api/tickets", ticketsRouter);
 app.use("/api/admin", adminApiRouter);
 
@@ -216,5 +252,5 @@ app.use((req, res) => {
 // ==================== INICIO SERVIDOR ====================
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
-  console.log(`🌐 URL: http://localhost:${PORT}`);
+  console.log(`🌐 URL: https://rifa-2025.onrender.com`);
 });

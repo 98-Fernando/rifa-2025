@@ -11,6 +11,8 @@ import crypto from "crypto";
 import { config } from "dotenv";
 import { fileURLToPath } from "url";
 import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
+import WebhookLog from "./models/WebhookLog.js";
+
 
 // Rutas
 import ticketsRouter from "./routes/tickets.js";
@@ -176,7 +178,14 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
     const { type, data } = req.body;
     console.log("📦 Webhook recibido:", JSON.stringify(req.body, null, 2));
 
-    // Solo procesar pagos
+    // 🔹 Registrar el webhook en la base de datos
+    await WebhookLog.create({
+      type,
+      paymentId: data?.id || "sin-id",
+      rawBody: req.body,
+    });
+
+    // Solo procesar pagos válidos
     if (type !== "payment" || !data.id) return res.sendStatus(200);
 
     const paymentId = data.id;
@@ -184,6 +193,10 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
 
     if (!payment?.external_reference) {
       console.warn("⚠️ Pago sin external_reference:", paymentId);
+      await WebhookLog.updateOne(
+        { paymentId },
+        { $set: { status: payment?.status || "sin-status" } }
+      );
       return res.sendStatus(200);
     }
 
@@ -192,7 +205,13 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
 
     console.log(`📢 Estado de pago ${reference}: ${status}`);
 
-    // Ignorar pagos pendientes
+    // 🔹 Actualizar el log con más datos
+    await WebhookLog.updateOne(
+      { paymentId },
+      { $set: { reference, status } }
+    );
+
+    // Ignorar pagos pendientes o en proceso
     if (status === "pending" || status === "in_process") {
       console.log(`⏳ Pago pendiente o en proceso: ${reference}`);
       return res.sendStatus(200);
@@ -216,7 +235,7 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
 
       await enviarCorreo(
         pendiente.correo,
-        "✅ Pago confirmado - Rifa Solidaria",
+        "✅ Pago confirmado - Rifa",
         `
         <h2>¡Gracias ${pendiente.nombre}! 🎉</h2>
         <p>Tu pago ha sido confirmado y tus números ya están activos:</p>
@@ -239,6 +258,7 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
     res.sendStatus(500);
   }
 });
+
 
 // ==================== LOGIN ADMIN ====================
 app.post("/api/admin/login", async (req, res) => {

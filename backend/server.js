@@ -10,10 +10,9 @@ import rateLimit from "express-rate-limit";
 import crypto from "crypto";
 import { config } from "dotenv";
 import { fileURLToPath } from "url";
+import fetch from "node-fetch";
 import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
 import WebhookLog from "./models/WebhookLog.js";
-
-// Rutas y modelos
 import ticketsRouter from "./routes/tickets.js";
 import adminApiRouter from "./routes/admin.js";
 import Ticket from "./models/Ticket.js";
@@ -40,11 +39,10 @@ const mpClient = new MercadoPagoConfig({ accessToken: MP_ACCESS_TOKEN });
 const mpPreference = new Preference(mpClient);
 const mpPayment = new Payment(mpClient);
 
-// ==================== BODY PARSER (ANTES DE TODO) ====================
+// ==================== MIDDLEWARES ====================
 app.use(express.json({ type: "*/*" }));
 app.use(express.urlencoded({ extended: true }));
 
-// ==================== CORS ====================
 app.use(
   cors({
     origin: [
@@ -78,38 +76,38 @@ app.use(
   })
 );
 
-// ==================== CONEXIÓN BASE DE DATOS ====================
+// ==================== BASE DE DATOS ====================
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("✅ Conectado a MongoDB"))
   .catch((err) => console.error("❌ Error en MongoDB:", err));
 
-// ==================== AUTENTICACIÓN ADMIN ====================
+// ==================== AUTH ADMIN ====================
 const isAdmin = (req, res, next) => {
   if (req.session.isAdmin) return next();
   res.redirect("/login.html");
 };
 
-// ==================== CONFIG BASE ====================
+// ==================== CONFIG API ====================
 app.get("/api/config", (req, res) => {
   res.json({
     exito: true,
     precio: Number(process.env.PRECIO_BOLETO) || 100,
   });
 });
-import Pendiente from "../models/Pendiente.js"; // asegúrate de que esté importado
 
+// ==================== CREAR PREFERENCIA MERCADO PAGO ====================
 app.post("/api/mercadopago/preference", async (req, res) => {
   try {
     const { reference, nombre, correo, telefono, monto, numeros } = req.body;
 
-    if (!reference || !monto || !nombre || !numeros || numeros.length === 0) {
+    if (!reference || !monto || !nombre || !numeros?.length) {
       return res
         .status(400)
         .json({ exito: false, mensaje: "Faltan datos para generar el pago" });
     }
 
-    // 🔹 Guardar la compra pendiente ANTES de crear la preferencia
+    // 🔹 Guardar la compra pendiente antes de generar la preferencia
     await Pendiente.create({
       reference,
       nombre,
@@ -123,7 +121,7 @@ app.post("/api/mercadopago/preference", async (req, res) => {
       items: [
         {
           id: reference,
-          title: "Tickets de Rifa - Ref: " + reference,
+          title: `Tickets de Rifa - Ref: ${reference}`,
           quantity: 1,
           unit_price: Number(monto),
           currency_id: "COP",
@@ -146,64 +144,15 @@ app.post("/api/mercadopago/preference", async (req, res) => {
 
     const result = await mpPreference.create({ body: preference });
 
-    return res.json({
-      exito: true,
-      init_point: result.init_point,
-    });
+    console.log(`🧾 Preferencia creada correctamente: ${reference}`);
+    res.json({ exito: true, init_point: result.init_point });
   } catch (err) {
     console.error("❌ Error creando preferencia Mercado Pago:", err);
-    return res
-      .status(500)
-      .json({ exito: false, mensaje: "Error interno al generar pago." });
-  }
-});
-
-// ==================== CREAR PREFERENCIA DE PAGO ====================
-app.post("/api/mercadopago/preference", async (req, res) => {
-  try {
-    const { reference, nombre, correo, telefono, monto } = req.body;
-    if (!reference || !monto || !nombre) {
-      return res
-        .status(400)
-        .json({ exito: false, mensaje: "Faltan datos para generar el pago" });
-    }
-
-    const preference = {
-      items: [
-        {
-          id: reference,
-          title: "Tickets de Rifa - Ref: " + reference,
-          quantity: 1,
-          unit_price: Number(monto),
-          currency_id: "COP",
-        },
-      ],
-      payer: {
-        name: nombre,
-        email: correo,
-        phone: { number: telefono },
-      },
-      external_reference: reference,
-      auto_return: "approved",
-      back_urls: {
-        success: process.env.URL_SUCCESS,
-        failure: process.env.URL_FAILURE,
-        pending: process.env.URL_PENDING,
-      },
-      notification_url: "https://rifa-2025.onrender.com/api/mercadopago/webhook",
-    };
-
-    const result = await mpPreference.create({ body: preference });
-
-    return res.json({
-      exito: true,
-      init_point: result.init_point,
+    res.status(500).json({
+      exito: false,
+      mensaje: "Error interno al generar la preferencia de pago",
+      error: err.message,
     });
-  } catch (err) {
-    console.error("❌ Error creando preferencia Mercado Pago:", err);
-    return res
-      .status(500)
-      .json({ exito: false, mensaje: "Error interno al generar pago." });
   }
 });
 
@@ -212,84 +161,93 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
   try {
     console.log("📦 Webhook recibido:", JSON.stringify(req.body, null, 2));
 
-    const { type, data, topic, resource } = req.body;
+    const { type, action, data, topic, resource } = req.body;
+    const evento = type || topic || action || "sin_tipo";
 
+    // Guardar log del webhook para auditoría
     await WebhookLog.create({
-      type: type || topic,
+      type: evento,
       paymentId: data?.id || "sin-id",
       rawBody: req.body,
     });
 
-    if (topic === "merchant_order" && resource) {
+    let paymentData = null;
+    let reference = null;
+
+    // 🔹 Caso 1: Mercado Pago envía 'payment' directo
+    if (evento === "payment" && data?.id) {
+      paymentData = await mpPayment.get({ id: data.id });
+      reference = paymentData.external_reference;
+      console.log(`💳 Webhook de pago directo recibido: ${reference}`);
+    }
+
+    // 🔹 Caso 2: Mercado Pago envía 'merchant_order' (más común en producción)
+    if (evento === "merchant_order" && resource) {
       console.log("📄 Consultando merchant_order:", resource);
-      const response = await fetch(resource, {
+      const resp = await fetch(resource, {
         headers: { Authorization: `Bearer ${process.env.MP_ACCESS_TOKEN}` },
       });
-      const orderData = await response.json();
+      const orderData = await resp.json();
 
-      if (!orderData.payments?.length) {
-        console.log("⚠️ Orden sin pagos asociados.");
+      const pagoAprobado = orderData.payments?.find((p) => p.status === "approved");
+      if (!pagoAprobado) {
+        console.log("⏳ Orden sin pago aprobado aún.");
         return res.sendStatus(200);
       }
 
-      const pago = orderData.payments.find((p) => p.status === "approved");
-      if (!pago) {
-        console.log("⏳ Pago aún no aprobado.");
-        return res.sendStatus(200);
-      }
+      paymentData = await mpPayment.get({ id: pagoAprobado.id });
+      reference = paymentData.external_reference;
+    }
 
-      const payment = await mpPayment.get({ id: pago.id });
-      const reference = payment.external_reference;
-      const status = payment.status;
-      console.log(`💰 Pago confirmado (${reference}): ${status}`);
+    if (!paymentData || !reference) {
+      console.log("⚠️ Webhook sin información de pago válida.");
+      return res.sendStatus(200);
+    }
 
-      const pendiente = await Pendiente.findOne({ reference });
-      if (!pendiente) {
-        console.warn("⚠️ Pendiente no encontrado:", reference);
-        return res.sendStatus(200);
-      }
+    console.log(`💰 Pago confirmado (${reference}): ${paymentData.status}`);
 
-      if (status === "approved") {
-        await Ticket.create({
-          reference: pendiente.reference,
-          nombre: pendiente.nombre,
-          correo: pendiente.correo,
-          telefono: pendiente.telefono,
-          numeros: pendiente.numeros,
-          estadoPago: "pagado",
-        });
+    const pendiente = await Pendiente.findOne({ reference });
+    if (!pendiente) {
+      console.warn("⚠️ Pendiente no encontrado:", reference);
+      return res.sendStatus(200);
+    }
 
-        await enviarCorreo(
-          pendiente.correo,
-          "✅ Pago confirmado - Rifa",
-          `
+    if (paymentData.status === "approved") {
+      // 🔹 Crear el ticket
+      await Ticket.create({
+        reference: pendiente.reference,
+        nombre: pendiente.nombre,
+        correo: pendiente.correo,
+        telefono: pendiente.telefono,
+        numeros: pendiente.numeros,
+        estadoPago: "pagado",
+      });
+
+      // 🔹 Enviar correo de confirmación
+      await enviarCorreo(
+        pendiente.correo,
+        "✅ Pago confirmado - Rifa 2025",
+        `
           <h2>¡Gracias ${pendiente.nombre}! 🎉</h2>
           <p>Tu pago ha sido confirmado y tus números ya están activos:</p>
           <h3>${pendiente.numeros.join(", ")}</h3>
           <p><b>Referencia:</b> ${pendiente.reference}</p>
           <p>🍀 ¡Mucha suerte y gracias por participar!</p>
-          `
-        );
+        `
+      );
 
-        await Pendiente.findByIdAndDelete(pendiente._id);
-        console.log(`✅ Ticket creado y pendiente eliminado: ${reference}`);
-      }
-      return res.sendStatus(200);
-    }
-
-    if (type === "payment" && data?.id) {
-      const payment = await mpPayment.get({ id: data.id });
-      console.log(`📢 Estado de pago ${payment.external_reference}: ${payment.status}`);
+      // 🔹 Eliminar pendiente
+      await Pendiente.deleteOne({ _id: pendiente._id });
+      console.log(`✅ Ticket creado y pendiente eliminado: ${reference}`);
     }
 
     res.sendStatus(200);
   } catch (err) {
-    console.error("❌ Error en webhook:", err);
+    console.error("❌ Error procesando webhook:", err);
     res.sendStatus(500);
   }
 });
-
-// ==================== RUTA ADMIN: WEBHOOKS ====================
+// ==================== RUTA ADMIN: LOGS WEBHOOK ====================
 app.get("/api/admin/webhooks", async (req, res) => {
   try {
     if (!req.session?.isAdmin) {
@@ -330,7 +288,7 @@ app.post("/api/admin/login", (req, res) => {
     req.session.isAdmin = true;
     return res.json({ success: true });
   }
-  return res.status(401).json({ success: false, mensaje: "Credenciales inválidas" });
+  res.status(401).json({ success: false, mensaje: "Credenciales inválidas" });
 });
 
 app.post("/api/admin/logout", (req, res) => {
@@ -350,7 +308,7 @@ app.get("/admin.html", isAdmin, (req, res) => {
 app.use("/api/tickets", ticketsRouter);
 app.use("/api/admin", adminApiRouter);
 
-// ==================== SEGURIDAD DESPUÉS DEL WEBHOOK ====================
+// ==================== SEGURIDAD Y CABECERAS ====================
 app.use((req, res, next) => {
   res.locals.nonce = crypto.randomBytes(16).toString("base64");
   const csp = [
@@ -378,7 +336,7 @@ app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
 app.use(express.static(PUBLIC_PATH));
 app.get("/", (req, res) => res.sendFile(path.join(PUBLIC_PATH, "index.html")));
 
-// ==================== MANEJO DE ERRORES 404 ====================
+// ==================== ERROR 404 ====================
 app.use((req, res) => {
   res.status(404).json({ exito: false, mensaje: "Ruta no encontrada" });
 });

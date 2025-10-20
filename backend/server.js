@@ -41,6 +41,52 @@ const mpClient = new MercadoPagoConfig({ accessToken: MP_ACCESS_TOKEN });
 const mpPreference = new Preference(mpClient);
 const mpPayment = new Payment(mpClient);
 
+// ===============================
+// 📦 RUTA ADMIN: LISTAR WEBHOOKS
+// ===============================
+app.get("/api/admin/webhooks", async (req, res) => {
+  try {
+    // 🔒 Aseguramos que solo el admin autenticado pueda verlos
+    if (!req.session || !req.session.isAdmin) {
+      return res.status(401).json({ exito: false, mensaje: "No autorizado" });
+    }
+
+    // 🔹 Parámetros opcionales: paginación y búsqueda
+    const { page = 1, limit = 50, q = "" } = req.query;
+    const skip = (page - 1) * limit;
+
+    // 🔹 Filtro de búsqueda (por referencia, estado o tipo)
+    const query = q
+      ? {
+          $or: [
+            { reference: { $regex: q, $options: "i" } },
+            { status: { $regex: q, $options: "i" } },
+            { type: { $regex: q, $options: "i" } },
+          ],
+        }
+      : {};
+
+    const total = await WebhookLog.countDocuments(query);
+    const logs = await WebhookLog.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(Number(limit))
+      .lean();
+
+    res.json({
+      exito: true,
+      total,
+      pagina: Number(page),
+      limite: Number(limit),
+      logs,
+    });
+  } catch (err) {
+    console.error("❌ Error al obtener webhooks:", err);
+    res.status(500).json({ exito: false, mensaje: "Error del servidor" });
+  }
+});
+
+
 // ==================== SEGURIDAD ====================
 app.use((req, res, next) => {
   res.locals.nonce = crypto.randomBytes(16).toString("base64");

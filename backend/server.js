@@ -174,29 +174,37 @@ app.post("/api/mercadopago/preference", async (req, res) => {
 app.post("/api/mercadopago/webhook", async (req, res) => {
   try {
     const { type, data } = req.body;
-    if (type !== "payment") return res.sendStatus(200);
+    console.log("📦 Webhook recibido:", JSON.stringify(req.body, null, 2));
+
+    // Solo procesar pagos
+    if (type !== "payment" || !data.id) return res.sendStatus(200);
 
     const paymentId = data.id;
     const payment = await mpPayment.get({ id: paymentId });
 
-    if (!payment || !payment.external_reference) {
-      console.warn("⚠️ Pago sin referencia externa:", paymentId);
+    if (!payment?.external_reference) {
+      console.warn("⚠️ Pago sin external_reference:", paymentId);
       return res.sendStatus(200);
     }
 
-    const reference = payment.external_reference;
+    const reference = payment.external_reference.trim();
     const status = payment.status;
 
-    console.log(`📢 Webhook recibido: ${reference} | Estado: ${status}`);
+    console.log(`📢 Estado de pago ${reference}: ${status}`);
+
+    // Ignorar pagos pendientes
+    if (status === "pending" || status === "in_process") {
+      console.log(`⏳ Pago pendiente o en proceso: ${reference}`);
+      return res.sendStatus(200);
+    }
 
     const pendiente = await Pendiente.findOne({ reference });
     if (!pendiente) {
-      console.warn("⚠️ Pendiente no encontrado para referencia:", reference);
+      console.warn("⚠️ Pendiente no encontrado:", reference);
       return res.sendStatus(200);
     }
 
     if (status === "approved") {
-      // ✅ Crear ticket confirmado
       await Ticket.create({
         reference: pendiente.reference,
         nombre: pendiente.nombre,
@@ -206,7 +214,6 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
         estadoPago: "pagado",
       });
 
-      // Enviar correo de confirmación
       await enviarCorreo(
         pendiente.correo,
         "✅ Pago confirmado - Rifa Solidaria",

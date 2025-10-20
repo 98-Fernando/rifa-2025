@@ -13,8 +13,7 @@ import { fileURLToPath } from "url";
 import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
 import WebhookLog from "./models/WebhookLog.js";
 
-
-// Rutas
+// Rutas y modelos
 import ticketsRouter from "./routes/tickets.js";
 import adminApiRouter from "./routes/admin.js";
 import Ticket from "./models/Ticket.js";
@@ -41,76 +40,8 @@ const mpClient = new MercadoPagoConfig({ accessToken: MP_ACCESS_TOKEN });
 const mpPreference = new Preference(mpClient);
 const mpPayment = new Payment(mpClient);
 
-// ===============================
-// 📦 RUTA ADMIN: LISTAR WEBHOOKS
-// ===============================
-app.get("/api/admin/webhooks", async (req, res) => {
-  try {
-    // 🔒 Aseguramos que solo el admin autenticado pueda verlos
-    if (!req.session || !req.session.isAdmin) {
-      return res.status(401).json({ exito: false, mensaje: "No autorizado" });
-    }
-
-    // 🔹 Parámetros opcionales: paginación y búsqueda
-    const { page = 1, limit = 50, q = "" } = req.query;
-    const skip = (page - 1) * limit;
-
-    // 🔹 Filtro de búsqueda (por referencia, estado o tipo)
-    const query = q
-      ? {
-          $or: [
-            { reference: { $regex: q, $options: "i" } },
-            { status: { $regex: q, $options: "i" } },
-            { type: { $regex: q, $options: "i" } },
-          ],
-        }
-      : {};
-
-    const total = await WebhookLog.countDocuments(query);
-    const logs = await WebhookLog.find(query)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(Number(limit))
-      .lean();
-
-    res.json({
-      exito: true,
-      total,
-      pagina: Number(page),
-      limite: Number(limit),
-      logs,
-    });
-  } catch (err) {
-    console.error("❌ Error al obtener webhooks:", err);
-    res.status(500).json({ exito: false, mensaje: "Error del servidor" });
-  }
-});
-
-
-// ==================== SEGURIDAD ====================
-app.use((req, res, next) => {
-  res.locals.nonce = crypto.randomBytes(16).toString("base64");
-  const csp = [
-    "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://sdk.mercadopago.com",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
-    "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data: https://cdn-icons-png.flaticon.com https://www.mercadopago.com",
-    "connect-src 'self' https://api.mercadopago.com https://rifa-2025.onrender.com",
-    "frame-src 'self' https://www.mercadopago.com https://sdk.mercadopago.com",
-  ].join("; ");
-  res.setHeader("Content-Security-Policy", csp);
-  next();
-});
-
-app.use(
-  helmet({
-    contentSecurityPolicy: false,
-    crossOriginEmbedderPolicy: false,
-  })
-);
-app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
-app.use(express.json());
+// ==================== BODY PARSER (ANTES DE TODO) ====================
+app.use(express.json({ type: "*/*" }));
 app.use(express.urlencoded({ extended: true }));
 
 // ==================== CORS ====================
@@ -164,7 +95,6 @@ app.get("/api/config", (req, res) => {
   res.json({
     exito: true,
     precio: Number(process.env.PRECIO_BOLETO) || 100,
-    nonce: res.locals.nonce,
   });
 });
 
@@ -172,7 +102,6 @@ app.get("/api/config", (req, res) => {
 app.post("/api/mercadopago/preference", async (req, res) => {
   try {
     const { reference, nombre, correo, telefono, monto } = req.body;
-
     if (!reference || !monto || !nombre) {
       return res
         .status(400)
@@ -221,81 +150,76 @@ app.post("/api/mercadopago/preference", async (req, res) => {
 // ==================== WEBHOOK MERCADO PAGO ====================
 app.post("/api/mercadopago/webhook", async (req, res) => {
   try {
-    const { type, data } = req.body;
     console.log("📦 Webhook recibido:", JSON.stringify(req.body, null, 2));
 
-    // 🔹 Registrar el webhook en la base de datos
+    const { type, data, topic, resource } = req.body;
+
     await WebhookLog.create({
-      type,
+      type: type || topic,
       paymentId: data?.id || "sin-id",
       rawBody: req.body,
     });
 
-    // Solo procesar pagos válidos
-    if (type !== "payment" || !data.id) return res.sendStatus(200);
-
-    const paymentId = data.id;
-    const payment = await mpPayment.get({ id: paymentId });
-
-    if (!payment?.external_reference) {
-      console.warn("⚠️ Pago sin external_reference:", paymentId);
-      await WebhookLog.updateOne(
-        { paymentId },
-        { $set: { status: payment?.status || "sin-status" } }
-      );
-      return res.sendStatus(200);
-    }
-
-    const reference = payment.external_reference.trim();
-    const status = payment.status;
-
-    console.log(`📢 Estado de pago ${reference}: ${status}`);
-
-    // 🔹 Actualizar el log con más datos
-    await WebhookLog.updateOne(
-      { paymentId },
-      { $set: { reference, status } }
-    );
-
-    // Ignorar pagos pendientes o en proceso
-    if (status === "pending" || status === "in_process") {
-      console.log(`⏳ Pago pendiente o en proceso: ${reference}`);
-      return res.sendStatus(200);
-    }
-
-    const pendiente = await Pendiente.findOne({ reference });
-    if (!pendiente) {
-      console.warn("⚠️ Pendiente no encontrado:", reference);
-      return res.sendStatus(200);
-    }
-
-    if (status === "approved") {
-      await Ticket.create({
-        reference: pendiente.reference,
-        nombre: pendiente.nombre,
-        correo: pendiente.correo,
-        telefono: pendiente.telefono,
-        numeros: pendiente.numeros,
-        estadoPago: "pagado",
+    if (topic === "merchant_order" && resource) {
+      console.log("📄 Consultando merchant_order:", resource);
+      const response = await fetch(resource, {
+        headers: { Authorization: `Bearer ${process.env.MP_ACCESS_TOKEN}` },
       });
+      const orderData = await response.json();
 
-      await enviarCorreo(
-        pendiente.correo,
-        "✅ Pago confirmado - Rifa",
-        `
-        <h2>¡Gracias ${pendiente.nombre}! 🎉</h2>
-        <p>Tu pago ha sido confirmado y tus números ya están activos:</p>
-        <h3>${pendiente.numeros.join(", ")}</h3>
-        <p><b>Referencia:</b> ${pendiente.reference}</p>
-        <p>Mucha suerte 🍀 y gracias por participar.</p>
-        `
-      );
+      if (!orderData.payments?.length) {
+        console.log("⚠️ Orden sin pagos asociados.");
+        return res.sendStatus(200);
+      }
 
-      await Pendiente.findByIdAndDelete(pendiente._id);
-      console.log(`✅ Ticket creado y pendiente eliminado: ${reference}`);
-    } else if (status === "rejected") {
-      await Pendiente.findByIdAndDelete(pendiente._id);
-      console.log(`❌ Pago rechazado: ${reference}`);
+      const pago = orderData.payments.find((p) => p.status === "approved");
+      if (!pago) {
+        console.log("⏳ Pago aún no aprobado.");
+        return res.sendStatus(200);
+      }
+
+      const payment = await mpPayment.get({ id: pago.id });
+      const reference = payment.external_reference;
+      const status = payment.status;
+      console.log(`💰 Pago confirmado (${reference}): ${status}`);
+
+      const pendiente = await Pendiente.findOne({ reference });
+      if (!pendiente) {
+        console.warn("⚠️ Pendiente no encontrado:", reference);
+        return res.sendStatus(200);
+      }
+
+      if (status === "approved") {
+        await Ticket.create({
+          reference: pendiente.reference,
+          nombre: pendiente.nombre,
+          correo: pendiente.correo,
+          telefono: pendiente.telefono,
+          numeros: pendiente.numeros,
+          estadoPago: "pagado",
+        });
+
+        await enviarCorreo(
+          pendiente.correo,
+          "✅ Pago confirmado - Rifa",
+          `
+          <h2>¡Gracias ${pendiente.nombre}! 🎉</h2>
+          <p>Tu pago ha sido confirmado y tus números ya están activos:</p>
+          <h3>${pendiente.numeros.join(", ")}</h3>
+          <p><b>Referencia:</b> ${pendiente.reference}</p>
+          <p>🍀 ¡Mucha suerte y gracias por participar!</p>
+          `
+        );
+
+        await Pendiente.findByIdAndDelete(pendiente._id);
+        console.log(`✅ Ticket creado y pendiente eliminado: ${reference}`);
+      }
+      return res.sendStatus(200);
+    }
+
+    if (type === "payment" && data?.id) {
+      const payment = await mpPayment.get({ id: data.id });
+      console.log(`📢 Estado de pago ${payment.external_reference}: ${payment.status}`);
     }
 
     res.sendStatus(200);
@@ -305,26 +229,52 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
   }
 });
 
+// ==================== RUTA ADMIN: WEBHOOKS ====================
+app.get("/api/admin/webhooks", async (req, res) => {
+  try {
+    if (!req.session?.isAdmin) {
+      return res.status(401).json({ exito: false, mensaje: "No autorizado" });
+    }
+
+    const { page = 1, limit = 50, q = "" } = req.query;
+    const skip = (page - 1) * limit;
+
+    const query = q
+      ? {
+          $or: [
+            { reference: { $regex: q, $options: "i" } },
+            { status: { $regex: q, $options: "i" } },
+            { type: { $regex: q, $options: "i" } },
+          ],
+        }
+      : {};
+
+    const total = await WebhookLog.countDocuments(query);
+    const logs = await WebhookLog.find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(Number(limit))
+      .lean();
+
+    res.json({ exito: true, total, pagina: Number(page), limite: Number(limit), logs });
+  } catch (err) {
+    console.error("❌ Error al obtener webhooks:", err);
+    res.status(500).json({ exito: false, mensaje: "Error del servidor" });
+  }
+});
 
 // ==================== LOGIN ADMIN ====================
-app.post("/api/admin/login", async (req, res) => {
+app.post("/api/admin/login", (req, res) => {
   const { username, password } = req.body;
-  if (
-    username === process.env.ADMIN_USER &&
-    password === process.env.ADMIN_PASS
-  ) {
+  if (username === process.env.ADMIN_USER && password === process.env.ADMIN_PASS) {
     req.session.isAdmin = true;
     return res.json({ success: true });
   }
-  return res
-    .status(401)
-    .json({ success: false, mensaje: "Credenciales inválidas" });
+  return res.status(401).json({ success: false, mensaje: "Credenciales inválidas" });
 });
 
 app.post("/api/admin/logout", (req, res) => {
-  req.session.destroy(() =>
-    res.json({ exito: true, mensaje: "Sesión cerrada correctamente" })
-  );
+  req.session.destroy(() => res.json({ exito: true, mensaje: "Sesión cerrada correctamente" }));
 });
 
 // ==================== RUTAS ADMIN ====================
@@ -332,7 +282,6 @@ app.get("/admin", (req, res) => {
   if (req.session.isAdmin) return res.redirect("/admin.html");
   res.sendFile(path.join(PUBLIC_PATH, "login.html"));
 });
-
 app.get("/admin.html", isAdmin, (req, res) => {
   res.sendFile(path.join(PUBLIC_PATH, "admin.html"));
 });
@@ -341,11 +290,33 @@ app.get("/admin.html", isAdmin, (req, res) => {
 app.use("/api/tickets", ticketsRouter);
 app.use("/api/admin", adminApiRouter);
 
+// ==================== SEGURIDAD DESPUÉS DEL WEBHOOK ====================
+app.use((req, res, next) => {
+  res.locals.nonce = crypto.randomBytes(16).toString("base64");
+  const csp = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://sdk.mercadopago.com",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: https://cdn-icons-png.flaticon.com https://www.mercadopago.com",
+    "connect-src 'self' https://api.mercadopago.com https://api.mercadolibre.com https://rifa-2025.onrender.com",
+    "frame-src 'self' https://www.mercadopago.com https://sdk.mercadopago.com",
+  ].join("; ");
+  res.setHeader("Content-Security-Policy", csp);
+  next();
+});
+
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  })
+);
+app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
+
 // ==================== ARCHIVOS ESTÁTICOS ====================
 app.use(express.static(PUBLIC_PATH));
-app.get("/", (req, res) =>
-  res.sendFile(path.join(PUBLIC_PATH, "index.html"))
-);
+app.get("/", (req, res) => res.sendFile(path.join(PUBLIC_PATH, "index.html")));
 
 // ==================== MANEJO DE ERRORES 404 ====================
 app.use((req, res) => {

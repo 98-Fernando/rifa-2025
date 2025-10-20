@@ -1,7 +1,7 @@
 import { Router } from "express";
 import Ticket from "../models/Ticket.js";
 import Pendiente from "../models/Pendiente.js";
-import { enviarCorreo } from "../services/emailService.js"; // ✅ Importa desde el servicio
+import { enviarCorreo } from "../emailService.js";
 
 const router = Router();
 const TOTAL_NUMEROS = 1000;

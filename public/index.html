@@ -6,245 +6,158 @@
   <title>🎟️ Sorteo 2025</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" />
   <script src="https://sdk.mercadopago.com/js/v2"></script>
-<style>
-  body {
-    background: linear-gradient(135deg, #e3f2fd, #f0f4f8);
-    color: #2c3e50;
-    font-family: 'Inter', sans-serif;
-    text-align: center;
-    margin: 0;
-    padding: 20px;
-  }
-  .container {
-    max-width: 550px;
-    background: #fff;
-    margin: 30px auto;
-    padding: 30px;
-    border-radius: 20px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-  }
-  h1 { font-weight: 700; margin-bottom: 5px; }
-  h2 { border-bottom: 2px solid #ecf0f1; padding-bottom: 10px; margin-top: 30px; }
-  input, button {
-    width: 100%;
-    padding: 15px;
-    margin: 10px 0;
-    border-radius: 12px;
-    border: 1px solid #bdc3c7;
-    font-size: 16px;
-    box-sizing: border-box;
-  }
-  input:focus {
-    border-color: #2980b9;
-    box-shadow: 0 0 8px rgba(41,128,185,0.3);
-    outline: none;
-  }
-  button {
-    cursor: pointer;
-    background: #2c3e50;
-    color: white;
-    font-weight: 600;
-    border: none;
-    transition: 0.3s;
-  }
-  button:hover { background: #34495e; transform: scale(1.02); }
+  <style>
+    body {
+      background: linear-gradient(135deg, #e3f2fd, #f0f4f8);
+      color: #2c3e50;
+      font-family: 'Inter', sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 550px;
+      background: #fff;
+      margin: 30px auto;
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+    h1 { font-weight: 700; margin-bottom: 5px; }
+    h2 { border-bottom: 2px solid #ecf0f1; padding-bottom: 10px; margin-top: 30px; }
+    input, button {
+      width: 100%; padding: 15px; margin: 10px 0;
+      border-radius: 12px; border: 1px solid #bdc3c7;
+      font-size: 16px; box-sizing: border-box;
+    }
+    input:focus {
+      border-color: #2980b9; box-shadow: 0 0 8px rgba(41,128,185,0.3); outline: none;
+    }
+    button {
+      cursor: pointer; background: #2c3e50; color: white;
+      font-weight: 600; border: none; transition: 0.3s;
+    }
+    button:hover { background: #34495e; transform: scale(1.02); }
 
-  /* --- PROGRESO --- */
-  .progreso { margin: 20px 0; text-align: left; }
-  .barra {
-    width: 100%; height: 20px; background: #ecf0f1;
-    border-radius: 10px; overflow: hidden;
-  }
-  .relleno {
-    width: 0%; height: 100%; color: #fff;
-    text-align: center; line-height: 20px;
-    font-size: 12px; font-weight: bold;
-    background: linear-gradient(90deg, #27ae60, #2ecc71);
-    transition: width 0.6s ease;
-  }
-  #porcentaje { font-weight: 600; margin-bottom: 5px; }
+    /* --- PROGRESO --- */
+    .progreso { margin: 20px 0; text-align: left; }
+    .barra {
+      width: 100%; height: 20px; background: #ecf0f1;
+      border-radius: 10px; overflow: hidden;
+    }
+    .relleno {
+      width: 0%; height: 100%; color: #fff;
+      text-align: center; line-height: 20px;
+      font-size: 12px; font-weight: bold;
+      background: linear-gradient(90deg, #27ae60, #2ecc71);
+      transition: width 0.6s ease;
+    }
+    #porcentaje { font-weight: 600; margin-bottom: 5px; }
 
-  /* --- TEXTO DEBAJO DE LA BARRA --- */
-  .nota-sorteo {
-    margin-top: 8px;
-    font-size: 0.95em;
-    color: #555;
-    text-align: center;
-    font-weight: 500;
-  }
+    .nota-sorteo {
+      margin-top: 8px; font-size: 0.95em;
+      color: #555; text-align: center; font-weight: 500;
+    }
 
-  /* --- MENSAJES --- */
-  .mensaje {
-    margin-top: 15px; font-size: 15px;
-    border-radius: 10px; padding: 10px; text-align: left;
-  }
-  .mensaje.exito { background: #e8f8f5; color: #27ae60; border-left: 5px solid #2ecc71; }
-  .mensaje.error { background: #fcf3f2; color: #e74c3c; border-left: 5px solid #e74c3c; }
+    .mensaje {
+      margin-top: 15px; font-size: 15px;
+      border-radius: 10px; padding: 10px; text-align: left;
+    }
+    .mensaje.exito { background: #e8f8f5; color: #27ae60; border-left: 5px solid #2ecc71; }
+    .mensaje.error { background: #fcf3f2; color: #e74c3c; border-left: 5px solid #e74c3c; }
 
-  /* --- MODAL --- */
-  .modal {
-    position: fixed; inset: 0; display: flex;
-    justify-content: center; align-items: center;
-    background: rgba(0,0,0,0.6);
-    opacity: 0; visibility: hidden;
-    transition: all 0.3s ease;
-    z-index: 10;
-  }
+    /* --- MODAL --- */
+    .modal {
+      position: fixed; inset: 0; display: flex;
+      justify-content: center; align-items: center;
+      background: rgba(0,0,0,0.6);
+      opacity: 0; visibility: hidden;
+      transition: all 0.3s ease; z-index: 10;
+    }
+    .modal.active { opacity: 1; visibility: visible; }
+    .modal-content {
+      background: #fff; width: 90%; max-width: 700px;
+      padding: 25px 25px 90px; box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+      max-height: 80vh; overflow-y: auto;
+      border-radius: 15px; position: relative;
+    }
+    .modal-header {
+      display: flex; justify-content: space-between;
+      align-items: center; margin-bottom: 10px;
+      border-bottom: 2px solid #eee; padding-bottom: 10px;
+    }
+    .close-modal {
+      position: fixed; top: 20px; right: 25px;
+      background: #e74c3c; color: #fff;
+      border: none; border-radius: 50%;
+      width: 32px; height: 32px; font-size: 18px;
+      font-weight: bold; cursor: pointer; z-index: 9999;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.25s ease;
+    }
+    .close-modal:hover { background: #c0392b; transform: scale(1.1); }
 
-  .modal.active { opacity: 1; visibility: visible; }
+    .grid-numeros {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+      gap: 8px; padding: 10px;
+    }
+    .numero {
+      border: none; border-radius: 8px; padding: 10px;
+      font-weight: bold; color: #fff; transition: all 0.2s;
+    }
+    .numero.disponible { background: #27ae60; cursor: pointer; }
+    .numero.disponible:hover { transform: scale(1.05); }
+    .numero.ocupado { background: #e74c3c; opacity: 0.6; cursor: not-allowed; }
+    .numero.seleccionado { background: #2980b9; transform: scale(1.1); }
 
-  .modal-content {
-    background: #fff;
-    width: 90%;
-    max-width: 700px;
-    padding: 25px 25px 90px;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.3);
-    max-height: 80vh;
-    overflow-y: auto;
-    border-radius: 15px;
-    position: relative;
-  }
+    #btnConfirmar {
+      position: sticky; bottom: 0; width: 100%;
+      background: #2c3e50; color: #fff;
+      font-weight: 600; padding: 15px; border: none;
+      border-radius: 12px; cursor: pointer;
+      transition: 0.3s; box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+      margin-top: 15px;
+    }
+    #btnConfirmar:hover { background: #34495e; transform: scale(1.02); }
 
-  .modal-header {
-    display: flex; justify-content: space-between;
-    align-items: center; margin-bottom: 10px;
-    border-bottom: 2px solid #eee; padding-bottom: 10px;
-  }
-/* --- BOTÓN DE CERRAR MODAL PEQUEÑO Y FIJO --- */
-.close-modal {
-  position: fixed;         /* Fijo aunque se haga scroll */
-  top: 20px;               /* Separación desde arriba */
-  right: 25px;             /* Separación desde el borde derecho */
-  background: #e74c3c;
-  color: #fff;
-  border: none;
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  font-size: 18px;
-  font-weight: bold;
-  cursor: pointer;
-  z-index: 9999;           /* Encima de todo */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.25s ease;
-}
+    #formulario {
+      display: flex; flex-direction: column;
+      align-items: center; gap: 12px;
+      width: 100%; max-width: 400px; margin: 0 auto;
+      text-align: center;
+    }
 
-.close-modal:hover {
-  background: #c0392b;
-  transform: scale(1.1);
-}
-
-  /* --- GRID DE NÚMEROS --- */
-  .grid-numeros {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
-    gap: 8px; padding: 10px;
-  }
-  .numero {
-    border: none; border-radius: 8px; padding: 10px;
-    font-weight: bold; color: #fff; transition: all 0.2s;
-  }
-  .numero.disponible { background: #27ae60; cursor: pointer; }
-  .numero.disponible:hover { transform: scale(1.05); }
-  .numero.ocupado { background: #e74c3c; opacity: 0.6; cursor: not-allowed; }
-  .numero.seleccionado { background: #2980b9; transform: scale(1.1); }
-
-  /* --- BOTÓN FIJO DENTRO DEL MODAL --- */
-  #btnConfirmar {
-    position: sticky;
-    bottom: 0;
-    width: 100%;
-    background: #2c3e50;
-    color: #fff;
-    font-weight: 600;
-    padding: 15px;
-    border: none;
-    border-radius: 12px;
-    cursor: pointer;
-    transition: 0.3s;
-    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-    margin-top: 15px;
-  }
-  #btnConfirmar:hover { background: #34495e; transform: scale(1.02); }
-
-  /* --- FORMULARIO CENTRADO --- */
-  #formulario {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    width: 100%;
-    max-width: 400px;
-    margin: 0 auto;
-    text-align: center;
-  }
-
-  #formulario h2 {
-    margin-bottom: 10px;
-    font-size: 1.3em;
-    color: #2c3e50;
-  }
-
-  #formulario input {
-    width: 100%;
-    padding: 12px;
-    border: 2px solid #ddd;
-    border-radius: 8px;
-    font-size: 1em;
-    box-sizing: border-box;
-    transition: all 0.3s ease;
-  }
-
-  #formulario input:focus {
-    border-color: #2980b9;
-    outline: none;
-    box-shadow: 0 0 5px rgba(41, 128, 185, 0.3);
-  }
-
-  .ticket {
-    background: #f8f9fa; border-left: 5px solid #2980b9;
-    border-radius: 10px; padding: 15px; margin-top: 20px;
-    text-align: center;
-  }
-  .ticket span {
-    display: inline-block; background: #2980b9;
-    color: #fff; border-radius: 6px;
-    padding: 5px 8px; margin: 3px;
-    font-weight: 600;
-  }
-  .ticket .total {
-    display: block; color:  #ffffff;
-    font-weight: bold; margin-top: 10px;
-    text-align: center;
-  }
-  /* --- VALOR DE LA RIFA --- */
-.valor-rifa {
-  margin-top: 15px;
-  font-size: 1.2em;
-  font-weight: 700;
-  text-align: center;
-  color: #fff;
-  background: linear-gradient(90deg, #27ae60, #2ecc71);
-  padding: 12px;
-  border-radius: 12px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-  animation: brillo 2s infinite alternate;
-}
-
-.valor-rifa span {
-  color: #f9f871;
-  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.4);
-}
-
-@keyframes brillo {
-  from { box-shadow: 0 0 10px rgba(39,174,96,0.5); }
-  to   { box-shadow: 0 0 25px rgba(46,204,113,0.9); }
-}
-</style>
-
+    .ticket {
+      background: #f8f9fa; border-left: 5px solid #2980b9;
+      border-radius: 10px; padding: 15px; margin-top: 20px;
+      text-align: center;
+    }
+    .ticket span {
+      display: inline-block; background: #2980b9;
+      color: #fff; border-radius: 6px;
+      padding: 5px 8px; margin: 3px; font-weight: 600;
+    }
+    .ticket .total {
+      display: block; color: #ffffff; font-weight: bold;
+      margin-top: 10px; text-align: center;
+    }
+    .valor-rifa {
+      margin-top: 15px; font-size: 1.2em; font-weight: 700;
+      text-align: center; color: #fff;
+      background: linear-gradient(90deg, #27ae60, #2ecc71);
+      padding: 12px; border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+      animation: brillo 2s infinite alternate;
+    }
+    .valor-rifa span {
+      color: #f9f871;
+      text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.4);
+    }
+    @keyframes brillo {
+      from { box-shadow: 0 0 10px rgba(39,174,96,0.5); }
+      to   { box-shadow: 0 0 25px rgba(46,204,113,0.9); }
+    }
+  </style>
 </head>
 
 <body>
@@ -263,15 +176,15 @@
       <p id="porcentaje">Cargando disponibilidad...</p>
       <div class="barra"><div class="relleno"></div></div>
       <p class="nota-sorteo"> El sorteo se realizará una vez se haya vendido el 100 % de la rifa.</p>
-       <!-- 💰 Valor de la rifa agregado -->
-  <div class="valor-rifa">
-    💵 <strong>Valor por número: <span>$26.400 COP</span></strong> 💵
-  </div>
+      <div class="valor-rifa">
+        💵 <strong>Valor por número: <span>$26.400 COP</span></strong> 💵
+      </div>
     </section>
 
     <h2> 🎟️ Selecciona tus números 🎟️</h2>
-    <button id="verDisponibles">🔍 Ver y Elegir Números Disponibles  🔍</button>
+    <button id="verDisponibles">🔍 Ver y Elegir Números Disponibles 🔍</button>
     <div id="ticketSeleccion" class="ticket hidden"></div>
+
     <div id="modalDisponibles" class="modal">
       <div class="modal-content">
         <div class="modal-header">
@@ -296,12 +209,22 @@
     const ticketBox = document.getElementById("ticketSeleccion");
     const btnReservar = document.getElementById("btn-reservar");
     const mensaje = document.getElementById("mensaje");
-    const PRECIO = 100;
+    const PRECIO = 26400; // 💰 Precio real
 
     let numerosSeleccionados = [];
     let disponibles = [];
 
-    // 🪟 Abrir y cerrar modal
+    // 🔄 Cargar automáticamente si viene del success.html
+    document.addEventListener("DOMContentLoaded", () => {
+      if (sessionStorage.getItem("pago_exitoso")) {
+        sessionStorage.removeItem("pago_exitoso");
+        cargarNumeros(); // recarga números actualizados
+      } else {
+        cargarNumeros();
+      }
+    });
+
+    // 🪟 Abrir / cerrar modal
     btnVer.addEventListener("click", async () => {
       modal.classList.add("active");
       await cargarNumeros();
@@ -309,29 +232,33 @@
     btnCerrar.addEventListener("click", () => modal.classList.remove("active"));
     modal.addEventListener("click", e => { if (e.target === modal) modal.classList.remove("active"); });
 
-    // 🧩 Cargar y renderizar números disponibles
+    // 🧩 Cargar números disponibles desde el backend
     async function cargarNumeros() {
       try {
         const res = await fetch("/api/tickets/numeros");
         const data = await res.json();
         disponibles = data;
-        listaDisponibles.innerHTML = "";
-        data.forEach(num => {
-          const btn = document.createElement("button");
-          btn.textContent = num.numero.toString().padStart(3, "0");
-          btn.className = "numero " + (num.estado === "disponible" ? "disponible" : "ocupado");
-          if (num.estado === "disponible") {
-            btn.addEventListener("click", () => btn.classList.toggle("seleccionado"));
-          }
-          listaDisponibles.appendChild(btn);
-        });
+        renderNumeros(data);
         actualizarBarra(data);
       } catch (err) {
-        console.error(err);
+        console.error("Error al cargar números:", err);
       }
     }
 
-    // 📊 Barra de progreso
+    function renderNumeros(data) {
+      listaDisponibles.innerHTML = "";
+      data.forEach(num => {
+        const btn = document.createElement("button");
+        btn.textContent = num.numero.toString().padStart(3, "0");
+        btn.className = "numero " + (num.estado === "disponible" ? "disponible" : "ocupado");
+        if (num.estado === "disponible") {
+          btn.addEventListener("click", () => btn.classList.toggle("seleccionado"));
+        }
+        listaDisponibles.appendChild(btn);
+      });
+    }
+
+    // 📊 Barra progreso
     function actualizarBarra(data) {
       const vendidos = data.filter(n => n.estado !== "disponible").length;
       const total = data.length;
@@ -382,6 +309,9 @@
         const data = await res.json();
         if (!data.exito || !data.init_point)
           return mostrarMensaje("🚫 No se pudo generar el pago.", "error");
+        
+        // Guardar flag para refrescar luego
+        sessionStorage.setItem("pago_exitoso", "1");
         mostrarMensaje("✅ Redirigiendo a Mercado Pago...");
         window.location.href = data.init_point;
       } catch (err) {
@@ -390,26 +320,14 @@
       }
     });
 
-    // 🔔 Mostrar mensajes
+    // 🔔 Mensajes visuales
     function mostrarMensaje(texto, tipo = "exito") {
       mensaje.textContent = texto;
       mensaje.className = `mensaje ${tipo}`;
     }
 
-    // 🔄 Actualizar progreso automáticamente cada 10 segundos
-    async function actualizarProgresoPeriodicamente() {
-      try {
-        const res = await fetch("/api/tickets/numeros");
-        const data = await res.json();
-        actualizarBarra(data);
-      } catch (err) {
-        console.error("Error actualizando progreso:", err);
-      }
-    }
-
-    // Iniciar actualización automática
-    cargarNumeros();
-    setInterval(actualizarProgresoPeriodicamente, 10000);
+    // 🔄 Actualizar progreso automáticamente
+    setInterval(cargarNumeros, 10000);
   </script>
 </body>
 </html>

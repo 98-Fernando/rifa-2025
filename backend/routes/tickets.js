@@ -103,7 +103,7 @@ router.post("/guardar-pendiente", async (req, res) => {
     // ✉️ Enviar correo de confirmación
     await enviarCorreo(
       correo,
-      "🎟️ Reserva pendiente - Rifa Solidaria",
+      "🎟️ Reserva pendiente - Rifa ",
       `
         <h2>Hola ${nombre},</h2>
         <p>Has reservado temporalmente los siguientes números:</p>
@@ -144,7 +144,7 @@ router.post("/confirmar-pago", async (req, res) => {
 
     await enviarCorreo(
       pendiente.correo,
-      "✅ Pago confirmado - Rifa Solidaria",
+      "✅ Pago confirmado - Rifa ",
       `
         <h2>¡Gracias ${pendiente.nombre}! 🎉</h2>
         <p>Tu pago ha sido confirmado y tus números ya están activos:</p>

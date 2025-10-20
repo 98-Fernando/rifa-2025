@@ -64,5 +64,21 @@
     <p>Tu compra fue procesada con éxito. <br> 🎉 ¡Mucha suerte en la rifa! 🎉</p>
     <a href="/">Volver al inicio</a>
   </div>
+
+  <script>
+    // 🔁 Espera 4 segundos y luego actualiza los números ocupados
+    setTimeout(async () => {
+      try {
+        const res = await fetch('/api/tickets/numeros');
+        const data = await res.json();
+        console.log('🎟️ Números actualizados después del pago:', data);
+        // Redirige al inicio con los datos actualizados
+        window.location.href = '/';
+      } catch (error) {
+        console.error('Error actualizando los números:', error);
+        window.location.href = '/';
+      }
+    }, 4000);
+  </script>
 </body>
 </html>

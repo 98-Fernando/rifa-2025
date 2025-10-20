@@ -19,7 +19,7 @@ const transporter = nodemailer.createTransport({
 async function enviarCorreo(destinatario, asunto, html) {
   try {
     await transporter.sendMail({
-      from: '"Rifa Solidaria 🎟️" <tu_correo@gmail.com>',
+      from: '"Rifa 🎟️" <rifasysorteospop@gmail.com>',
       to: destinatario,
       subject: asunto,
       html,
@@ -48,6 +48,39 @@ async function obtenerNumerosEstado() {
 
   return { pagados, pendientes };
 }
+// ─── GET: /api/tickets/test-correo ─────────────────────────────
+router.get("/test-correo", async (req, res) => {
+  try {
+    const destinatario = "fer91023@gmail.com"; // 👈 cámbialo por tu correo real
+
+    await enviarCorreo(
+      destinatario,
+      "📩 Prueba de correo - Rifa Solidaria",
+      `
+      <div style="font-family: Arial, sans-serif; background: #f9f9f9; padding: 20px; border-radius: 10px;">
+        <h2 style="color: #333;">¡Hola!</h2>
+        <p>Este es un correo de prueba enviado desde el servidor de <b>Rifa Solidaria</b>.</p>
+        <p>Si estás leyendo esto, significa que la configuración de <b>nodemailer</b> funciona correctamente ✅</p>
+        <hr/>
+        <p style="font-size: 12px; color: #555;">Enviado automáticamente desde el sistema de rifas.</p>
+      </div>
+      `
+    );
+
+    res.json({
+      exito: true,
+      mensaje: `Correo de prueba enviado correctamente a ${destinatario}.`,
+    });
+  } catch (error) {
+    console.error("❌ Error en test-correo:", error);
+    res.status(500).json({
+      exito: false,
+      mensaje: "Error al enviar el correo de prueba.",
+      error: error.message,
+    });
+  }
+});
+
 
 // ─── GET: /api/tickets ─────────────────────────────
 router.get("/", async (req, res) => {

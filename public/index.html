@@ -287,38 +287,53 @@
       });
     });
 
-    // 💳 Reservar y pagar
-    btnReservar.addEventListener("click", async () => {
-      const nombre = document.getElementById("nombre").value.trim();
-      const correo = document.getElementById("correo").value.trim();
-      const telefono = document.getElementById("telefono").value.trim();
+// 💳 Reservar y pagar
+btnReservar.addEventListener("click", async () => {
+  const nombre = document.getElementById("nombre").value.trim();
+  const correo = document.getElementById("correo").value.trim();
+  const telefono = document.getElementById("telefono").value.trim();
 
-      if (!nombre || !correo || numerosSeleccionados.length === 0)
-        return mostrarMensaje("⚠️ Completa tus datos y selecciona tus números.", "error");
+  if (!nombre || !correo || numerosSeleccionados.length === 0)
+    return mostrarMensaje("⚠️ Completa tus datos y selecciona tus números.", "error");
 
-      mostrarMensaje("Procesando reserva...", "info");
+  mostrarMensaje("Procesando reserva...", "info");
 
-      try {
-        const referencia = `RIFA-${Date.now()}`;
-        const monto = PRECIO * numerosSeleccionados.length;
-        const res = await fetch("/api/mercadopago/preference", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ reference: referencia, nombre, correo, telefono, monto }),
-        });
-        const data = await res.json();
-        if (!data.exito || !data.init_point)
-          return mostrarMensaje("🚫 No se pudo generar el pago.", "error");
-        
-        // Guardar flag para refrescar luego
-        sessionStorage.setItem("pago_exitoso", "1");
-        mostrarMensaje("✅ Redirigiendo a Mercado Pago...");
-        window.location.href = data.init_point;
-      } catch (err) {
-        console.error(err);
-        mostrarMensaje("🚫 Error al conectar con Mercado Pago.", "error");
-      }
+  try {
+    // 1️⃣ Guardar los números pendientes antes de crear el pago
+    const resPendiente = await fetch("/api/tickets/guardar-pendiente", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nombre, correo, telefono, numeros: numerosSeleccionados }),
     });
+
+    const dataPendiente = await resPendiente.json();
+    if (!dataPendiente.exito) throw new Error(dataPendiente.mensaje || "Error al guardar pendiente");
+
+    const referencia = dataPendiente.reference;
+    const monto = 100 * numerosSeleccionados.length; // PRECIO * cantidad
+
+    // 2️⃣ Crear preferencia de pago
+    const resPago = await fetch("/api/mercadopago/preference", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reference: referencia, nombre, correo, telefono, monto }),
+    });
+
+    const dataPago = await resPago.json();
+    if (!dataPago.exito || !dataPago.init_point)
+      return mostrarMensaje("🚫 No se pudo generar el pago.", "error");
+
+    // Guardar flag para refrescar luego
+    sessionStorage.setItem("pago_exitoso", "1");
+    mostrarMensaje("✅ Redirigiendo a Mercado Pago...");
+    window.location.href = dataPago.init_point;
+
+  } catch (err) {
+    console.error("❌ Error al procesar el pago:", err);
+    mostrarMensaje("🚫 Error al conectar con el servidor.", "error");
+  }
+});
+
 
     // 🔔 Mensajes visuales
     function mostrarMensaje(texto, tipo = "exito") {

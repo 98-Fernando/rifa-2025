@@ -11,7 +11,7 @@ const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
   user: process.env.CORREO_APP,
-  pass: process.env.CLAVE.APP,
+  pass: process.env.CLAVE_APP,
 },
 
 // ─── FUNCIÓN: Enviar correo ─────────────────────────

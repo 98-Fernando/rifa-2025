@@ -15,7 +15,9 @@ import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
 // Rutas
 import ticketsRouter from "./routes/tickets.js";
 import adminApiRouter from "./routes/admin.js";
-import Ticket from "./models/Ticket.js"; // ✅ asegúrate que exista este modelo
+import Ticket from "./models/Ticket.js";
+import Pendiente from "./models/Pendiente.js";
+import { enviarCorreo } from "./emailService.js";
 
 // ==================== CONFIGURACIÓN BASE ====================
 const __filename = fileURLToPath(import.meta.url);
@@ -151,7 +153,7 @@ app.post("/api/mercadopago/preference", async (req, res) => {
         failure: process.env.URL_FAILURE,
         pending: process.env.URL_PENDING,
       },
-      notification_url: "https://rifa-2025.onrender.com/api/mercadopago/webhook", // ✅ Webhook automático
+      notification_url: "https://rifa-2025.onrender.com/api/mercadopago/webhook",
     };
 
     const result = await mpPreference.create({ body: preference });
@@ -185,17 +187,45 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
     const reference = payment.external_reference;
     const status = payment.status;
 
-    let nuevoEstado = "pendiente";
-    if (status === "approved") nuevoEstado = "pagado";
-    else if (status === "rejected") nuevoEstado = "rechazado";
+    console.log(`📢 Webhook recibido: ${reference} | Estado: ${status}`);
 
-    await Ticket.findOneAndUpdate(
-      { reference },
-      { estadoPago: nuevoEstado },
-      { new: true }
-    );
+    const pendiente = await Pendiente.findOne({ reference });
+    if (!pendiente) {
+      console.warn("⚠️ Pendiente no encontrado para referencia:", reference);
+      return res.sendStatus(200);
+    }
 
-    console.log(`✅ Ticket ${reference} actualizado a ${nuevoEstado}`);
+    if (status === "approved") {
+      // ✅ Crear ticket confirmado
+      await Ticket.create({
+        reference: pendiente.reference,
+        nombre: pendiente.nombre,
+        correo: pendiente.correo,
+        telefono: pendiente.telefono,
+        numeros: pendiente.numeros,
+        estadoPago: "pagado",
+      });
+
+      // Enviar correo de confirmación
+      await enviarCorreo(
+        pendiente.correo,
+        "✅ Pago confirmado - Rifa Solidaria",
+        `
+        <h2>¡Gracias ${pendiente.nombre}! 🎉</h2>
+        <p>Tu pago ha sido confirmado y tus números ya están activos:</p>
+        <h3>${pendiente.numeros.join(", ")}</h3>
+        <p><b>Referencia:</b> ${pendiente.reference}</p>
+        <p>Mucha suerte 🍀 y gracias por participar.</p>
+        `
+      );
+
+      await Pendiente.findByIdAndDelete(pendiente._id);
+      console.log(`✅ Ticket creado y pendiente eliminado: ${reference}`);
+    } else if (status === "rejected") {
+      await Pendiente.findByIdAndDelete(pendiente._id);
+      console.log(`❌ Pago rechazado: ${reference}`);
+    }
+
     res.sendStatus(200);
   } catch (err) {
     console.error("❌ Error en webhook:", err);

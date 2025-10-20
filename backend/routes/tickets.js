@@ -1,33 +1,10 @@
 import { Router } from "express";
 import Ticket from "../models/Ticket.js";
 import Pendiente from "../models/Pendiente.js";
-import nodemailer from "nodemailer";
+import { enviarCorreo } from "../services/emailService.js"; // ✅ Importa desde el servicio
 
 const router = Router();
 const TOTAL_NUMEROS = 1000;
-
-// ─── CONFIGURAR TRANSPORTE DE CORREO ───────────────
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-  user: process.env.CORREO_APP,
-  pass: process.env.CLAVE_APP,
-},
-
-// ─── FUNCIÓN: Enviar correo ─────────────────────────
-async function enviarCorreo(destinatario, asunto, html) {
-  try {
-    await transporter.sendMail({
-      from: '"Rifa 🎟️" <rifasysorteospop@gmail.com>',
-      to: destinatario,
-      subject: asunto,
-      html,
-    });
-    console.log(`✅ Correo enviado a ${destinatario}`);
-  } catch (error) {
-    console.error("❌ Error enviando correo:", error);
-  }
-}
 
 // ─── FUNCIÓN AUXILIAR ─────────────────────────────
 async function obtenerNumerosEstado() {
@@ -40,14 +17,12 @@ async function obtenerNumerosEstado() {
   boletosPagados.forEach((b) =>
     b.numeros?.forEach((n) => pagados.add(n.toString().padStart(3, "0")))
   );
-
   boletosPendientes.forEach((b) =>
     b.numeros?.forEach((n) => pendientes.add(n.toString().padStart(3, "0")))
   );
 
   return { pagados, pendientes };
 }
-
 
 // ─── GET: /api/tickets ─────────────────────────────
 router.get("/", async (req, res) => {
@@ -67,7 +42,6 @@ router.get("/numeros", async (req, res) => {
 
     const numeros = Array.from({ length: TOTAL_NUMEROS }, (_, i) => {
       const numero = i.toString().padStart(3, "0");
-
       if (pagados.has(numero)) return { numero, estado: "ocupado" };
       if (pendientes.has(numero)) return { numero, estado: "pendiente" };
       return { numero, estado: "disponible" };
@@ -86,7 +60,6 @@ router.get("/consulta", async (req, res) => {
     const tickets = await Ticket.find({}, "numeros").lean();
     const vendidos = tickets.reduce((sum, t) => sum + (t.numeros?.length || 0), 0);
     const porcentaje = Math.min(100, Math.floor((vendidos / TOTAL_NUMEROS) * 100));
-
     res.json({ exito: true, vendidos, porcentaje });
   } catch (error) {
     console.error("❌ Error en /consulta:", error);
@@ -99,10 +72,7 @@ router.post("/guardar-pendiente", async (req, res) => {
   const { nombre, correo, telefono, numeros } = req.body;
 
   if (!nombre || !correo || !telefono || !Array.isArray(numeros) || numeros.length === 0) {
-    return res.status(400).json({
-      exito: false,
-      mensaje: "Datos incompletos o sin números seleccionados.",
-    });
+    return res.status(400).json({ exito: false, mensaje: "Datos incompletos o sin números seleccionados." });
   }
 
   try {
@@ -130,17 +100,17 @@ router.post("/guardar-pendiente", async (req, res) => {
       reference: transaction_reference,
     });
 
-    // ✉️ Enviar correo de confirmación de reserva
+    // ✉️ Enviar correo de confirmación
     await enviarCorreo(
       correo,
       "🎟️ Reserva pendiente - Rifa Solidaria",
       `
-      <h2>Hola ${nombre},</h2>
-      <p>Has reservado temporalmente los siguientes números:</p>
-      <h3>${numerosFormateados.join(", ")}</h3>
-      <p>Por favor, realiza el pago lo antes posible para confirmar tu participación.</p>
-      <p><b>Referencia de reserva:</b> ${transaction_reference}</p>
-      <p>Gracias por apoyar nuestra causa 💛</p>
+        <h2>Hola ${nombre},</h2>
+        <p>Has reservado temporalmente los siguientes números:</p>
+        <h3>${numerosFormateados.join(", ")}</h3>
+        <p>Por favor, realiza el pago lo antes posible para confirmar tu participación.</p>
+        <p><b>Referencia de reserva:</b> ${transaction_reference}</p>
+        <p>Gracias por apoyar nuestra causa 💛</p>
       `
     );
 
@@ -156,15 +126,11 @@ router.post("/guardar-pendiente", async (req, res) => {
 });
 
 // ─── POST: /api/tickets/confirmar-pago ─────────────
-// (Usar esta ruta cuando se marque como pagado y se mueva a Tickets)
 router.post("/confirmar-pago", async (req, res) => {
   const { idPendiente } = req.body;
-
   try {
     const pendiente = await Pendiente.findById(idPendiente);
-    if (!pendiente) {
-      return res.status(404).json({ exito: false, mensaje: "Reserva no encontrada." });
-    }
+    if (!pendiente) return res.status(404).json({ exito: false, mensaje: "Reserva no encontrada." });
 
     const nuevoTicket = await Ticket.create({
       nombre: pendiente.nombre,
@@ -176,24 +142,19 @@ router.post("/confirmar-pago", async (req, res) => {
 
     await Pendiente.findByIdAndDelete(idPendiente);
 
-    // ✉️ Enviar correo de confirmación de pago
     await enviarCorreo(
       pendiente.correo,
       "✅ Pago confirmado - Rifa Solidaria",
       `
-      <h2>¡Gracias ${pendiente.nombre}! 🎉</h2>
-      <p>Tu pago ha sido confirmado y tus números ya están activos:</p>
-      <h3>${pendiente.numeros.join(", ")}</h3>
-      <p><b>Referencia:</b> ${pendiente.reference}</p>
-      <p>Mucha suerte 🍀 y gracias por participar en nuestra rifa solidaria.</p>
+        <h2>¡Gracias ${pendiente.nombre}! 🎉</h2>
+        <p>Tu pago ha sido confirmado y tus números ya están activos:</p>
+        <h3>${pendiente.numeros.join(", ")}</h3>
+        <p><b>Referencia:</b> ${pendiente.reference}</p>
+        <p>Mucha suerte 🍀 y gracias por participar.</p>
       `
     );
 
-    res.json({
-      exito: true,
-      mensaje: "Pago confirmado y correo enviado al participante.",
-      ticket: nuevoTicket,
-    });
+    res.json({ exito: true, mensaje: "Pago confirmado y correo enviado al participante.", ticket: nuevoTicket });
   } catch (error) {
     console.error("❌ Error confirmando pago:", error);
     res.status(500).json({ exito: false, mensaje: "Error al confirmar el pago." });
@@ -204,9 +165,7 @@ router.post("/confirmar-pago", async (req, res) => {
 router.delete("/:id", async (req, res) => {
   try {
     const eliminado = await Ticket.findByIdAndDelete(req.params.id);
-    if (!eliminado) {
-      return res.status(404).json({ exito: false, mensaje: "Ticket no encontrado." });
-    }
+    if (!eliminado) return res.status(404).json({ exito: false, mensaje: "Ticket no encontrado." });
     res.json({ exito: true, mensaje: "🗑️ Ticket eliminado correctamente." });
   } catch (error) {
     console.error("❌ Error eliminando ticket:", error);

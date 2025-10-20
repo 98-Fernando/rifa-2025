@@ -97,6 +97,66 @@ app.get("/api/config", (req, res) => {
     precio: Number(process.env.PRECIO_BOLETO) || 100,
   });
 });
+import Pendiente from "../models/Pendiente.js"; // asegúrate de que esté importado
+
+app.post("/api/mercadopago/preference", async (req, res) => {
+  try {
+    const { reference, nombre, correo, telefono, monto, numeros } = req.body;
+
+    if (!reference || !monto || !nombre || !numeros || numeros.length === 0) {
+      return res
+        .status(400)
+        .json({ exito: false, mensaje: "Faltan datos para generar el pago" });
+    }
+
+    // 🔹 Guardar la compra pendiente ANTES de crear la preferencia
+    await Pendiente.create({
+      reference,
+      nombre,
+      correo,
+      telefono,
+      numeros,
+      estadoPago: "pendiente",
+    });
+
+    const preference = {
+      items: [
+        {
+          id: reference,
+          title: "Tickets de Rifa - Ref: " + reference,
+          quantity: 1,
+          unit_price: Number(monto),
+          currency_id: "COP",
+        },
+      ],
+      payer: {
+        name: nombre,
+        email: correo,
+        phone: { number: telefono },
+      },
+      external_reference: reference,
+      auto_return: "approved",
+      back_urls: {
+        success: process.env.URL_SUCCESS,
+        failure: process.env.URL_FAILURE,
+        pending: process.env.URL_PENDING,
+      },
+      notification_url: "https://rifa-2025.onrender.com/api/mercadopago/webhook",
+    };
+
+    const result = await mpPreference.create({ body: preference });
+
+    return res.json({
+      exito: true,
+      init_point: result.init_point,
+    });
+  } catch (err) {
+    console.error("❌ Error creando preferencia Mercado Pago:", err);
+    return res
+      .status(500)
+      .json({ exito: false, mensaje: "Error interno al generar pago." });
+  }
+});
 
 // ==================== CREAR PREFERENCIA DE PAGO ====================
 app.post("/api/mercadopago/preference", async (req, res) => {

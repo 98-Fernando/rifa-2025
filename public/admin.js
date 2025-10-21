@@ -1,159 +1,167 @@
-// Archivo admin.js
+// =====================================================
+// 🧾 admin.js — Panel de Administración de Tickets
+// =====================================================
 
-// ===============================
-// 📌 Variables Globales
-// ===============================
+// -------------------------------
+// 📌 Elementos del DOM
+// -------------------------------
 const tableBody = document.getElementById("tickets-table");
 const searchInput = document.getElementById("search");
 const logoutBtn = document.querySelector(".logout-btn");
 
-// ===============================
-// 1. Función Principal: Cargar y Renderizar Tickets
-// ===============================
+// =====================================================
+// 1️⃣ Función Principal: Cargar Tickets
+// =====================================================
 async function cargarTickets(filtro = "") {
-    try {
-        // Incluimos pendientes y resueltos para la vista completa del admin
-        const res = await fetch("/api/admin/tickets"); 
-        
-        if (!res.ok) {
-            // Manejar sesión expirada o no autorizado
-            if (res.status === 401) {
-                alert("Sesión expirada o no autorizado. Redirigiendo a login.");
-                // 🛑 CORRECCIÓN CLAVE: Redirige a /admin, que sirve el login.html
-                window.location.href = "/admin"; 
-                return;
-            }
-            throw new Error("Error al obtener los tickets");
-        }
-        
-        const data = await res.json();
-        tableBody.innerHTML = "";
+  try {
+    const res = await fetch("/api/admin/tickets", { credentials: "include" });
 
-        if (data.exito && Array.isArray(data.tickets)) {
-            const ticketsFiltrados = data.tickets.filter(ticket => {
-                const query = filtro.toLowerCase();
-                const nombre = ticket.nombre?.toLowerCase() || "";
-                const correo = ticket.correo?.toLowerCase() || "";
-                
-                return nombre.includes(query) || correo.includes(query);
-            });
+    if (res.status === 401) {
+      alert("⚠️ Sesión expirada o no autorizada. Por favor inicia sesión nuevamente.");
+      window.location.href = "/admin";
+      return;
+    }
 
-            if (ticketsFiltrados.length === 0 && filtro) {
-                tableBody.innerHTML = `<tr><td colspan="8">⚠️ No se encontraron resultados para "${filtro}"</td></tr>`;
-                return;
-            } else if (ticketsFiltrados.length === 0) {
-                 tableBody.innerHTML = `<tr><td colspan="8">⚠️ No hay tickets registrados</td></tr>`;
-                 return;
-            }
+    if (!res.ok) throw new Error("Error al obtener los tickets");
 
-            ticketsFiltrados.forEach(ticket => {
-                // Formateo del monto y estado
-                const monto = ticket.monto ? `$${ticket.monto.toLocaleString('es-CO')}` : "N/A";
-                // Usamos estadoPago si existe, si no, inferimos de 'pagado' (para compatibilidad)
-                let estado = ticket.estadoPago || (ticket.pagado ? 'pagado' : 'pendiente');
-                let estadoDisplay = '';
+    const data = await res.json();
+    tableBody.innerHTML = "";
 
-                switch(estado.toLowerCase()) {
-                    case 'pagado':
-                    case 'approved':
-                        estadoDisplay = '✅ Pagado';
-                        break;
-                    case 'pendiente':
-                    case 'pending':
-                        estadoDisplay = '⏳ Pendiente';
-                        break;
-                    default:
-                        estadoDisplay = '❌ Error/Cancelado';
-                }
-                
-                const numerosFormateados = Array.isArray(ticket.numeros) ? ticket.numeros.join(", ") : "-";
-                
-                const row = document.createElement("tr");
-                row.innerHTML = `
-                    <td>${ticket.nombre || "-"}</td>
-                    <td>${ticket.correo || "-"}</td>
-                    <td>${ticket.telefono || "-"}</td>
-                    <td class="numeros-cell">${numerosFormateados}</td>
-                    <td>${monto}</td>
-                    <td>${new Date(ticket.createdAt).toLocaleString()}</td>
-                    <td class="status-${estado.toLowerCase()}">
-                        ${estadoDisplay}
-                    </td>
-                    <td>
-                        <button class="delete-btn" data-id="${ticket._id}" title="Eliminar Ticket">🗑️</button>
-                    </td>
-                `;
-                tableBody.appendChild(row);
-            });
-        }
-    } catch (error) {
-        console.error("❌ Error cargando tickets:", error);
-        tableBody.innerHTML = `<tr><td colspan="8">❌ Error al cargar los datos</td></tr>`;
-    }
+    if (!data.exito || !Array.isArray(data.tickets) || data.tickets.length === 0) {
+      tableBody.innerHTML = `<tr><td colspan="8">⚠️ No hay tickets registrados</td></tr>`;
+      return;
+    }
+
+    // 🔍 Filtrado en base al texto ingresado
+    const query = filtro.toLowerCase();
+    const ticketsFiltrados = data.tickets.filter(ticket => {
+      const nombre = ticket.nombre?.toLowerCase() || "";
+      const correo = ticket.correo?.toLowerCase() || "";
+      return nombre.includes(query) || correo.includes(query);
+    });
+
+    if (ticketsFiltrados.length === 0) {
+      tableBody.innerHTML = `<tr><td colspan="8">⚠️ No se encontraron resultados para "${filtro}"</td></tr>`;
+      return;
+    }
+
+    // 🧩 Renderizamos cada fila
+    ticketsFiltrados.forEach(ticket => {
+      const monto = ticket.monto ? `$${ticket.monto.toLocaleString("es-CO")}` : "N/A";
+      const numeros = Array.isArray(ticket.numeros) ? ticket.numeros.join(", ") : "-";
+
+      // Estado de pago
+      let estado = ticket.estadoPago || (ticket.pagado ? "pagado" : "pendiente");
+      let estadoDisplay = "";
+      switch (estado.toLowerCase()) {
+        case "pagado":
+        case "approved":
+          estadoDisplay = "✅ Pagado";
+          break;
+        case "pendiente":
+        case "pending":
+          estadoDisplay = "⏳ Pendiente";
+          break;
+        default:
+          estadoDisplay = "❌ Cancelado / Error";
+      }
+
+      // Fecha formateada
+      const fecha = ticket.createdAt
+        ? new Date(ticket.createdAt).toLocaleString("es-CO", {
+            dateStyle: "short",
+            timeStyle: "short",
+          })
+        : "-";
+
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${ticket.nombre || "-"}</td>
+        <td>${ticket.correo || "-"}</td>
+        <td>${ticket.telefono || "-"}</td>
+        <td class="numeros-cell">${numeros}</td>
+        <td>${monto}</td>
+        <td>${fecha}</td>
+        <td class="status-${estado.toLowerCase()}">${estadoDisplay}</td>
+        <td>
+          <button class="delete-btn" data-id="${ticket._id}" title="Eliminar Ticket">🗑️</button>
+        </td>
+      `;
+      tableBody.appendChild(row);
+    });
+  } catch (error) {
+    console.error("❌ Error cargando tickets:", error);
+    tableBody.innerHTML = `<tr><td colspan="8">❌ Error al cargar los datos. Intenta nuevamente.</td></tr>`;
+  }
 }
 
-// ===============================
-// 2. Lógica para Eliminar un Ticket
-// ===============================
-document.addEventListener("click", async (e) => {
-    if (e.target.classList.contains("delete-btn")) {
-        const id = e.target.getAttribute("data-id");
-        if (confirm("⚠️ ¿Seguro que deseas eliminar este registro? Esta acción es irreversible.")) {
-            try {
-                const res = await fetch(`/api/admin/tickets/${id}`, { method: "DELETE" });
-                const data = await res.json();
+// =====================================================
+// 2️⃣ Eliminar Ticket
+// =====================================================
+document.addEventListener("click", async e => {
+  if (!e.target.classList.contains("delete-btn")) return;
 
-                if (data.exito) {
-                    alert("✅ Registro eliminado exitosamente.");
-                    cargarTickets(searchInput.value); // Refresca con el filtro actual
-                } else {
-                    alert("❌ Error eliminando: " + (data.mensaje || "Intenta de nuevo."));
-                }
-            } catch (err) {
-                console.error("❌ Error en la eliminación:", err);
-                alert("❌ Error en la eliminación");
-            }
-        }
-    }
+  const id = e.target.getAttribute("data-id");
+  if (!id) return alert("ID de ticket inválido.");
+
+  if (!confirm("⚠️ ¿Seguro que deseas eliminar este registro? Esta acción no se puede deshacer.")) return;
+
+  try {
+    const res = await fetch(`/api/admin/tickets/${id}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+
+    const data = await res.json();
+
+    if (res.status === 401) {
+      alert("⚠️ Sesión expirada. Redirigiendo al login...");
+      window.location.href = "/admin";
+      return;
+    }
+
+    if (data.exito) {
+      alert("✅ Registro eliminado exitosamente.");
+      cargarTickets(searchInput.value);
+    } else {
+      alert("❌ Error al eliminar: " + (data.mensaje || "Intenta nuevamente."));
+    }
+  } catch (err) {
+    console.error("❌ Error en la eliminación:", err);
+    alert("❌ No se pudo eliminar el ticket. Revisa la conexión o intenta de nuevo.");
+  }
 });
 
-// ===============================
-// 3. Lógica de Búsqueda
-// ===============================
+// =====================================================
+// 3️⃣ Búsqueda (con debounce)
+// =====================================================
 if (searchInput) {
-    // Usamos debounce para no sobrecargar el servidor con cada tecla
-    let timer;
-    searchInput.addEventListener("keyup", () => {
-        clearTimeout(timer);
-        timer = setTimeout(() => {
-            cargarTickets(searchInput.value);
-        }, 300); // Espera 300ms después de la última tecla
-    });
+  let timer;
+  searchInput.addEventListener("keyup", () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      cargarTickets(searchInput.value.trim());
+    }, 300);
+  });
 }
 
-// ===============================
-// 4. Lógica de Logout
-// ===============================
+// =====================================================
+// 4️⃣ Logout del Administrador
+// =====================================================
 if (logoutBtn) {
-    logoutBtn.addEventListener('click', async () => {
-        if (confirm("¿Estás seguro que quieres cerrar la sesión?")) {
-            try {
-                // Llama a la ruta de logout en el backend
-                await fetch("/api/admin/logout", { method: "POST" });
-                // Redirige al login
-                window.location.href = "/admin"; 
-            } catch(e) {
-                console.error("Error al cerrar sesión:", e);
-                window.location.href = "/admin"; // Forzar la redirección si falla la API
-            }
-        }
-    });
+  logoutBtn.addEventListener("click", async () => {
+    if (!confirm("¿Estás seguro de cerrar sesión?")) return;
+    try {
+      await fetch("/api/admin/logout", { method: "POST", credentials: "include" });
+    } catch (e) {
+      console.warn("⚠️ Error al cerrar sesión:", e);
+    } finally {
+      window.location.href = "/admin";
+    }
+  });
 }
 
-
-// ===============================
+// =====================================================
 // 🚀 Inicialización
-// ===============================
-document.addEventListener("DOMContentLoaded", () => {
-    cargarTickets();
-});
+// =====================================================
+document.addEventListener("DOMContentLoaded", cargarTickets);

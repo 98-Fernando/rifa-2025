@@ -36,7 +36,7 @@ if (!MP_ACCESS_TOKEN) {
 }
 
 const mpClient = new MercadoPagoConfig({ accessToken: MP_ACCESS_TOKEN });
-const mp = new (mpClient);
+const mpPreference = new Preference(mpClient);
 const mpPayment = new Payment(mpClient);
 
 // ==================== MIDDLEWARES ====================
@@ -107,7 +107,6 @@ app.post("/api/mercadopago/preference", async (req, res) => {
         .json({ exito: false, mensaje: "Faltan datos para generar el pago" });
     }
 
-    // Buscar el pendiente que ya se guardó
     const pendiente = await Pendiente.findOne({ reference });
     if (!pendiente) {
       return res
@@ -137,7 +136,8 @@ app.post("/api/mercadopago/preference", async (req, res) => {
         failure: process.env.URL_FAILURE,
         pending: process.env.URL_PENDING,
       },
-      notification_url: "https://rifa-2025.onrender.com/api/mercadopago/webhook",
+      notification_url:
+        "https://rifa-2025.onrender.com/api/mercadopago/webhook",
     };
 
     const result = await mpPreference.create({ body: preference });
@@ -154,7 +154,6 @@ app.post("/api/mercadopago/preference", async (req, res) => {
   }
 });
 
-
 // ==================== WEBHOOK MERCADO PAGO ====================
 app.post("/api/mercadopago/webhook", async (req, res) => {
   try {
@@ -163,7 +162,6 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
     const { type, action, data, topic, resource } = req.body;
     const evento = type || topic || action || "sin_tipo";
 
-    // Guardar log del webhook para auditoría
     await WebhookLog.create({
       type: evento,
       paymentId: data?.id || "sin-id",
@@ -173,14 +171,12 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
     let paymentData = null;
     let reference = null;
 
-    // 🔹 Caso 1: Mercado Pago envía 'payment' directo
     if (evento === "payment" && data?.id) {
       paymentData = await mpPayment.get({ id: data.id });
       reference = paymentData.external_reference;
       console.log(`💳 Webhook de pago directo recibido: ${reference}`);
     }
 
-    // 🔹 Caso 2: Mercado Pago envía 'merchant_order' (más común en producción)
     if (evento === "merchant_order" && resource) {
       console.log("📄 Consultando merchant_order:", resource);
       const resp = await fetch(resource, {
@@ -188,7 +184,9 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
       });
       const orderData = await resp.json();
 
-      const pagoAprobado = orderData.payments?.find((p) => p.status === "approved");
+      const pagoAprobado = orderData.payments?.find(
+        (p) => p.status === "approved"
+      );
       if (!pagoAprobado) {
         console.log("⏳ Orden sin pago aprobado aún.");
         return res.sendStatus(200);
@@ -212,7 +210,6 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
     }
 
     if (paymentData.status === "approved") {
-      // 🔹 Crear el ticket
       await Ticket.create({
         reference: pendiente.reference,
         nombre: pendiente.nombre,
@@ -222,7 +219,6 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
         estadoPago: "pagado",
       });
 
-      // 🔹 Enviar correo de confirmación
       await enviarCorreo(
         pendiente.correo,
         "✅ Pago confirmado - Rifa 2025",
@@ -235,7 +231,6 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
         `
       );
 
-      // 🔹 Eliminar pendiente
       await Pendiente.deleteOne({ _id: pendiente._id });
       console.log(`✅ Ticket creado y pendiente eliminado: ${reference}`);
     }
@@ -246,6 +241,7 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
     res.sendStatus(500);
   }
 });
+
 // ==================== RUTA ADMIN: LOGS WEBHOOK ====================
 app.get("/api/admin/webhooks", async (req, res) => {
   try {
@@ -273,7 +269,13 @@ app.get("/api/admin/webhooks", async (req, res) => {
       .limit(Number(limit))
       .lean();
 
-    res.json({ exito: true, total, pagina: Number(page), limite: Number(limit), logs });
+    res.json({
+      exito: true,
+      total,
+      pagina: Number(page),
+      limite: Number(limit),
+      logs,
+    });
   } catch (err) {
     console.error("❌ Error al obtener webhooks:", err);
     res.status(500).json({ exito: false, mensaje: "Error del servidor" });
@@ -283,7 +285,10 @@ app.get("/api/admin/webhooks", async (req, res) => {
 // ==================== LOGIN ADMIN ====================
 app.post("/api/admin/login", (req, res) => {
   const { username, password } = req.body;
-  if (username === process.env.ADMIN_USER && password === process.env.ADMIN_PASS) {
+  if (
+    username === process.env.ADMIN_USER &&
+    password === process.env.ADMIN_PASS
+  ) {
     req.session.isAdmin = true;
     return res.json({ success: true });
   }
@@ -291,7 +296,9 @@ app.post("/api/admin/login", (req, res) => {
 });
 
 app.post("/api/admin/logout", (req, res) => {
-  req.session.destroy(() => res.json({ exito: true, mensaje: "Sesión cerrada correctamente" }));
+  req.session.destroy(() =>
+    res.json({ exito: true, mensaje: "Sesión cerrada correctamente" })
+  );
 });
 
 // ==================== RUTAS ADMIN ====================

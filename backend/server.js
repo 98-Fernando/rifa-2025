@@ -36,7 +36,7 @@ if (!MP_ACCESS_TOKEN) {
 }
 
 const mpClient = new MercadoPagoConfig({ accessToken: MP_ACCESS_TOKEN });
-const mpPreference = new Preference(mpClient);
+const mp = new (mpClient);
 const mpPayment = new Payment(mpClient);
 
 // ==================== MIDDLEWARES ====================
@@ -99,23 +99,21 @@ app.get("/api/config", (req, res) => {
 // ==================== CREAR PREFERENCIA MERCADO PAGO ====================
 app.post("/api/mercadopago/preference", async (req, res) => {
   try {
-    const { reference, nombre, correo, telefono, monto, numeros } = req.body;
+    const { reference, monto } = req.body;
 
-    if (!reference || !monto || !nombre || !numeros?.length) {
+    if (!reference || !monto) {
       return res
         .status(400)
         .json({ exito: false, mensaje: "Faltan datos para generar el pago" });
     }
 
-    // 🔹 Guardar la compra pendiente antes de generar la preferencia
-    await Pendiente.create({
-      reference,
-      nombre,
-      correo,
-      telefono,
-      numeros,
-      estadoPago: "pendiente",
-    });
+    // Buscar el pendiente que ya se guardó
+    const pendiente = await Pendiente.findOne({ reference });
+    if (!pendiente) {
+      return res
+        .status(404)
+        .json({ exito: false, mensaje: "No se encontró la reserva asociada." });
+    }
 
     const preference = {
       items: [
@@ -128,9 +126,9 @@ app.post("/api/mercadopago/preference", async (req, res) => {
         },
       ],
       payer: {
-        name: nombre,
-        email: correo,
-        phone: { number: telefono },
+        name: pendiente.nombre,
+        email: pendiente.correo,
+        phone: { number: pendiente.telefono },
       },
       external_reference: reference,
       auto_return: "approved",
@@ -155,6 +153,7 @@ app.post("/api/mercadopago/preference", async (req, res) => {
     });
   }
 });
+
 
 // ==================== WEBHOOK MERCADO PAGO ====================
 app.post("/api/mercadopago/webhook", async (req, res) => {

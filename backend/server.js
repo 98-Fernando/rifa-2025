@@ -155,6 +155,7 @@ app.post("/api/mercadopago/preference", async (req, res) => {
 });
 
 // ==================== WEBHOOK MERCADO PAGO ====================
+// ==================== WEBHOOK MERCADO PAGO ====================
 app.post("/api/mercadopago/webhook", async (req, res) => {
   try {
     console.log("📦 Webhook recibido:", JSON.stringify(req.body, null, 2));
@@ -171,12 +172,14 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
     let paymentData = null;
     let reference = null;
 
+    // 🔹 Caso 1: Mercado Pago envía "payment"
     if (evento === "payment" && data?.id) {
       paymentData = await mpPayment.get({ id: data.id });
       reference = paymentData.external_reference;
       console.log(`💳 Webhook de pago directo recibido: ${reference}`);
     }
 
+    // 🔹 Caso 2: Mercado Pago envía "merchant_order"
     if (evento === "merchant_order" && resource) {
       console.log("📄 Consultando merchant_order:", resource);
       const resp = await fetch(resource, {
@@ -185,8 +188,9 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
       const orderData = await resp.json();
 
       const pagoAprobado = orderData.payments?.find(
-        (p) => p.status === "approved"
+        (p) => p.status === "approved" || p.status === "pending"
       );
+
       if (!pagoAprobado) {
         console.log("⏳ Orden sin pago aprobado aún.");
         return res.sendStatus(200);
@@ -201,15 +205,25 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
       return res.sendStatus(200);
     }
 
-    console.log(`💰 Pago confirmado (${reference}): ${paymentData.status}`);
+    console.log(`💰 Estado actual del pago (${reference}): ${paymentData.status}`);
 
-    const pendiente = await Pendiente.findOne({ reference });
-    if (!pendiente) {
-      console.warn("⚠️ Pendiente no encontrado:", reference);
-      return res.sendStatus(200);
+    // 🔁 Si aún está pendiente, esperamos y reconsultamos una vez
+    if (paymentData.status === "pending") {
+      console.log("⏳ Esperando confirmación del pago...");
+      await new Promise((resolve) => setTimeout(resolve, 4000)); // 4 segundos
+      const refreshed = await mpPayment.get({ id: paymentData.id });
+      paymentData = refreshed;
+      console.log(`🔄 Estado actualizado (${reference}): ${paymentData.status}`);
     }
 
+    // 🔹 Si ya está aprobado, procedemos
     if (paymentData.status === "approved") {
+      const pendiente = await Pendiente.findOne({ reference });
+      if (!pendiente) {
+        console.warn("⚠️ Pendiente no encontrado:", reference);
+        return res.sendStatus(200);
+      }
+
       await Ticket.create({
         reference: pendiente.reference,
         nombre: pendiente.nombre,
@@ -233,6 +247,8 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
 
       await Pendiente.deleteOne({ _id: pendiente._id });
       console.log(`✅ Ticket creado y pendiente eliminado: ${reference}`);
+    } else {
+      console.log(`⚠️ Pago aún no aprobado (${paymentData.status}).`);
     }
 
     res.sendStatus(200);

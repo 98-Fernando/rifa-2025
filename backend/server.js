@@ -155,102 +155,111 @@ app.post("/api/mercadopago/preference", async (req, res) => {
 });
 
 // ==================== WEBHOOK MERCADO PAGO ====================
-// ==================== WEBHOOK MERCADO PAGO ====================
 app.post("/api/mercadopago/webhook", async (req, res) => {
   try {
-    console.log("📦 Webhook recibido:", JSON.stringify(req.body, null, 2));
+    const { query, body } = req;
+    const type = body.type || body.topic || query.topic || "sin_tipo";
+    const id = body.data?.id || query.id;
+    const resource = body.resource;
 
-    const { type, action, data, topic, resource } = req.body;
-    const evento = type || topic || action || "sin_tipo";
+    console.log("📦 Webhook recibido:", JSON.stringify({ query, body }, null, 2));
 
     await WebhookLog.create({
-      type: evento,
-      paymentId: data?.id || "sin-id",
-      rawBody: req.body,
+      type,
+      paymentId: id || "sin-id",
+      rawBody: body,
     });
+
+    if (!id && !resource) {
+      console.log("⚠️ Webhook sin ID ni resource válido.");
+      return res.sendStatus(200);
+    }
 
     let paymentData = null;
     let reference = null;
 
-    // 🔹 Caso 1: Mercado Pago envía "payment"
-    if (evento === "payment" && data?.id) {
-      paymentData = await mpPayment.get({ id: data.id });
-      reference = paymentData.external_reference;
-      console.log(`💳 Webhook de pago directo recibido: ${reference}`);
+    // 🔹 Caso 1: Webhook de pago directo
+    if (type.includes("payment")) {
+      try {
+        const pago = await mpPayment.get({ id });
+        paymentData = pago;
+        reference = pago.external_reference;
+        console.log(`💳 Pago directo (${reference}) estado: ${pago.status}`);
+      } catch (err) {
+        console.error("❌ Error obteniendo pago directo:", err.message);
+        return res.sendStatus(200);
+      }
     }
 
-    // 🔹 Caso 2: Mercado Pago envía "merchant_order"
-    if (evento === "merchant_order" && resource) {
-      console.log("📄 Consultando merchant_order:", resource);
-      const resp = await fetch(resource, {
-        headers: { Authorization: `Bearer ${process.env.MP_ACCESS_TOKEN}` },
+    // 🔹 Caso 2: Webhook de merchant_order
+    if (type.includes("merchant_order")) {
+      const url = resource || `https://api.mercadolibre.com/merchant_orders/${id}`;
+      console.log("📄 Consultando merchant_order:", url);
+      const resp = await fetch(url, {
+        headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN}` },
       });
       const orderData = await resp.json();
 
       const pagoAprobado = orderData.payments?.find(
-        (p) => p.status === "approved" || p.status === "pending"
+        (p) => p.status === "approved"
       );
-
-      if (!pagoAprobado) {
+      if (pagoAprobado) {
+        paymentData = await mpPayment.get({ id: pagoAprobado.id });
+        reference = paymentData.external_reference || orderData.external_reference;
+        console.log(`✅ Orden con pago aprobado (${reference})`);
+      } else {
         console.log("⏳ Orden sin pago aprobado aún.");
         return res.sendStatus(200);
       }
-
-      paymentData = await mpPayment.get({ id: pagoAprobado.id });
-      reference = paymentData.external_reference;
     }
 
     if (!paymentData || !reference) {
-      console.log("⚠️ Webhook sin información de pago válida.");
+      console.log("⚠️ Webhook sin datos de pago válidos.");
       return res.sendStatus(200);
     }
 
-    console.log(`💰 Estado actual del pago (${reference}): ${paymentData.status}`);
-
-    // 🔁 Si aún está pendiente, esperamos y reconsultamos una vez
-    if (paymentData.status === "pending") {
-      console.log("⏳ Esperando confirmación del pago...");
-      await new Promise((resolve) => setTimeout(resolve, 4000)); // 4 segundos
-      const refreshed = await mpPayment.get({ id: paymentData.id });
-      paymentData = refreshed;
-      console.log(`🔄 Estado actualizado (${reference}): ${paymentData.status}`);
+    // 🔁 Si el pago no está aprobado, no procesar aún
+    if (paymentData.status !== "approved") {
+      console.log(`⏳ Pago aún no aprobado (${paymentData.status})`);
+      return res.sendStatus(200);
     }
 
-    // 🔹 Si ya está aprobado, procedemos
-    if (paymentData.status === "approved") {
-      const pendiente = await Pendiente.findOne({ reference });
-      if (!pendiente) {
-        console.warn("⚠️ Pendiente no encontrado:", reference);
-        return res.sendStatus(200);
-      }
-
-      await Ticket.create({
-        reference: pendiente.reference,
-        nombre: pendiente.nombre,
-        correo: pendiente.correo,
-        telefono: pendiente.telefono,
-        numeros: pendiente.numeros,
-        estadoPago: "pagado",
-      });
-
-      await enviarCorreo(
-        pendiente.correo,
-        "✅ Pago confirmado - Rifa 2025",
-        `
-          <h2>¡Gracias ${pendiente.nombre}! 🎉</h2>
-          <p>Tu pago ha sido confirmado y tus números ya están activos:</p>
-          <h3>${pendiente.numeros.join(", ")}</h3>
-          <p><b>Referencia:</b> ${pendiente.reference}</p>
-          <p>🍀 ¡Mucha suerte y gracias por participar!</p>
-        `
-      );
-
-      await Pendiente.deleteOne({ _id: pendiente._id });
-      console.log(`✅ Ticket creado y pendiente eliminado: ${reference}`);
-    } else {
-      console.log(`⚠️ Pago aún no aprobado (${paymentData.status}).`);
+    // ==================== PROCESAR TICKET ====================
+    const existente = await Ticket.findOne({ reference });
+    if (existente) {
+      console.log(`ℹ️ Ticket ya creado (${reference})`);
+      return res.sendStatus(200);
     }
 
+    const pendiente = await Pendiente.findOne({ reference });
+    if (!pendiente) {
+      console.warn(`⚠️ Pendiente no encontrado (${reference})`);
+      return res.sendStatus(200);
+    }
+
+    await Ticket.create({
+      reference: pendiente.reference,
+      nombre: pendiente.nombre,
+      correo: pendiente.correo,
+      telefono: pendiente.telefono,
+      numeros: pendiente.numeros,
+      estadoPago: "pagado",
+    });
+
+    await enviarCorreo(
+      pendiente.correo,
+      "✅ Pago confirmado - Rifa 2025",
+      `
+        <h2>¡Gracias ${pendiente.nombre}! 🎉</h2>
+        <p>Tu pago ha sido confirmado y tus números ya están activos:</p>
+        <h3>${pendiente.numeros.join(", ")}</h3>
+        <p><b>Referencia:</b> ${pendiente.reference}</p>
+        <p>🍀 ¡Mucha suerte y gracias por participar!</p>
+      `
+    );
+
+    await Pendiente.deleteOne({ _id: pendiente._id });
+    console.log(`🎟️ Ticket creado correctamente (${reference})`);
     res.sendStatus(200);
   } catch (err) {
     console.error("❌ Error procesando webhook:", err);
@@ -333,16 +342,6 @@ app.use("/api/admin", adminApiRouter);
 // ==================== SEGURIDAD Y CABECERAS ====================
 app.use((req, res, next) => {
   res.locals.nonce = crypto.randomBytes(16).toString("base64");
-  const csp = [
-    "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://sdk.mercadopago.com",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
-    "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data: https://cdn-icons-png.flaticon.com https://www.mercadopago.com",
-    "connect-src 'self' https://api.mercadopago.com https://api.mercadolibre.com https://rifa-2025.onrender.com",
-    "frame-src 'self' https://www.mercadopago.com https://sdk.mercadopago.com",
-  ].join("; ");
-  res.setHeader("Content-Security-Policy", csp);
   next();
 });
 
@@ -352,7 +351,15 @@ app.use(
     crossOriginEmbedderPolicy: false,
   })
 );
-app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 }));
+
+// Excluir webhook del rateLimit
+app.use(
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    skip: (req) => req.originalUrl.includes("/api/mercadopago/webhook"),
+  })
+);
 
 // ==================== ARCHIVOS ESTÁTICOS ====================
 app.use(express.static(PUBLIC_PATH));

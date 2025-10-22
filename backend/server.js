@@ -22,7 +22,7 @@ import { enviarCorreo } from "./emailService.js";
 // ==================== CONFIGURACIÓN BASE ====================
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-config({ path: path.join(__dirname, "..", ".env") });
+config(); // 🔹 Carga directa del .env (funciona bien en Render o local)
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -100,7 +100,6 @@ app.get("/api/config", (req, res) => {
 app.post("/api/mercadopago/preference", async (req, res) => {
   try {
     const { reference, monto } = req.body;
-
     if (!reference || !monto) {
       return res
         .status(400)
@@ -141,7 +140,6 @@ app.post("/api/mercadopago/preference", async (req, res) => {
     };
 
     const result = await mpPreference.create({ body: preference });
-
     console.log(`🧾 Preferencia creada correctamente: ${reference}`);
     res.json({ exito: true, init_point: result.init_point });
   } catch (err) {
@@ -156,6 +154,9 @@ app.post("/api/mercadopago/preference", async (req, res) => {
 
 // ==================== WEBHOOK MERCADO PAGO ====================
 app.post("/api/mercadopago/webhook", async (req, res) => {
+  // Responder de inmediato a MP (para evitar múltiples reintentos)
+  res.sendStatus(200);
+
   try {
     const { query, body } = req;
     const type = body.type || body.topic || query.topic || "sin_tipo";
@@ -172,7 +173,7 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
 
     if (!id && !resource) {
       console.log("⚠️ Webhook sin ID ni resource válido.");
-      return res.sendStatus(200);
+      return;
     }
 
     let paymentData = null;
@@ -187,7 +188,7 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
         console.log(`💳 Pago directo (${reference}) estado: ${pago.status}`);
       } catch (err) {
         console.error("❌ Error obteniendo pago directo:", err.message);
-        return res.sendStatus(200);
+        return;
       }
     }
 
@@ -209,32 +210,32 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
         console.log(`✅ Orden con pago aprobado (${reference})`);
       } else {
         console.log("⏳ Orden sin pago aprobado aún.");
-        return res.sendStatus(200);
+        return;
       }
     }
 
     if (!paymentData || !reference) {
       console.log("⚠️ Webhook sin datos de pago válidos.");
-      return res.sendStatus(200);
+      return;
     }
 
     // 🔁 Si el pago no está aprobado, no procesar aún
     if (paymentData.status !== "approved") {
       console.log(`⏳ Pago aún no aprobado (${paymentData.status})`);
-      return res.sendStatus(200);
+      return;
     }
 
     // ==================== PROCESAR TICKET ====================
     const existente = await Ticket.findOne({ reference });
     if (existente) {
       console.log(`ℹ️ Ticket ya creado (${reference})`);
-      return res.sendStatus(200);
+      return;
     }
 
     const pendiente = await Pendiente.findOne({ reference });
     if (!pendiente) {
       console.warn(`⚠️ Pendiente no encontrado (${reference})`);
-      return res.sendStatus(200);
+      return;
     }
 
     await Ticket.create({
@@ -246,24 +247,34 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
       estadoPago: "pagado",
     });
 
-    await enviarCorreo(
-      pendiente.correo,
-      "✅ Pago confirmado - Rifa 2025",
-      `
-        <h2>¡Gracias ${pendiente.nombre}! 🎉</h2>
-        <p>Tu pago ha sido confirmado y tus números ya están activos:</p>
-        <h3>${pendiente.numeros.join(", ")}</h3>
-        <p><b>Referencia:</b> ${pendiente.reference}</p>
-        <p>🍀 ¡Mucha suerte y gracias por participar!</p>
-      `
-    );
+    console.log(`🎟️ Ticket creado correctamente (${reference})`);
+
+    // ==================== ENVÍO DE CORREO ====================
+    try {
+      const enviado = await enviarCorreo(
+        pendiente.correo,
+        "✅ Pago confirmado - Rifa 2025",
+        `
+          <h2>¡Gracias ${pendiente.nombre}! 🎉</h2>
+          <p>Tu pago ha sido confirmado y tus números ya están activos:</p>
+          <h3 style="color:#2c3e50">${pendiente.numeros.join(", ")}</h3>
+          <p><b>Referencia:</b> ${pendiente.reference}</p>
+          <p>🍀 ¡Mucha suerte y gracias por participar!</p>
+        `
+      );
+
+      if (enviado) {
+        console.log(`📧 Correo enviado a ${pendiente.correo}`);
+      } else {
+        console.warn(`⚠️ No se pudo enviar el correo a ${pendiente.correo}`);
+      }
+    } catch (err) {
+      console.error("❌ Error enviando correo:", err);
+    }
 
     await Pendiente.deleteOne({ _id: pendiente._id });
-    console.log(`🎟️ Ticket creado correctamente (${reference})`);
-    res.sendStatus(200);
   } catch (err) {
     console.error("❌ Error procesando webhook:", err);
-    res.sendStatus(500);
   }
 });
 

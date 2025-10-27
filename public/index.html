@@ -39,7 +39,6 @@
     }
     button:hover { background: #34495e; transform: scale(1.02); }
 
-    /* --- PROGRESO --- */
     .progreso { margin: 20px 0; text-align: left; }
     .barra {
       width: 100%; height: 20px; background: #ecf0f1;
@@ -65,8 +64,8 @@
     }
     .mensaje.exito { background: #e8f8f5; color: #27ae60; border-left: 5px solid #2ecc71; }
     .mensaje.error { background: #fcf3f2; color: #e74c3c; border-left: 5px solid #e74c3c; }
+    .mensaje.info  { background: #fef9e7; color: #b7950b; border-left: 5px solid #f1c40f; }
 
-    /* --- MODAL --- */
     .modal {
       position: fixed; inset: 0; display: flex;
       justify-content: center; align-items: center;
@@ -78,7 +77,7 @@
     .modal-content {
       background: #fff; width: 90%; max-width: 700px;
       padding: 25px 25px 90px; box-shadow: 0 5px 20px rgba(0,0,0,0.3);
-      max-height: 80vh; overflow-y: auto;
+      max-height: 85vh; overflow-y: auto;
       border-radius: 15px; position: relative;
     }
     .modal-header {
@@ -169,13 +168,13 @@
       <h2> 📋 Tus datos 📋 </h2>
       <input type="text" id="nombre" placeholder="Tu nombre completo" required />
       <input type="email" id="correo" placeholder="Tu correo electrónico" required />
-      <input type="tel" id="telefono" placeholder="Tu teléfono" required />
+      <input type="tel" id="telefono" placeholder="Tu teléfono (10 dígitos)" pattern="[0-9]{10}" title="Debe tener 10 dígitos" required />
     </form>
 
     <section class="progreso">
       <p id="porcentaje">Cargando disponibilidad...</p>
       <div class="barra"><div class="relleno"></div></div>
-      <p class="nota-sorteo"> El sorteo se realizará una vez se haya vendido el 100 % de la rifa.</p>
+      <p class="nota-sorteo">El sorteo se realizará una vez se haya vendido el 100 % de la rifa.</p>
       <div class="valor-rifa">
         💵 <strong>Valor por número: <span>$26.400 COP</span></strong> 💵
       </div>
@@ -209,22 +208,20 @@
     const ticketBox = document.getElementById("ticketSeleccion");
     const btnReservar = document.getElementById("btn-reservar");
     const mensaje = document.getElementById("mensaje");
-    const PRECIO = 100; // 💰 Precio real
+    const PRECIO = 100; // No se cambia según tu solicitud
 
     let numerosSeleccionados = [];
     let disponibles = [];
 
-    // 🔄 Cargar automáticamente si viene del success.html
     document.addEventListener("DOMContentLoaded", () => {
       if (sessionStorage.getItem("pago_exitoso")) {
         sessionStorage.removeItem("pago_exitoso");
-        cargarNumeros(); // recarga números actualizados
+        cargarNumeros();
       } else {
         cargarNumeros();
       }
     });
 
-    // 🪟 Abrir / cerrar modal
     btnVer.addEventListener("click", async () => {
       modal.classList.add("active");
       await cargarNumeros();
@@ -232,7 +229,6 @@
     btnCerrar.addEventListener("click", () => modal.classList.remove("active"));
     modal.addEventListener("click", e => { if (e.target === modal) modal.classList.remove("active"); });
 
-    // 🧩 Cargar números disponibles desde el backend
     async function cargarNumeros() {
       try {
         const res = await fetch("/api/tickets/numeros");
@@ -242,6 +238,7 @@
         actualizarBarra(data);
       } catch (err) {
         console.error("Error al cargar números:", err);
+        listaDisponibles.innerHTML = "<p style='color:red;'>⚠️ Error al cargar números. Intenta de nuevo.</p>";
       }
     }
 
@@ -258,7 +255,6 @@
       });
     }
 
-    // 📊 Barra progreso
     function actualizarBarra(data) {
       const vendidos = data.filter(n => n.estado !== "disponible").length;
       const total = data.length;
@@ -267,10 +263,8 @@
       document.querySelector(".relleno").style.width = `${porcentaje}%`;
     }
 
-    // 🎟️ Confirmar selección
     btnConfirmar.addEventListener("click", () => {
-      numerosSeleccionados = Array.from(listaDisponibles.querySelectorAll(".seleccionado"))
-        .map(b => b.textContent);
+      numerosSeleccionados = Array.from(listaDisponibles.querySelectorAll(".seleccionado")).map(b => b.textContent);
       if (numerosSeleccionados.length === 0) return alert("Selecciona al menos un número");
       const total = numerosSeleccionados.length * PRECIO;
       ticketBox.innerHTML = `
@@ -287,61 +281,54 @@
       });
     });
 
-// 💳 Reservar y pagar
-btnReservar.addEventListener("click", async () => {
-  const nombre = document.getElementById("nombre").value.trim();
-  const correo = document.getElementById("correo").value.trim();
-  const telefono = document.getElementById("telefono").value.trim();
+    btnReservar.addEventListener("click", async () => {
+      const nombre = document.getElementById("nombre").value.trim();
+      const correo = document.getElementById("correo").value.trim();
+      const telefono = document.getElementById("telefono").value.trim();
 
-  if (!nombre || !correo || numerosSeleccionados.length === 0)
-    return mostrarMensaje("⚠️ Completa tus datos y selecciona tus números.", "error");
+      if (!nombre || !correo || numerosSeleccionados.length === 0)
+        return mostrarMensaje("⚠️ Completa tus datos y selecciona tus números.", "error");
 
-  mostrarMensaje("Procesando reserva...", "info");
+      mostrarMensaje("Procesando reserva...", "info");
 
-  try {
-    // 1️⃣ Guardar los números pendientes antes de crear el pago
-    const resPendiente = await fetch("/api/tickets/guardar-pendiente", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nombre, correo, telefono, numeros: numerosSeleccionados }),
+      try {
+        const resPendiente = await fetch("/api/tickets/guardar-pendiente", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nombre, correo, telefono, numeros: numerosSeleccionados }),
+        });
+
+        const dataPendiente = await resPendiente.json();
+        if (!dataPendiente.exito) throw new Error(dataPendiente.mensaje || "Error al guardar pendiente");
+
+        const referencia = dataPendiente.reference;
+        const monto = PRECIO * numerosSeleccionados.length;
+
+        const resPago = await fetch("/api/mercadopago/preference", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reference: referencia, nombre, correo, telefono, monto }),
+        });
+
+        const dataPago = await resPago.json();
+        if (!dataPago.exito || !dataPago.init_point)
+          return mostrarMensaje(dataPago.mensaje || "🚫 No se pudo generar el pago.", "error");
+
+        sessionStorage.setItem("pago_exitoso", "1");
+        mostrarMensaje("✅ Redirigiendo a Mercado Pago...");
+        window.location.href = dataPago.init_point;
+
+      } catch (err) {
+        console.error("❌ Error al procesar el pago:", err);
+        mostrarMensaje("🚫 Error al conectar con el servidor.", "error");
+      }
     });
 
-    const dataPendiente = await resPendiente.json();
-    if (!dataPendiente.exito) throw new Error(dataPendiente.mensaje || "Error al guardar pendiente");
-
-    const referencia = dataPendiente.reference;
-    const monto = 100 * numerosSeleccionados.length; // PRECIO * cantidad
-
-    // 2️⃣ Crear preferencia de pago
-    const resPago = await fetch("/api/mercadopago/preference", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ reference: referencia, nombre, correo, telefono, monto }),
-    });
-
-    const dataPago = await resPago.json();
-    if (!dataPago.exito || !dataPago.init_point)
-      return mostrarMensaje("🚫 No se pudo generar el pago.", "error");
-
-    // Guardar flag para refrescar luego
-    sessionStorage.setItem("pago_exitoso", "1");
-    mostrarMensaje("✅ Redirigiendo a Mercado Pago...");
-    window.location.href = dataPago.init_point;
-
-  } catch (err) {
-    console.error("❌ Error al procesar el pago:", err);
-    mostrarMensaje("🚫 Error al conectar con el servidor.", "error");
-  }
-});
-
-
-    // 🔔 Mensajes visuales
     function mostrarMensaje(texto, tipo = "exito") {
       mensaje.textContent = texto;
       mensaje.className = `mensaje ${tipo}`;
     }
 
-    // 🔄 Actualizar progreso automáticamente
     setInterval(cargarNumeros, 10000);
   </script>
 </body>

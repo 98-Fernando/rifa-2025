@@ -133,19 +133,19 @@ app.post("/api/mercadopago/preference", async (req, res) => {
       external_reference: reference,
       auto_return: "approved",
       back_urls: {
-        success: process.env.URL_SUCCESS,
-        failure: process.env.URL_FAILURE,
-        pending: process.env.URL_PENDING,
+        success: `${process.env.BASE_URL}/success.html?ref=${reference}`,
+        failure: `${process.env.BASE_URL}/failure.html?ref=${reference}`,
+        pending: `${process.env.BASE_URL}/pending.html?ref=${reference}`,
       },
       notification_url:
         "https://rifa-2025.onrender.com/api/mercadopago/webhook",
     };
 
     const result = await mpPreference.create({ body: preference });
-    console.log(`Preferencia creada correctamente: ${reference}`);
+    console.log(`✅ Preferencia creada: ${reference}`);
     res.json({ exito: true, init_point: result.init_point });
   } catch (err) {
-    console.error("Error creando preferencia Mercado Pago:", err);
+    console.error("Error creando preferencia:", err);
     res.status(500).json({
       exito: false,
       mensaje: "Error interno al generar la preferencia de pago",
@@ -164,7 +164,7 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
     const id = body.data?.id || query.id;
     const resource = body.resource;
 
-    console.log("Webhook recibido:", JSON.stringify({ query, body }, null, 2));
+    console.log("📩 Webhook recibido:", JSON.stringify({ query, body }, null, 2));
 
     await WebhookLog.create({
       type,
@@ -186,7 +186,7 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
         const pago = await mpPayment.get({ id });
         paymentData = pago;
         reference = pago.external_reference;
-        console.log(`Pago directo (${reference}) estado: ${pago.status}`);
+        console.log(`💰 Pago directo (${reference}) estado: ${pago.status}`);
       } catch (err) {
         console.error("Error obteniendo pago directo:", err.message);
         return;
@@ -197,7 +197,7 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
     if (type.includes("merchant_order")) {
       const url =
         resource || `https://api.mercadolibre.com/merchant_orders/${id}`;
-      console.log("Consultando merchant_order:", url);
+      console.log("🔍 Consultando merchant_order:", url);
 
       const resp = await fetch(url, {
         headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN}` },
@@ -220,7 +220,7 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
         paymentData = await mpPayment.get({ id: pagoAprobado.id });
         reference =
           paymentData.external_reference || orderData.external_reference;
-        console.log(`Orden con pago aprobado (${reference})`);
+        console.log(`✅ Orden con pago aprobado (${reference})`);
       } else {
         console.log("Orden sin pago aprobado aún.");
         return;
@@ -233,7 +233,7 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
     }
 
     if (paymentData.status !== "approved") {
-      console.log(`Pago aún no aprobado (${paymentData.status})`);
+      console.log(`⏳ Pago aún no aprobado (${paymentData.status})`);
       return;
     }
 
@@ -244,12 +244,11 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
     const idPagoMP = paymentData.id;
     const metodoPago = paymentData.payment_method_id || "desconocido";
 
-    console.log(`Pago aprobado: ${monto} COP (${metodoPago})`);
+    console.log(`💵 Pago aprobado: ${monto} COP (${metodoPago})`);
 
-    // Intentar encontrar el pendiente, con un pequeño reintento
     let pendiente = await Pendiente.findOne({ reference });
     if (!pendiente) {
-      console.warn(`Pendiente no encontrado para ${reference}, reintentando...`);
+      console.warn(`⚠️ Pendiente no encontrado para ${reference}, reintentando...`);
       await new Promise((r) => setTimeout(r, 2000));
       pendiente = await Pendiente.findOne({ reference });
     }
@@ -289,9 +288,9 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
       `
     );
 
-    console.log(`Ticket ${reference} confirmado y correo enviado a ${pendiente.correo}`);
+    console.log(`🎟️ Ticket ${reference} confirmado y correo enviado a ${pendiente.correo}`);
   } catch (error) {
-    console.error("Error procesando webhook:", error);
+    console.error("❌ Error procesando webhook:", error);
     await WebhookLog.create({
       type: "error",
       paymentId: "sin-id",
@@ -404,6 +403,6 @@ app.use((req, res) => {
 
 // ==================== INICIO SERVIDOR ====================
 app.listen(PORT, () => {
-  console.log(`Servidor corriendo en puerto ${PORT}`);
-  console.log(`URL: https://rifa-2025.onrender.com`);
+  console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
+  console.log(`🌐 URL: https://rifa-2025.onrender.com`);
 });

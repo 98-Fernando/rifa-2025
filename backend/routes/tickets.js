@@ -222,3 +222,46 @@ router.delete("/:id", async (req, res) => {
 });
 
 export default router;
+
+// ─── GET: /api/tickets/estado ───────────────────────
+// Consulta el estado de un pago por referencia
+router.get("/estado", async (req, res) => {
+  const { reference } = req.query;
+
+  if (!reference) {
+    return res.status(400).json({ exito: false, mensaje: "Referencia no proporcionada." });
+  }
+
+  try {
+    // Buscar si ya se confirmó (Ticket)
+    const ticket = await Ticket.findOne({ reference });
+    if (ticket) {
+      return res.json({
+        exito: true,
+        estado: "pagado",
+        ticket: {
+          nombre: ticket.nombre,
+          correo: ticket.correo,
+          numeros: ticket.numeros,
+          monto: ticket.monto,
+        },
+      });
+    }
+
+    // Si no, revisar si aún está pendiente
+    const pendiente = await Pendiente.findOne({ reference });
+    if (pendiente) {
+      return res.json({
+        exito: true,
+        estado: pendiente.estadoPago || "pendiente",
+      });
+    }
+
+    // Si no existe ni pendiente ni ticket, el pago fue rechazado o eliminado
+    res.json({ exito: true, estado: "no_encontrado" });
+  } catch (error) {
+    console.error("❌ Error consultando estado:", error);
+    res.status(500).json({ exito: false, mensaje: "Error al consultar el estado del pago." });
+  }
+});
+

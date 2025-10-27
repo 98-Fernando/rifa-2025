@@ -9,13 +9,6 @@ const barraProgresoTexto = document.getElementById("porcentaje");
 const contenedorNumeros = document.getElementById("listaDisponibles");
 
 let CONFIG = {};
-let PAGO_PENDIENTE = {
-  nombre: null,
-  correo: null,
-  telefono: null,
-  reference: null,
-  amount: 0,
-};
 
 // ===============================
 // ⚙️ CARGAR CONFIGURACIÓN
@@ -73,7 +66,7 @@ function actualizarBarra(vendidos = 0, porcentaje = 0) {
 // ===============================
 async function actualizarEstadoGlobal() {
   try {
-    // Cargar los números
+    // 🔹 Cargar los números disponibles
     const resNumeros = await fetch("/api/tickets/numeros");
     if (!resNumeros.ok) throw new Error("No se pudo obtener los números");
 
@@ -95,14 +88,14 @@ async function actualizarEstadoGlobal() {
       contenedorNumeros.appendChild(btn);
     });
 
-    // Cargar progreso global
+    // 🔹 Cargar progreso global
     const resConsulta = await fetch("/api/tickets/consulta");
     if (!resConsulta.ok) throw new Error("No se pudo obtener el progreso");
 
     const dataConsulta = await resConsulta.json();
     if (dataConsulta.exito) {
-      const vendidos = dataConsulta.total ?? Math.round((dataConsulta.porcentaje / 100) * 1000);
-      const porcentaje = parseFloat(dataConsulta.porcentaje) || 0;
+      const vendidos = dataConsulta.total ?? 0;
+      const porcentaje = dataConsulta.porcentaje ?? (vendidos / 10);
       actualizarBarra(vendidos, porcentaje);
     }
   } catch (err) {
@@ -143,18 +136,11 @@ form.addEventListener("submit", async (e) => {
     const referencia = dataPendiente.reference;
     const monto = (CONFIG.precio || 100) * numerosSeleccionados.length;
 
-    // 2️⃣ Crear preferencia de pago en Mercado Pago
+    // 2️⃣ Crear preferencia de pago en Mercado Pago (solo referencia y monto)
     const resPago = await fetch("/api/mercadopago/preference", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        reference: referencia,
-        nombre,
-        correo,
-        telefono,
-        monto,
-        numeros: numerosSeleccionados,
-      }),
+      body: JSON.stringify({ reference: referencia, monto }),
     });
 
     const dataPago = await resPago.json();

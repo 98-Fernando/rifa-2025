@@ -117,6 +117,12 @@ router.post("/confirmar-pago", async (req, res) => {
     const pendiente = await Pendiente.findById(idPendiente);
     if (!pendiente) return res.status(404).json({ exito: false, mensaje: "Reserva no encontrada." });
 
+    // Verificar si el ticket ya existe
+const existe = await Ticket.findOne({ reference });
+if (existe) {
+  console.log(`⚠️ Ticket con referencia ${reference} ya existe, se omite duplicado.`);
+  return;
+}
     const nuevoTicket = await Ticket.create({
       nombre: pendiente.nombre,
       correo: pendiente.correo,

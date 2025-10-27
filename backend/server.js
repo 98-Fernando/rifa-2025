@@ -22,7 +22,7 @@ import { enviarCorreo } from "./emailService.js";
 // ==================== CONFIGURACIÓN BASE ====================
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-config(); // 🔹 Carga directa del .env (funciona bien en Render o local)
+config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -31,7 +31,7 @@ const PUBLIC_PATH = path.join(__dirname, "..", "public");
 // ==================== MERCADO PAGO ====================
 const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN;
 if (!MP_ACCESS_TOKEN) {
-  console.error("❌ ERROR: Falta MP_ACCESS_TOKEN en .env");
+  console.error("❌ Falta MP_ACCESS_TOKEN en el archivo .env");
   process.exit(1);
 }
 
@@ -101,16 +101,18 @@ app.post("/api/mercadopago/preference", async (req, res) => {
   try {
     const { reference, monto } = req.body;
     if (!reference || !monto) {
-      return res
-        .status(400)
-        .json({ exito: false, mensaje: "Faltan datos para generar el pago" });
+      return res.status(400).json({
+        exito: false,
+        mensaje: "Faltan datos para generar el pago",
+      });
     }
 
     const pendiente = await Pendiente.findOne({ reference });
     if (!pendiente) {
-      return res
-        .status(404)
-        .json({ exito: false, mensaje: "No se encontró la reserva asociada." });
+      return res.status(404).json({
+        exito: false,
+        mensaje: "No se encontró la reserva asociada.",
+      });
     }
 
     const preference = {
@@ -140,10 +142,10 @@ app.post("/api/mercadopago/preference", async (req, res) => {
     };
 
     const result = await mpPreference.create({ body: preference });
-    console.log(`🧾 Preferencia creada correctamente: ${reference}`);
+    console.log(`Preferencia creada correctamente: ${reference}`);
     res.json({ exito: true, init_point: result.init_point });
   } catch (err) {
-    console.error("❌ Error creando preferencia Mercado Pago:", err);
+    console.error("Error creando preferencia Mercado Pago:", err);
     res.status(500).json({
       exito: false,
       mensaje: "Error interno al generar la preferencia de pago",
@@ -154,7 +156,6 @@ app.post("/api/mercadopago/preference", async (req, res) => {
 
 // ==================== WEBHOOK MERCADO PAGO ====================
 app.post("/api/mercadopago/webhook", async (req, res) => {
-  // Responder de inmediato a MP (para evitar múltiples reintentos)
   res.sendStatus(200);
 
   try {
@@ -163,7 +164,7 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
     const id = body.data?.id || query.id;
     const resource = body.resource;
 
-    console.log("📦 Webhook recibido:", JSON.stringify({ query, body }, null, 2));
+    console.log("Webhook recibido:", JSON.stringify({ query, body }, null, 2));
 
     await WebhookLog.create({
       type,
@@ -172,69 +173,89 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
     });
 
     if (!id && !resource) {
-      console.log("⚠️ Webhook sin ID ni resource válido.");
+      console.log("Webhook sin ID ni resource válido.");
       return;
     }
 
     let paymentData = null;
     let reference = null;
 
-    // 🔹 Caso 1: Webhook de pago directo
+    // Caso 1: Webhook de pago directo
     if (type.includes("payment")) {
       try {
         const pago = await mpPayment.get({ id });
         paymentData = pago;
         reference = pago.external_reference;
-        console.log(`💳 Pago directo (${reference}) estado: ${pago.status}`);
+        console.log(`Pago directo (${reference}) estado: ${pago.status}`);
       } catch (err) {
-        console.error("❌ Error obteniendo pago directo:", err.message);
+        console.error("Error obteniendo pago directo:", err.message);
         return;
       }
     }
 
-    // 🔹 Caso 2: Webhook de merchant_order
+    // Caso 2: Webhook de merchant_order
     if (type.includes("merchant_order")) {
-      const url = resource || `https://api.mercadolibre.com/merchant_orders/${id}`;
-      console.log("📄 Consultando merchant_order:", url);
+      const url =
+        resource || `https://api.mercadolibre.com/merchant_orders/${id}`;
+      console.log("Consultando merchant_order:", url);
+
       const resp = await fetch(url, {
         headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN}` },
       });
-      const orderData = await resp.json();
 
+      if (!resp.ok) {
+        console.error(
+          `Error consultando merchant_order (${resp.status}):`,
+          await resp.text()
+        );
+        return;
+      }
+
+      const orderData = await resp.json();
       const pagoAprobado = orderData.payments?.find(
         (p) => p.status === "approved"
       );
+
       if (pagoAprobado) {
         paymentData = await mpPayment.get({ id: pagoAprobado.id });
-        reference = paymentData.external_reference || orderData.external_reference;
-        console.log(`✅ Orden con pago aprobado (${reference})`);
+        reference =
+          paymentData.external_reference || orderData.external_reference;
+        console.log(`Orden con pago aprobado (${reference})`);
       } else {
-        console.log("⏳ Orden sin pago aprobado aún.");
+        console.log("Orden sin pago aprobado aún.");
         return;
       }
     }
 
     if (!paymentData || !reference) {
-      console.log("⚠️ Webhook sin datos de pago válidos.");
+      console.log("Webhook sin datos de pago válidos.");
       return;
     }
 
-    // 🔁 Si el pago no está aprobado, no procesar aún
     if (paymentData.status !== "approved") {
-      console.log(`⏳ Pago aún no aprobado (${paymentData.status})`);
+      console.log(`Pago aún no aprobado (${paymentData.status})`);
       return;
     }
 
-    // ==================== PROCESAR TICKET ====================
-    const existente = await Ticket.findOne({ reference });
-    if (existente) {
-      console.log(`ℹ️ Ticket ya creado (${reference})`);
-      return;
-    }
+    const monto = Number(paymentData.transaction_amount) || 0;
+    const fecha = new Date().toLocaleString("es-CO", {
+      timeZone: "America/Bogota",
+    });
+    const idPagoMP = paymentData.id;
+    const metodoPago = paymentData.payment_method_id || "desconocido";
 
-    const pendiente = await Pendiente.findOne({ reference });
+    console.log(`Pago aprobado: ${monto} COP (${metodoPago})`);
+
+    // Intentar encontrar el pendiente, con un pequeño reintento
+    let pendiente = await Pendiente.findOne({ reference });
     if (!pendiente) {
-      console.warn(`⚠️ Pendiente no encontrado (${reference})`);
+      console.warn(`Pendiente no encontrado para ${reference}, reintentando...`);
+      await new Promise((r) => setTimeout(r, 2000));
+      pendiente = await Pendiente.findOne({ reference });
+    }
+
+    if (!pendiente) {
+      console.log(`No se encontró registro pendiente para ${reference}`);
       return;
     }
 
@@ -244,37 +265,38 @@ app.post("/api/mercadopago/webhook", async (req, res) => {
       correo: pendiente.correo,
       telefono: pendiente.telefono,
       numeros: pendiente.numeros,
+      monto,
+      fecha,
       estadoPago: "pagado",
+      idPagoMP,
+      metodoPago,
     });
 
-    console.log(`🎟️ Ticket creado correctamente (${reference})`);
+    await Pendiente.findByIdAndDelete(pendiente._id);
 
-    // ==================== ENVÍO DE CORREO ====================
-    try {
-      const enviado = await enviarCorreo(
-        pendiente.correo,
-        "✅ Pago confirmado - Rifa 2025",
-        `
-          <h2>¡Gracias ${pendiente.nombre}! 🎉</h2>
-          <p>Tu pago ha sido confirmado y tus números ya están activos:</p>
-          <h3 style="color:#2c3e50">${pendiente.numeros.join(", ")}</h3>
-          <p><b>Referencia:</b> ${pendiente.reference}</p>
-          <p>🍀 ¡Mucha suerte y gracias por participar!</p>
-        `
-      );
+    await enviarCorreo(
+      pendiente.correo,
+      "Pago confirmado - Rifa 2025",
+      `
+        <h2>¡Gracias, ${pendiente.nombre}!</h2>
+        <p>Tu pago fue aprobado y tus números quedaron registrados correctamente:</p>
+        <h3>${pendiente.numeros.join(", ")}</h3>
+        <p><b>Monto:</b> $${monto.toLocaleString("es-CO")} COP</p>
+        <p><b>Método:</b> ${metodoPago}</p>
+        <p>Fecha: ${fecha}</p>
+        <hr>
+        <p>¡Mucha suerte en el sorteo!</p>
+      `
+    );
 
-      if (enviado) {
-        console.log(`📧 Correo enviado a ${pendiente.correo}`);
-      } else {
-        console.warn(`⚠️ No se pudo enviar el correo a ${pendiente.correo}`);
-      }
-    } catch (err) {
-      console.error("❌ Error enviando correo:", err);
-    }
-
-    await Pendiente.deleteOne({ _id: pendiente._id });
-  } catch (err) {
-    console.error("❌ Error procesando webhook:", err);
+    console.log(`Ticket ${reference} confirmado y correo enviado a ${pendiente.correo}`);
+  } catch (error) {
+    console.error("Error procesando webhook:", error);
+    await WebhookLog.create({
+      type: "error",
+      paymentId: "sin-id",
+      rawBody: { mensaje: error.message, stack: error.stack },
+    });
   }
 });
 
@@ -313,7 +335,7 @@ app.get("/api/admin/webhooks", async (req, res) => {
       logs,
     });
   } catch (err) {
-    console.error("❌ Error al obtener webhooks:", err);
+    console.error("Error al obtener webhooks:", err);
     res.status(500).json({ exito: false, mensaje: "Error del servidor" });
   }
 });
@@ -363,7 +385,6 @@ app.use(
   })
 );
 
-// Excluir webhook del rateLimit
 app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -383,6 +404,6 @@ app.use((req, res) => {
 
 // ==================== INICIO SERVIDOR ====================
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
-  console.log(`🌐 URL: https://rifa-2025.onrender.com`);
+  console.log(`Servidor corriendo en puerto ${PORT}`);
+  console.log(`URL: https://rifa-2025.onrender.com`);
 });

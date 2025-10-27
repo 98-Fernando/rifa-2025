@@ -31,7 +31,9 @@ router.get("/", async (req, res) => {
     res.json({ exito: true, tickets });
   } catch (error) {
     console.error("❌ Error obteniendo tickets:", error);
-    res.status(500).json({ exito: false, mensaje: "Error interno al obtener tickets." });
+    res
+      .status(500)
+      .json({ exito: false, mensaje: "Error interno al obtener tickets." });
   }
 });
 
@@ -50,7 +52,9 @@ router.get("/numeros", async (req, res) => {
     res.json(numeros);
   } catch (error) {
     console.error("❌ Error obteniendo números:", error);
-    res.status(500).json({ exito: false, mensaje: "Error interno al obtener números." });
+    res
+      .status(500)
+      .json({ exito: false, mensaje: "Error interno al obtener números." });
   }
 });
 
@@ -58,12 +62,17 @@ router.get("/numeros", async (req, res) => {
 router.get("/consulta", async (req, res) => {
   try {
     const tickets = await Ticket.find({}, "numeros").lean();
-    const vendidos = tickets.reduce((sum, t) => sum + (t.numeros?.length || 0), 0);
+    const vendidos = tickets.reduce(
+      (sum, t) => sum + (t.numeros?.length || 0),
+      0
+    );
     const porcentaje = Math.min(100, Math.floor((vendidos / TOTAL_NUMEROS) * 100));
     res.json({ exito: true, vendidos, porcentaje });
   } catch (error) {
     console.error("❌ Error en /consulta:", error);
-    res.status(500).json({ exito: false, mensaje: "Error interno al consultar progreso." });
+    res
+      .status(500)
+      .json({ exito: false, mensaje: "Error interno al consultar progreso." });
   }
 });
 
@@ -71,8 +80,17 @@ router.get("/consulta", async (req, res) => {
 router.post("/guardar-pendiente", async (req, res) => {
   const { nombre, correo, telefono, numeros } = req.body;
 
-  if (!nombre || !correo || !telefono || !Array.isArray(numeros) || numeros.length === 0) {
-    return res.status(400).json({ exito: false, mensaje: "Datos incompletos o sin números seleccionados." });
+  if (
+    !nombre ||
+    !correo ||
+    !telefono ||
+    !Array.isArray(numeros) ||
+    numeros.length === 0
+  ) {
+    return res.status(400).json({
+      exito: false,
+      mensaje: "Datos incompletos o sin números seleccionados.",
+    });
   }
 
   try {
@@ -99,6 +117,7 @@ router.post("/guardar-pendiente", async (req, res) => {
       numeros: numerosFormateados,
       reference: transaction_reference,
     });
+
     res.json({
       exito: true,
       mensaje: "Números reservados temporalmente. Se envió correo de confirmación.",
@@ -106,46 +125,78 @@ router.post("/guardar-pendiente", async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Error guardando pendiente:", error);
-    res.status(500).json({ exito: false, mensaje: "Error interno al guardar la reserva." });
+    res
+      .status(500)
+      .json({ exito: false, mensaje: "Error interno al guardar la reserva." });
   }
 });
 
 // ─── POST: /api/tickets/confirmar-pago ─────────────
 router.post("/confirmar-pago", async (req, res) => {
-  const { idPendiente } = req.body;
+  const { idPendiente, idPagoMP } = req.body;
+
+  if (!idPendiente || !idPagoMP) {
+    return res.status(400).json({
+      exito: false,
+      mensaje: "Faltan datos: idPendiente o idPagoMP.",
+    });
+  }
+
   try {
     const pendiente = await Pendiente.findById(idPendiente);
-    if (!pendiente) return res.status(404).json({ exito: false, mensaje: "Reserva no encontrada." });
+    if (!pendiente)
+      return res
+        .status(404)
+        .json({ exito: false, mensaje: "Reserva no encontrada." });
 
-    // Verificar si el ticket ya existe
-const existe = await Ticket.findOne({ reference });
-if (existe) {
-  console.log(`⚠️ Ticket con referencia ${reference} ya existe, se omite duplicado.`);
-  return;
-}
+    const reference = pendiente.reference;
+
+    // ✅ Verificar si el idPagoMP o la referencia ya fueron registrados
+    const existe = await Ticket.findOne({
+      $or: [{ reference }, { idPagoMP }],
+    });
+
+    if (existe) {
+      console.log(`⚠️ Pago duplicado detectado (ref: ${reference}, idPagoMP: ${idPagoMP}).`);
+      return res.json({
+        exito: false,
+        mensaje: "El pago ya fue confirmado previamente.",
+      });
+    }
+
+    // ✅ Crear el nuevo ticket con idPagoMP
     const nuevoTicket = await Ticket.create({
       nombre: pendiente.nombre,
       correo: pendiente.correo,
       telefono: pendiente.telefono,
       numeros: pendiente.numeros,
-      reference: pendiente.reference,
+      reference,
+      idPagoMP, // ← Guardamos el ID de Mercado Pago
     });
 
+    // ✅ Eliminar la reserva pendiente
     await Pendiente.findByIdAndDelete(idPendiente);
 
+    // ✅ Enviar correo de confirmación
     await enviarCorreo(
       pendiente.correo,
-      "✅ Pago confirmado - Rifa ",
+      "✅ Pago confirmado - Rifa",
       `
         <h2>¡Gracias ${pendiente.nombre}! 🎉</h2>
-        <p>Tu pago ha sido confirmado y tus números ya están activos:</p>
+        <p>Tu pago ha sido confirmado correctamente.</p>
+        <p>Tus números activos son:</p>
         <h3>${pendiente.numeros.join(", ")}</h3>
-        <p><b>Referencia:</b> ${pendiente.reference}</p>
-        <p>Mucha suerte 🍀 y gracias por participar.</p>
+        <p><b>Referencia:</b> ${reference}</p>
+        <p><b>ID de pago (Mercado Pago):</b> ${idPagoMP}</p>
+        <p>🍀 ¡Mucha suerte y gracias por participar!</p>
       `
     );
 
-    res.json({ exito: true, mensaje: "Pago confirmado y correo enviado al participante.", ticket: nuevoTicket });
+    res.json({
+      exito: true,
+      mensaje: "Pago confirmado, ticket creado y correo enviado.",
+      ticket: nuevoTicket,
+    });
   } catch (error) {
     console.error("❌ Error confirmando pago:", error);
     res.status(500).json({ exito: false, mensaje: "Error al confirmar el pago." });
@@ -156,11 +207,17 @@ if (existe) {
 router.delete("/:id", async (req, res) => {
   try {
     const eliminado = await Ticket.findByIdAndDelete(req.params.id);
-    if (!eliminado) return res.status(404).json({ exito: false, mensaje: "Ticket no encontrado." });
+    if (!eliminado)
+      return res
+        .status(404)
+        .json({ exito: false, mensaje: "Ticket no encontrado." });
+
     res.json({ exito: true, mensaje: "🗑️ Ticket eliminado correctamente." });
   } catch (error) {
     console.error("❌ Error eliminando ticket:", error);
-    res.status(500).json({ exito: false, mensaje: "Error interno al eliminar ticket." });
+    res
+      .status(500)
+      .json({ exito: false, mensaje: "Error interno al eliminar ticket." });
   }
 });
 

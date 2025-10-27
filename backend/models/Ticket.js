@@ -13,10 +13,10 @@ const TicketSchema = new mongoose.Schema(
     telefono: { type: String, required: true, trim: true },
     numeros: { type: [String], required: true },
 
+    // ✅ Estado de pago booleano: true = pagado, false = cancelado
     estadoPago: {
-      type: String,
-      enum: ["pendiente", "pagado", "rechazado"],
-      default: "pagado", // ✅ cuando se crea desde el webhook ya está pagado
+      type: Boolean,
+      default: true, // cuando se crea desde el webhook ya está pagado
     },
 
     // Datos del pago
@@ -30,6 +30,7 @@ const TicketSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Índice por estado de pago
 TicketSchema.index({ estadoPago: 1 });
 
 TicketSchema.pre("save", function (next) {

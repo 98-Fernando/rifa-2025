@@ -1,42 +1,29 @@
 // ==================== emailService.js ====================
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import dotenv from "dotenv";
 
-// Carga directa de las variables de entorno
+// Cargar variables de entorno
 dotenv.config();
 
-// ==================== CONFIGURACIÓN DEL TRANSPORTER ====================
-// Usa Gmail con clave de aplicación (no la contraseña normal)
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 465,
-  secure: true, // true = usa SSL
-  auth: {
-    user: process.env.CORREO_APP,
-    pass: process.env.CLAVE_APP,
-  },
-});
-
-// ==================== VERIFICAR CONEXIÓN AL SERVIDOR SMTP ====================
-transporter.verify((error, success) => {
-  if (error) {
-    console.error("❌ Error al conectar con el servidor SMTP:", error);
-  } else {
-    console.log("✅ Servidor de correo listo para enviar mensajes.");
-  }
-});
+// ==================== CONFIGURACIÓN DE RESEND ====================
+/**
+ * Crea una instancia del cliente de Resend.
+ * Asegúrate de tener en tu entorno:
+ * RESEND_API_KEY=tu_api_key_de_resend
+ */
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // ==================== FUNCIÓN PARA ENVIAR CORREO ====================
 /**
- * Envía un correo con HTML al destinatario indicado.
+ * Envía un correo HTML con Resend.
  * @param {string} destinatario - Correo del destinatario.
  * @param {string} asunto - Asunto del correo.
  * @param {string} mensajeHTML - Contenido HTML del mensaje.
  */
 export async function enviarCorreo(destinatario, asunto, mensajeHTML) {
   try {
-    const mailOptions = {
-      from: `"🎟️ Rifas y Sorteos Popayán" <${process.env.CORREO_APP}>`,
+    const { data, error } = await resend.emails.send({
+      from: "🎟️ Rifas y Sorteos Popayán <no-reply@resend.dev>", 
       to: destinatario,
       subject: asunto,
       html: `
@@ -46,14 +33,18 @@ export async function enviarCorreo(destinatario, asunto, mensajeHTML) {
           <p style="font-size: 13px; color: #666;">Este es un correo automático, por favor no responder.</p>
         </div>
       `,
-      replyTo: process.env.CORREO_APP,
-    };
+    });
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`📧 Correo enviado correctamente a ${destinatario}: ${info.messageId}`);
+    if (error) {
+      console.error("❌ Error enviando correo con Resend:", error);
+      return false;
+    }
+
+    console.log(`📧 Correo enviado correctamente a ${destinatario}: ${data.id}`);
     return true;
+
   } catch (error) {
-    console.error("❌ Error enviando correo:", error);
+    console.error("❌ Error inesperado al enviar correo:", error);
     return false;
   }
 }

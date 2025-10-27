@@ -1,43 +1,27 @@
+// ==================== IMPORTACIONES ====================
 import mongoose from "mongoose";
 
-const TicketSchema = new mongoose.Schema(
-  {
-    reference: {
-      type: String,
-      required: true,
-      unique: true,
-      trim: true,
-    },
-    nombre: { type: String, required: true, trim: true },
-    correo: { type: String, required: true, lowercase: true, trim: true },
-    telefono: { type: String, required: true, trim: true },
-    numeros: { type: [String], required: true },
+// ==================== ESQUEMA DE TICKET ====================
+const TicketSchema = new mongoose.Schema({
+  reference: { type: String, required: true, unique: true },
+  nombre: { type: String, required: true },
+  correo: { type: String, required: true },
+  telefono: { type: String, required: true },
+  numeros: { type: [String], required: true },
+  monto: { type: Number, required: true },
+  fecha: { type: String, required: true },
 
-    // ✅ Estado de pago booleano: true = pagado, false = cancelado
-estadoPago: {
-  type: String,
-  enum: ["pendiente", "pagado", "fallido"],
-  default: "pendiente",
-}
-
-    // Datos del pago
-    idPagoMP: { type: String, default: null },
-    metodoPago: { type: String, default: null },
-    montoPagado: { type: Number, default: 0 },
-    fechaPago: { type: Date },
-
-    notificado: { type: Boolean, default: false },
+  // Estado del pago: pendiente, pagado, fallido
+  estadoPago: {
+    type: String,
+    enum: ["pendiente", "pagado", "fallido"],
+    default: "pendiente",
   },
-  { timestamps: true }
-);
 
-// Índice por estado de pago
-TicketSchema.index({ estadoPago: 1 });
-
-TicketSchema.pre("save", function (next) {
-  if (this.correo) this.correo = this.correo.toLowerCase();
-  if (this.reference) this.reference = this.reference.trim();
-  next();
+  // ID del pago generado por Mercado Pago
+  idPagoMP: { type: String, default: null },
 });
 
-export default mongoose.model("Ticket", TicketSchema);
+// ==================== EXPORTACIÓN DEL MODELO ====================
+const Ticket = mongoose.model("Ticket", TicketSchema);
+export default Ticket;

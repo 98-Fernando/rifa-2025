@@ -17,7 +17,7 @@ const TicketSchema = new mongoose.Schema(
 estadoPago: {
   type: String,
   enum: ["pendiente", "pagado", "fallido"],
-  default: "pendiente"
+  default: "pendiente",
 }
 
     // Datos del pago

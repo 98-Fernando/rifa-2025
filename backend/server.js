@@ -27,6 +27,7 @@ config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 const PUBLIC_PATH = path.join(__dirname, "..", "public");
+const BASE_URL = process.env.BASE_URL || "https://rifa-2025.onrender.com";
 
 // ==================== MERCADO PAGO ====================
 const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN;
@@ -133,12 +134,11 @@ app.post("/api/mercadopago/preference", async (req, res) => {
       external_reference: reference,
       auto_return: "approved",
       back_urls: {
-        success: `${process.env.BASE_URL}/success.html?ref=${reference}`,
-        failure: `${process.env.BASE_URL}/failure.html?ref=${reference}`,
-        pending: `${process.env.BASE_URL}/pending.html?ref=${reference}`,
+        success: `${BASE_URL}/verificar-pago.html?ref=${reference}`,
+        failure: `${BASE_URL}/verificar-pago.html?ref=${reference}`,
+        pending: `${BASE_URL}/verificar-pago.html?ref=${reference}`,
       },
-      notification_url:
-        "https://rifa-2025.onrender.com/api/mercadopago/webhook",
+      notification_url: `${BASE_URL}/api/mercadopago/webhook`,
     };
 
     const result = await mpPreference.create({ body: preference });
@@ -404,5 +404,5 @@ app.use((req, res) => {
 // ==================== INICIO SERVIDOR ====================
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
-  console.log(`🌐 URL: https://rifa-2025.onrender.com`);
+  console.log(`🌐 URL: ${BASE_URL}`);
 });

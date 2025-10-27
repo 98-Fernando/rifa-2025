@@ -14,10 +14,11 @@ const TicketSchema = new mongoose.Schema(
     numeros: { type: [String], required: true },
 
     // ✅ Estado de pago booleano: true = pagado, false = cancelado
-    estadoPago: {
-      type: Boolean,
-      default: true, // cuando se crea desde el webhook ya está pagado
-    },
+estadoPago: {
+  type: String,
+  enum: ["pendiente", "pagado", "fallido"],
+  default: "pendiente"
+}
 
     // Datos del pago
     idPagoMP: { type: String, default: null },

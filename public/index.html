@@ -421,8 +421,12 @@
       mensaje.className = `mensaje ${tipo}`;
     }
 
-    // Actualizar disponibilidad cada 10 segundos
-    setInterval(cargarNumeros, 10000);
+    setInterval(() => {
+  // Solo recarga si el modal NO está activo
+  if (!modal.classList.contains("active")) {
+    cargarNumeros();
+  }
+}, 10000);
   </script>
 </body>
 </html>

@@ -134,7 +134,7 @@ form.addEventListener("submit", async (e) => {
     if (!dataPendiente.exito) throw new Error(dataPendiente.mensaje || "Error al guardar pendiente");
 
     const referencia = dataPendiente.reference;
-    const monto = (CONFIG.precio || 100) * numerosSeleccionados.length;
+    const monto = (CONFIG.precio || 30000) * numerosSeleccionados.length;
 
     // 2️⃣ Crear preferencia de pago en Mercado Pago (solo referencia y monto)
     const resPago = await fetch("/api/mercadopago/preference", {
